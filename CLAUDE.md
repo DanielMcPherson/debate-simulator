@@ -103,6 +103,20 @@ reward pick); the first-run map also shows a `HOW_TO_PLAY` onboarding block. `st
 the next game eagerly, then `runScreen='map'` overlays it; the Begin button clears the screen.
 Decision: path is a straight line (no branching) — too few opponents to make path choice meaningful.
 
+## Source control & deploy (IMPORTANT — two GitHub accounts on this machine)
+- **Commit attribution:** all commits in this repo must be authored as **Daniel McPherson
+  <mcphersond@gmail.com>** (his personal identity). The repo already has a local override
+  (`git config --local user.email mcphersond@gmail.com`); don't undo it. The machine's *global*
+  git identity is his work email — never let a commit here use that.
+- **Pushing is the user's job, via GitHub Desktop — not the CLI.** Command-line `git`/`gh` on
+  this machine are signed into his **work** account (SSH token) and **cannot reach** his personal
+  repo `github.com/DanielMcPherson/debate-simulator`. So: do NOT run `git push` or `gh`; when a
+  push is needed, **prompt Daniel to commit & push it in the GitHub Desktop app** (signed into his
+  personal account). Local-only git (`status`, `log`, `add`, `commit`, `config`) is fine.
+- **Deploy is automatic:** pushing to `master` triggers `.github/workflows/deploy.yml`
+  (build + publish to GitHub Pages). Live at https://danielmcpherson.github.io/debate-simulator/.
+  Run `npm test` + `npm run build` locally before handing a change off to push. See SHARING.md §6.
+
 ## Conventions / decisions (don't violate without the user asking)
 - **Deterministic, no LLM at runtime.** Scoring + AI are pure search over card metadata. Don't
   add an LLM dependency.

@@ -68,41 +68,48 @@ Requires Node.js installed.
 
 ## Recommendation
 
-- **Remote playtester:** option 1 (Netlify Drop) for zero setup, or option 2
-  (`npx vercel`) if you want a stable link you can re-deploy to.
+- **Playtesters (the current setup):** the game is already live on **GitHub Pages**
+  at https://danielmcpherson.github.io/debate-simulator/ — just send the link. See
+  **option 6** below for how it works and how to ship updates. Options 1–2 are
+  alternatives if you ever want a one-off link off GitHub.
 - **Someone with you:** option 3.
 
-## 6. GitHub Pages (auto-deploy on push)
+## 6. GitHub Pages (this is the LIVE setup) ✅
 
-Configured and ready: `vite.config.ts` sets `base: './'` (relative asset paths, so
-it works at a root *or* a subpath), and `.github/workflows/deploy.yml` builds and
-publishes `dist/` on every push to `main`. You don't commit `dist/` — the workflow
-builds it.
+The game is published here — send this to playtesters (no login needed on their end):
 
-One-time setup:
+> **https://danielmcpherson.github.io/debate-simulator/**
 
-```bash
-# from the project folder, if it isn't a git repo yet:
-git init -b main
-git add .
-git commit -m "Debate simulator"
+It's hosted from the public repo **github.com/DanielMcPherson/debate-simulator** via
+GitHub Actions. Nothing to re-set-up; this section is the "how it works + how to
+ship updates" reference.
 
-# create the repo and push (GitHub CLI; or create it on github.com and add the remote):
-gh repo create <repo-name> --public --source=. --push
-# …or manually:
-#   git remote add origin https://github.com/<username>/<repo-name>.git
-#   git push -u origin main
-```
+### How it's wired
 
-Then on GitHub: **Settings → Pages → Build and deployment → Source: GitHub
-Actions**. The next push (or a manual run from the **Actions** tab) deploys it.
+- `vite.config.ts` sets `base: './'` (relative asset paths), so the build works
+  under the `/debate-simulator/` subpath.
+- `.github/workflows/deploy.yml` runs `npm ci && npm run build` and publishes
+  `dist/` to Pages on **every push to `master`** (and via a manual **Run workflow**
+  button on the Actions tab). You never commit `dist/` — the workflow builds it.
+- Repo **Settings → Pages → Source** is set to **GitHub Actions**.
 
-Your URL depends on the repo name:
+### Shipping an update (the normal loop)
 
-- **Project site** — repo named anything (e.g. `debate-simulator`) →
-  `https://<username>.github.io/debate-simulator/`
-- **User site** — repo named exactly `<username>.github.io` →
-  `https://<username>.github.io/`
+1. Make your code change.
+2. `npm test` and `npm run build` locally to catch errors before they reach CI.
+3. **Commit and push with GitHub Desktop** (this repo lives on a personal GitHub
+   account that's only wired up through GitHub Desktop — do **not** push from the
+   command line, which is signed in to a different account).
+4. The push triggers the workflow; watch it on the repo's **Actions** tab. In
+   ~30s–1min the live site updates. Hard-refresh (Ctrl/Cmd-Shift-R) if you don't
+   see the change — the browser may have cached the old assets.
 
-The relative `base` means **both work without further changes**. To update the live
-site later, just push to `main`.
+If a push ever doesn't trigger a build, open the **Actions** tab → **Deploy to
+GitHub Pages** → **Run workflow** to deploy manually.
+
+### Heads-up: deprecation warnings
+
+The Actions run shows two yellow "Node.js 20 is deprecated…" warnings about the
+bundled runtime of the GitHub-provided actions (checkout / setup-node /
+upload-pages-artifact / deploy-pages). They're cosmetic and non-blocking; they'll
+clear when those actions ship Node 24 majors.
