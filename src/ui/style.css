@@ -1,0 +1,301 @@
+:root {
+  --bg: #11131a;
+  --panel: #1b1e29;
+  --panel-2: #232735;
+  --ink: #e8eaf0;
+  --muted: #8b91a6;
+  --you: #3aa0ff;
+  --them: #ff5d5d;
+  --gold: #f3c969;
+  --line: #333a4d;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: radial-gradient(1200px 600px at 50% -10%, #1d2433, var(--bg));
+  color: var(--ink);
+}
+
+#app {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 18px 18px 40px;
+}
+
+h1 {
+  font-size: 20px;
+  letter-spacing: 0.5px;
+  margin: 4px 0 14px;
+  text-align: center;
+  color: var(--gold);
+}
+
+/* --- scorebar --- */
+.scorebar-wrap { margin-bottom: 16px; }
+.scorebar-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.scorebar-labels .you { color: var(--you); }
+.scorebar-labels .them { color: var(--them); }
+.scorebar {
+  position: relative;
+  height: 22px;
+  border-radius: 11px;
+  background: linear-gradient(90deg, var(--them) 0%, #2a2f40 50%, var(--you) 100%);
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.scorebar .needle {
+  position: absolute;
+  top: -3px;
+  width: 4px;
+  height: 28px;
+  background: #fff;
+  border-radius: 2px;
+  transform: translateX(-50%);
+  transition: left 0.5s ease;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+}
+.round-pill {
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.run-pill {
+  text-align: center;
+  font-size: 12px;
+  color: var(--gold);
+  margin-bottom: 10px;
+  letter-spacing: 0.3px;
+}
+.card.reward {
+  border: 1px solid var(--gold);
+  background: #2a2616;
+  color: var(--gold);
+  font-weight: 600;
+}
+.card.reward:hover:not(:disabled) { background: #3a3420; }
+
+/* --- stage --- */
+.stage {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.podium {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  min-height: 110px;
+}
+.podium.you { border-top: 3px solid var(--you); }
+.podium.them { border-top: 3px solid var(--them); }
+.podium .who { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+.podium .speech { font-size: 17px; margin-top: 8px; line-height: 1.4; min-height: 24px; }
+.podium .reaction { font-size: 13px; margin-top: 10px; color: var(--gold); min-height: 18px; }
+.reaction.bad { color: var(--them); }
+.reaction.good { color: var(--you); }
+
+/* --- card rows --- */
+.zone-title {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 16px 0 8px;
+}
+.cards { display: flex; flex-wrap: wrap; gap: 8px; }
+.card {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform 0.08s ease, border-color 0.15s ease;
+}
+.card:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--gold); }
+.card:disabled { opacity: 0.32; cursor: not-allowed; }
+.card.pool { border-left: 3px solid var(--gold); }
+.card.hand { border-left: 3px solid var(--you); }
+.card.intens { border: 1px dashed var(--gold); background: #2a2616; font-style: italic; }
+.card.topic { border-left: 3px solid #4ad07a; background: #14271b; font-weight: 600; }
+.oppcard {
+  display: inline-block;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px dashed var(--line);
+  background: #1b1620;
+  color: var(--muted);
+  font-size: 13px;
+}
+.card.power { border: 1px solid #b07cff; background: #221a33; color: #e7dcff; }
+.card.power:hover:not(:disabled) { border-color: #d6bcff; }
+.card.power.selecting { background: #3a2a55; border-color: #d6bcff; box-shadow: 0 0 8px rgba(176, 124, 255, 0.6); }
+/* a card being offered as a Teleprompter Typo target */
+.card.target { border-style: dashed; border-color: var(--them); animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { border-color: #ff9a9a; } }
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.66);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadein 0.15s ease;
+}
+@keyframes fadein { from { opacity: 0; } }
+.modal {
+  background: var(--panel);
+  border: 2px solid var(--them);
+  border-radius: 12px;
+  padding: 22px 26px;
+  max-width: 460px;
+  margin: 16px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+}
+.modal-title { color: var(--them); font-size: 21px; font-weight: 700; margin-bottom: 10px; }
+.modal p { font-size: 14px; line-height: 1.5; margin: 8px 0; }
+.modal-quote {
+  font-style: italic;
+  color: var(--ink);
+  background: var(--panel-2);
+  padding: 10px 12px;
+  border-radius: 6px;
+  border-left: 3px solid var(--them);
+}
+.modal button { margin-top: 14px; width: 100%; }
+
+/* --- campaign map (Slay-the-Spire-style ladder) --- */
+.map-modal { border-color: var(--gold); max-width: 520px; max-height: 90vh; overflow-y: auto; }
+.ladder {
+  margin: 14px 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.rung {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  position: relative;
+}
+/* the connecting line of the straight-line path */
+.rung + .rung { margin-top: 14px; }
+.rung + .rung::before {
+  content: "";
+  position: absolute;
+  left: 21px;
+  top: -14px;
+  height: 14px;
+  width: 2px;
+  background: var(--line);
+}
+.rung-icon { width: 20px; text-align: center; font-size: 14px; }
+.rung-name { flex: 1; font-size: 14px; }
+.rung-diff { color: var(--gold); font-size: 12px; letter-spacing: 1px; }
+.rung.done { opacity: 0.6; }
+.rung.done .rung-icon { color: #4ad07a; }
+.rung.current {
+  border-color: var(--gold);
+  background: #2a2616;
+  box-shadow: 0 0 10px rgba(243, 201, 105, 0.35);
+}
+.rung.current .rung-name { font-weight: 700; color: var(--gold); }
+.rung.locked { opacity: 0.45; }
+
+/* --- onboarding / how-to-play --- */
+.howto {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+.howto-title { font-weight: 700; color: var(--you); margin-bottom: 6px; font-size: 14px; }
+.howto ul { margin: 6px 0; padding-left: 18px; }
+.howto li { font-size: 13px; line-height: 1.5; margin: 5px 0; }
+.howto-foot { margin-top: 8px; font-size: 13px; color: var(--muted); }
+
+.sabotage {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--them);
+  border-radius: 8px;
+  background: rgba(255, 93, 93, 0.14);
+  font-size: 13px;
+  color: #ffb3b3;
+}
+.held {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 1px dashed var(--gold);
+  border-radius: 8px;
+  background: #2a2616;
+  font-size: 13px;
+  color: var(--gold);
+}
+.card .role { display: block; font-size: 10px; color: var(--muted); text-transform: uppercase; }
+
+/* --- controls --- */
+.controls { display: flex; gap: 10px; align-items: center; margin-top: 14px; }
+button.action {
+  background: var(--you);
+  color: #06121f;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 14px;
+  cursor: pointer;
+}
+button.action:disabled { background: #2a2f40; color: var(--muted); cursor: not-allowed; }
+button.ghost {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+.turn-hint { font-size: 13px; color: var(--muted); }
+
+/* --- log + banner --- */
+.log {
+  margin-top: 18px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--muted);
+  max-height: 150px;
+  overflow-y: auto;
+}
+.log div { margin: 3px 0; }
+.banner {
+  text-align: center;
+  font-size: 22px;
+  padding: 16px;
+  border-radius: 10px;
+  margin-bottom: 14px;
+  font-weight: 700;
+}
+.banner.win { background: rgba(58, 160, 255, 0.15); color: var(--you); }
+.banner.lose { background: rgba(255, 93, 93, 0.15); color: var(--them); }
+.banner.tie { background: rgba(243, 201, 105, 0.15); color: var(--gold); }

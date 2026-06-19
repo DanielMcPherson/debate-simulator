@@ -1,0 +1,211 @@
+// Core engine types. Pure data — no DOM, no I/O.
+//
+// Chunk model (Oh...Sir!!-style): a statement is built from a SUBJECT noun
+// phrase plus chunky PREDICATE phrases (mostly complete, some with a fill-in
+// object slot), joined by CONNECTORS, optionally capped by an INTENSIFIER.
+
+export type Role =
+  | 'np' // a noun phrase: a subject, or an object that fills a predicate's slot
+  | 'predicate' // a chunky verb phrase ("kicks puppies", "is a national disgrace")
+  | 'connector' // "and" / "but" / "because" / "and therefore"
+  | 'intensifier' // sentence-final tag that multiplies the whole statement
+  | 'powerup'; // a one-shot action card (not part of the sentence)
+
+/** What a power-up card does when played. */
+export type PowerEffect = 'search' | 'typo' | 'plant' | 'soundbite' | 'hotmic' | 'filibuster' | 'forgot';
+
+/** Whose reputation a subject refers to. Drives scoring. */
+export type Side = 'self' | 'opponent' | 'audience' | 'neutral';
+
+export type Person = 1 | 2 | 3;
+export type GramNumber = 'sing' | 'plural';
+
+/** What a statement does, by subject side × polarity (drives crowd taste & AI style). */
+export type Category =
+  | 'praise_self'
+  | 'self_own'
+  | 'attack_opp'
+  | 'boost_opp'
+  | 'pander_aud'
+  | 'insult_aud'
+  | 'neutral';
+
+export type DebateStyle = 'brag' | 'attack' | 'pander';
+
+/** A named AI opponent with a fixed debating style. */
+export interface Opponent {
+  id: string;
+  name: string;
+  style: DebateStyle;
+}
+
+/** A crowd with a HIDDEN preference: statements of `loves` land harder. */
+export interface Crowd {
+  id: string;
+  loves: Category;
+  boost: number;
+}
+
+/** A debate question's topic. */
+export interface Topic {
+  id: string;
+  label: string;
+  /** The always-available, non-consumable topic noun phrase both players may use. */
+  card: Card;
+}
+
+/**
+ * A draftable card. The fields used depend on `role`.
+ *  - np:        side (when subject), sentiment (when object), person/number.
+ *  - predicate: pre/lead/post (for conjugation + display); and either
+ *               `sentiment` (closed) OR `open`+`affinity`/`deed` (object slot).
+ *  - connector: conj.
+ *  - intensifier: factor.
+ */
+export interface Card {
+  id: string;
+  role: Role;
+  /** Optional override display text; otherwise derived (predicates derive from pre/lead/post). */
+  text?: string;
+  /** Topic ids this card counts as "on topic" for. */
+  topics?: string[];
+
+  // --- np ---
+  side?: Side;
+  sentiment?: number; // np-as-object value, or closed-predicate polarity
+  person?: Person;
+  number?: GramNumber;
+  /** Proper noun — keep its capital even mid-sentence ("Satan"). */
+  proper?: boolean;
+  /** Subject loadedness: multiplies the clause's impact. Default 1; e.g. "My
+   * crooked, treasonous opponent" (1.6) hits harder than plain "My opponent" (1). */
+  intensity?: number;
+
+  // --- predicate ---
+  /** Needs an object to fill its trailing slot ("is in bed with ___"). */
+  open?: boolean;
+  /** Leading verb lemma to conjugate ("kick", "be", "want"). */
+  lead?: string;
+  /** Adverb before the verb, not conjugated ("secretly"). */
+  pre?: string;
+  /** Text after the conjugated verb ("puppies", "a national disgrace", "in bed with"). */
+  post?: string;
+  /** Predicate text used verbatim for all subjects (modal/negated phrasings). */
+  invariant?: boolean;
+  /** For OPEN predicates: object polarity = deed + affinity × objectSentiment. */
+  affinity?: number;
+  deed?: number;
+
+  // --- connector ---
+  conj?: 'and' | 'because' | 'and therefore';
+
+  // --- intensifier ---
+  factor?: number;
+
+  // --- powerup ---
+  effect?: PowerEffect;
+}
+
+/** A card instance placed in a player's building line, in order. */
+export type Statement = Card[];
+
+/** A predicate together with the object filling its slot (if any). */
+export interface PredInstance {
+  card: Card;
+  object?: Card;
+}
+
+/** One parsed clause: a subject and the predicate(s) said about it. */
+export interface Clause {
+  subject?: Card;
+  preds: PredInstance[];
+}
+
+export interface SentenceStructure {
+  clauses: Clause[];
+}
+
+export type ReactionLabel =
+  | 'cheers'
+  | 'approve'
+  | 'neutral'
+  | 'disapprove'
+  | 'boos'
+  | 'confused';
+
+export interface Reaction {
+  /** Signed approval delta toward the speaker, in scorebar units. */
+  delta: number;
+  label: ReactionLabel;
+  detail: string;
+  grammatical: boolean;
+}
+
+export type PlayerId = 'player' | 'ai';
+
+export interface PlayerState {
+  id: PlayerId;
+  /** Private draw pile. */
+  deck: Card[];
+  /** Private hand (drawn from `deck`). */
+  hand: Card[];
+  /** Tokens committed to the current statement, in order. */
+  line: Statement;
+  /** A committed finisher (intensifier): grabbed early, auto-appended when you end. */
+  heldFinisher?: Card;
+  /** Whether this player has used their once-per-question redraw. */
+  usedRedraw?: boolean;
+  /** Multiplier armed by Soundbite, applied to the next completed statement. */
+  nextMultiplier?: number;
+  /** Whether this player has revealed the crowd's taste (via Plant in the Audience). */
+  knowsCrowd?: boolean;
+  /** Whether this player can see the opponent's hand (via Hot Mic). */
+  knowsOppHand?: boolean;
+  /** Whether this player has ended their statement this round. */
+  done: boolean;
+  /** Last scored reaction this round (for UI). */
+  lastReaction?: Reaction;
+}
+
+export interface GameState {
+  /** Audience favor: -100 (fully AI) .. +100 (fully player). 0 = dead heat. */
+  bar: number;
+  /** Current question number (each question = one fresh deal). */
+  round: number;
+  maxRounds: number;
+  /** The topic the current question is about. */
+  topic?: Topic;
+  /** The named opponent for this debate (fixed). */
+  opponent?: Opponent;
+  /** The crowd's hidden preference for this debate (fixed; never shown). */
+  crowd?: Crowd;
+  /** Reward cards carried in from the run, shuffled into the player's private deck. */
+  playerBonus?: Card[];
+  /** Shared public deck and the face-up contested pool drawn from it. */
+  sharedDeck: Card[];
+  pool: Card[];
+  poolSize: number;
+  handSize: number;
+  player: PlayerState;
+  ai: PlayerState;
+  turn: PlayerId;
+  /** Consecutive passes (a stalemate locks in both statements). */
+  passes?: number;
+  /** Set when a sabotage power-up just hit someone (for the UI alert). `kind`
+   * distinguishes a Teleprompter Typo (jammed a card on) from a Forgot My Line
+   * (knocked their last card off). Defaults to 'typo' when absent. */
+  lastSabotage?: { victim: PlayerId; by: PlayerId; text: string; kind?: 'typo' | 'forgot' };
+  /** Both statements are in; paused on the result until the player continues. */
+  awaitingNext?: boolean;
+  winner?: PlayerId | 'tie';
+  log: string[];
+}
+
+export type Move =
+  | { kind: 'take'; from: 'pool' | 'hand' | 'topic'; cardId: string }
+  // play a power-up from your hand. For Teleprompter Typo, target* names the card
+  // to jam onto the opponent; for Hot Mic, the card (from 'oppHand') to steal.
+  | { kind: 'power'; cardId: string; targetFrom?: 'pool' | 'hand' | 'oppHand'; targetCardId?: string }
+  | { kind: 'redraw' } // reshuffle the pool + your hand; once per question; costs your turn
+  | { kind: 'pass' } // hold a completed statement and wait (e.g. to set up a Typo)
+  | { kind: 'end' };
