@@ -1,9 +1,10 @@
 name: Deploy to GitHub Pages
 
-# Build the Vite app and publish dist/ to GitHub Pages on every push to main.
+# Build the Vite app and publish dist/ to GitHub Pages on every push to the
+# default branch (this repo uses `master`; `main` is included in case of a rename).
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   workflow_dispatch: # also lets you trigger a deploy manually from the Actions tab
 
 permissions:
