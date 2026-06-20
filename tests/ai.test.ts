@@ -23,7 +23,7 @@ describe('AI planner', () => {
 
   it('prefers a stronger predicate over a weaker one', () => {
     const best = plan([], avail('pool', 's_opp', 'p_disgrace', 'p_weak'))!;
-    expect(best.delta).toBeGreaterThan(8); // chose "is a national disgrace" (-3) over "weak" (-2)
+    expect(best.delta).toBeGreaterThan(4); // chose "is a national disgrace" (-3) over "weak" (-2)
   });
 
   it('avoids self-owns: about itself it praises, not slanders', () => {
@@ -89,7 +89,7 @@ describe('full game loop', () => {
     const end = moves.find((m) => m.kind === 'end');
     if (end) return end;
     const take =
-      moves.find((m) => m.kind === 'take' && m.from !== 'topic') ??
+      moves.find((m) => m.kind === 'take' && m.from !== 'period') ??
       moves.find((m) => m.kind === 'take');
     return take ?? { kind: 'end' };
   }

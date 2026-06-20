@@ -2,6 +2,7 @@ import type { Card, Category, DebateStyle, GameState, Move } from './types';
 import { canAppend, isComplete, rolesOf } from './grammar';
 import { scoreStatement, dominantCategory } from './scoring';
 import { bestTypoJam } from './game';
+import { PERIOD } from '../data/cards';
 
 const STYLE_CATEGORY: Record<DebateStyle, Category> = {
   brag: 'praise_self',
@@ -16,7 +17,7 @@ const STYLE_BONUS = 10; // pronounced lean toward the opponent's signature style
 // best one. Because it re-plans every turn, theft from the shared pool simply
 // changes what's reachable and it adapts — falling back to the next-best line.
 
-type Source = 'pool' | 'hand' | 'topic';
+type Source = 'pool' | 'hand' | 'period';
 interface Avail {
   card: Card;
   source: Source;
@@ -101,7 +102,7 @@ function availFor(state: GameState): Avail[] {
   const usable = (c: Card) => c.role !== 'powerup' && !(held && c.role === 'intensifier');
   for (const c of state.pool) if (usable(c)) a.push({ card: c, source: 'pool' });
   for (const c of state.ai.hand) if (usable(c)) a.push({ card: c, source: 'hand' });
-  if (state.topic) a.push({ card: state.topic.card, source: 'topic' }); // always available
+  a.push({ card: PERIOD, source: 'period' }); // free, always-available clause break
   return a;
 }
 
@@ -138,7 +139,7 @@ export function chooseMove(state: GameState, opts: AiOptions = {}): Move {
   const forgot = power('forgot');
   if (forgot && !state.player.done && state.player.line.length > 0) {
     const pl = state.player.line;
-    const strong = isComplete(pl) && scoreStatement(pl, { topicId: state.topic?.id }).delta >= 8;
+    const strong = isComplete(pl) && scoreStatement(pl, { topicId: state.topic?.id }).delta >= 4;
     const bigCombo = pl.length >= 4;
     if (strong || bigCombo) return { kind: 'power', cardId: forgot.id };
   }
@@ -147,17 +148,17 @@ export function chooseMove(state: GameState, opts: AiOptions = {}): Move {
     return { kind: 'power', cardId: hotmic.id }; // steal the player's power-up (auto-target)
   }
   const soundbite = power('soundbite');
-  if (soundbite && line.length === 0 && best && best.delta >= 10) {
+  if (soundbite && line.length === 0 && best && best.delta >= 5) {
     return { kind: 'power', cardId: soundbite.id }; // arm before a strong statement
   }
   const search = power('search');
-  if (search && line.length === 0 && (!best || best.delta < 5)) {
+  if (search && line.length === 0 && (!best || best.delta < 2.5)) {
     return { kind: 'power', cardId: search.id }; // draw into a better hand
   }
 
   // At the start of a statement, if the best it can do is weak, redraw once
   // (it costs a turn) rather than say something feeble.
-  if (line.length === 0 && !state.ai.usedRedraw && (!best || best.delta < 4)) {
+  if (line.length === 0 && !state.ai.usedRedraw && (!best || best.delta < 2)) {
     return { kind: 'redraw' };
   }
 

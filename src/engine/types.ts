@@ -50,7 +50,11 @@ export interface Crowd {
 export interface Topic {
   id: string;
   label: string;
-  /** The always-available, non-consumable topic noun phrase both players may use. */
+  /** Interchangeable open-ended moderator phrasings — one is picked per question
+   * (purely flavor; the `id` is what drives scoring). Keeps prompts from repeating. */
+  questions: string[];
+  /** Reserved for a future "bonus phrase" mechanic. NOT offered as a playable
+   * card anymore — you address the topic with normal `topics`-tagged cards. */
   card: Card;
 }
 
@@ -97,7 +101,9 @@ export interface Card {
   deed?: number;
 
   // --- connector ---
-  conj?: 'and' | 'because' | 'and therefore';
+  // 'and' coordinates (CCAND); 'because'/'and therefore' join logically; 'but'
+  // pivots/contrasts; 'period' is the free, unlimited, combo-less clause break.
+  conj?: 'and' | 'because' | 'and therefore' | 'but' | 'period';
 
   // --- intensifier ---
   factor?: number;
@@ -113,12 +119,18 @@ export type Statement = Card[];
 export interface PredInstance {
   card: Card;
   object?: Card;
+  /** The connector coordinating this predicate with the prior one in its clause
+   * (e.g. "and", or an elided "and therefore"); undefined for a clause's first. */
+  joinedBy?: NonNullable<Card['conj']>;
 }
 
 /** One parsed clause: a subject and the predicate(s) said about it. */
 export interface Clause {
   subject?: Card;
   preds: PredInstance[];
+  /** The connector that joined this clause to the previous one (undefined for
+   * the first clause). Drives connector-fit combo scoring. */
+  joinedByPrev?: NonNullable<Card['conj']>;
 }
 
 export interface SentenceStructure {
@@ -139,6 +151,9 @@ export interface Reaction {
   label: ReactionLabel;
   detail: string;
   grammatical: boolean;
+  /** Set when a correctly-used conjunction earned a combo (drives the UI callout).
+   * `kind`: 'and' reinforce, 'logic' because/therefore, 'but' pivot. */
+  combo?: { kind: 'and' | 'logic' | 'but'; mult: number };
 }
 
 export type PlayerId = 'player' | 'ai';
@@ -175,6 +190,8 @@ export interface GameState {
   maxRounds: number;
   /** The topic the current question is about. */
   topic?: Topic;
+  /** The moderator phrasing chosen for the current question (from `topic.questions`). */
+  question?: string;
   /** The named opponent for this debate (fixed). */
   opponent?: Opponent;
   /** The crowd's hidden preference for this debate (fixed; never shown). */
@@ -202,7 +219,8 @@ export interface GameState {
 }
 
 export type Move =
-  | { kind: 'take'; from: 'pool' | 'hand' | 'topic'; cardId: string }
+  // 'period' is the free, always-available virtual connector (not from pool/hand).
+  | { kind: 'take'; from: 'pool' | 'hand' | 'period'; cardId: string }
   // play a power-up from your hand. For Teleprompter Typo, target* names the card
   // to jam onto the opponent; for Hot Mic, the card (from 'oppHand') to steal.
   | { kind: 'power'; cardId: string; targetFrom?: 'pool' | 'hand' | 'oppHand'; targetCardId?: string }

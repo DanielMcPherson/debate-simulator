@@ -9,11 +9,17 @@ import type { Card, Clause, Role, SentenceStructure } from './types';
 //   TOP   -> S | S INT
 //   S     -> CLAUSE | S CCAND CLAUSE | S CJOIN CLAUSE
 //   CLAUSE-> NP PREDS
-//   PREDS -> PRED | PREDS CCAND PRED
+//   PREDS -> PRED | PREDS CCAND PRED | PREDS CJOIN PRED
 //   PRED  -> PC | PO NP            (PC = closed predicate, PO = open predicate)
+//
+// A *conjunction* followed by a new subject (NP) opens a new clause; followed by a
+// predicate it coordinates within the clause, sharing the subject ("the swamp eats
+// crayons and therefore will destroy this country"). A *period* is a sentence
+// boundary: it can ONLY open a new clause, and so always needs its own subject —
+// it never strings bare predicates into fragments.
 
-type Term = 'NP' | 'PC' | 'PO' | 'CCAND' | 'CJOIN' | 'INT';
-const TERMS = new Set<Term>(['NP', 'PC', 'PO', 'CCAND', 'CJOIN', 'INT']);
+type Term = 'NP' | 'PC' | 'PO' | 'CCAND' | 'CJOIN' | 'CPERIOD' | 'INT';
+const TERMS = new Set<Term>(['NP', 'PC', 'PO', 'CCAND', 'CJOIN', 'CPERIOD', 'INT']);
 
 /** The part(s) of speech a card can play. */
 export function rolesOf(card: Card): Role[] {
@@ -27,7 +33,12 @@ function termOfRole(r: Role, card: Card): Term {
     case 'predicate':
       return card.open ? 'PO' : 'PC';
     case 'connector':
-      return card.conj === 'and' ? 'CCAND' : 'CJOIN';
+      // 'and' coordinates predicates (CCAND); 'period' only joins full clauses
+      // (CPERIOD); the rest — because / and therefore / but — are CJOIN (which can
+      // both join clauses and coordinate predicates under a shared subject).
+      if (card.conj === 'and') return 'CCAND';
+      if (card.conj === 'period') return 'CPERIOD';
+      return 'CJOIN';
     case 'intensifier':
       return 'INT';
     case 'powerup':
@@ -38,9 +49,9 @@ const termsAt = (card: Card): Term[] => rolesOf(card).map((r) => termOfRole(r, c
 
 const GRAMMAR: Record<string, string[][]> = {
   TOP: [['S'], ['S', 'INT']],
-  S: [['CLAUSE'], ['S', 'CCAND', 'CLAUSE'], ['S', 'CJOIN', 'CLAUSE']],
+  S: [['CLAUSE'], ['S', 'CCAND', 'CLAUSE'], ['S', 'CJOIN', 'CLAUSE'], ['S', 'CPERIOD', 'CLAUSE']],
   CLAUSE: [['NP', 'PREDS']],
-  PREDS: [['PRED'], ['PREDS', 'CCAND', 'PRED']],
+  PREDS: [['PRED'], ['PREDS', 'CCAND', 'PRED'], ['PREDS', 'CJOIN', 'PRED']],
   PRED: [['PC'], ['PO', 'NP']],
 };
 
@@ -123,19 +134,23 @@ export function canAppend(tokens: Card[], card: Card): boolean {
 
 // --- structural segmentation for scoring & rendering -----------------------
 
-/** Does the connector at `i` open a new clause (vs. coordinate predicates)? */
-function isClauseJoin(tokens: Card[], i: number): boolean {
-  const c = tokens[i];
-  if (c.conj && c.conj !== 'and') return true; // because / and therefore / but
-  const next = tokens[i + 1];
-  return !!next && next.role === 'np'; // "and" + a new subject => a new clause
-}
-
 export type TokenRole = 'subject' | 'object' | 'pred' | 'conn' | 'int';
+
+type Conj = NonNullable<Card['conj']>;
+
+interface SegPred {
+  predIdx: number;
+  objIdx?: number;
+  /** The connector coordinating this predicate with the prior one in the clause
+   * (undefined for a clause's first predicate). */
+  joinedBy?: Conj;
+}
 
 interface Seg {
   subjectIdx?: number;
-  preds: { predIdx: number; objIdx?: number }[];
+  preds: SegPred[];
+  /** The clause-joining connector that opened this clause (undefined for the first). */
+  joinedBy?: Conj;
 }
 
 export function segmentDetailed(tokens: Card[]): { clauses: Seg[]; roleAt: TokenRole[] } {
@@ -143,7 +158,8 @@ export function segmentDetailed(tokens: Card[]): { clauses: Seg[]; roleAt: Token
   const roleAt: TokenRole[] = [];
   let cur: Seg = { preds: [] };
   let started = false;
-  let open: { predIdx: number; objIdx?: number } | null = null; // predicate awaiting an object
+  let open: SegPred | null = null; // predicate awaiting an object
+  let pendingConn: Conj | undefined; // a connector awaiting the predicate it coordinates
   const push = () => {
     if (started) clauses.push(cur);
   };
@@ -173,22 +189,36 @@ export function segmentDetailed(tokens: Card[]): { clauses: Seg[]; roleAt: Token
         }
         break;
       case 'predicate': {
-        const p = { predIdx: i };
+        const p: SegPred = { predIdx: i };
+        // A predicate after the clause's first one is coordinated by the pending
+        // connector (plain "and", or an elided "and therefore"/"but"/etc.).
+        if (cur.preds.length > 0) p.joinedBy = pendingConn ?? 'and';
+        pendingConn = undefined;
         cur.preds.push(p);
         roleAt[i] = 'pred';
         started = true;
         open = t.open ? p : null;
         break;
       }
-      case 'connector':
+      case 'connector': {
         roleAt[i] = 'conn';
         open = null;
-        if (isClauseJoin(tokens, i)) {
+        const conj = t.conj ?? 'and';
+        const next = tokens[i + 1];
+        // A period is a hard sentence boundary (always a new clause). A conjunction
+        // opens a new clause only when a fresh subject follows; otherwise it
+        // coordinates the next predicate under the shared subject.
+        if (conj === 'period' || (next && next.role === 'np')) {
           push();
-          cur = { preds: [] };
+          cur = { preds: [], joinedBy: conj };
           started = false;
+          pendingConn = undefined;
+        } else {
+          // Subject elided ("…and therefore will destroy…").
+          pendingConn = conj;
         }
         break;
+      }
       case 'intensifier':
         roleAt[i] = 'int';
         break;
@@ -201,9 +231,11 @@ export function segmentDetailed(tokens: Card[]): { clauses: Seg[]; roleAt: Token
 export function parse(tokens: Card[]): SentenceStructure {
   const clauses: Clause[] = segmentDetailed(tokens).clauses.map((s) => ({
     subject: s.subjectIdx !== undefined ? tokens[s.subjectIdx] : undefined,
+    joinedByPrev: s.joinedBy,
     preds: s.preds.map((p) => ({
       card: tokens[p.predIdx],
       object: p.objIdx !== undefined ? tokens[p.objIdx] : undefined,
+      joinedBy: p.joinedBy,
     })),
   }));
   return { clauses };

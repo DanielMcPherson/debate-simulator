@@ -42,37 +42,69 @@ Cards are **chunks**, not single words. `Card.role`:
 - `predicate` — a chunky verb phrase. Either **closed** (baked `sentiment`, e.g. "kicks
   puppies") or **open** (`open:true` + `affinity`/`deed`, takes an object, e.g. "wants to
   destroy ___"). Conjugates via `pre`/`lead`/`post` (or `invariant:true` for modal/past text).
-- `connector` — `and` (coordinates predicates), `because`/`and therefore`/`but` (join clauses).
+- `connector` — `conj`: `and` (coordinates predicates → CCAND); `because`/`and therefore`/`but`
+  join clauses (CJOIN); `period` is the **free, unlimited** clause break. The `PERIOD` card
+  (cards.ts) is **virtual** — always available, never drawn/consumed, NOT in CONNECTORS/ALL/decks;
+  played via `Move{kind:'take', from:'period'}`.
 - `intensifier` — sentence-final finisher (`factor` multiplies the whole statement).
 - `powerup` — one-shot action card (`effect`), never part of the sentence.
 
-Grammar: `TOP→S [INT]; S→CLAUSE | S (CCAND|CJOIN) CLAUSE; CLAUSE→NP PREDS; PRED→PC | PO NP`.
-Validity depends only on the **role sequence**, so `grammar.ts` recognizes over term-sets and
-memoizes (keeps the AI's deep search fast). Play is freeform (any card any time, no POS labels);
-the grammar judges the *result* — ungrammatical lines score "confused".
+Grammar: `TOP→S [INT]; S→CLAUSE | S (CCAND|CJOIN) CLAUSE; CLAUSE→NP PREDS; PRED→PC | PO NP`
+(`but`/`period` → CJOIN). Validity depends only on the **role sequence**, so `grammar.ts`
+recognizes over term-sets and memoizes (keeps the AI's deep search fast). Play is freeform (any
+card any time, no POS labels); the grammar judges the *result* — ungrammatical lines score
+"confused". The clause segmenter stamps each clause's `joinedByPrev` connector (for scoring).
 
 ## Scoring (scoring.ts) — `delta` is signed TOWARD THE SPEAKER (+ = good for whoever said it)
 Per clause: `targetFor(subject)` gives `{sign, weight}` × `subject.intensity`. self/opp weight
-1.0, audience 1.3; a **neutral noun acts as hero (praise it) or villain (bash it)** by its
-sentiment, weight 0.6. Each predicate's polarity P × sign × weight × SCALE(5). Closed pred:
+1.0, audience 1.3. **No noun is inert:** a `neutral` "thing" noun is remapped by `effectiveSide`
+to **audience** if its sentiment ≥0 (championing a cause pleases the crowd; trashing it is a
+blunder) or **opponent** if <0 (bashing a shared villain lands like an attack; praising it
+backfires) — so "I support the economy" / "the swamp is a disgrace" both score and react to the
+crowd. Each predicate's polarity P × sign × weight × SCALE. Closed pred:
 baked sentiment; open pred: `deed + affinity×objectSentiment`. **Self-owns & audience-insults
-get a ×1.6 blunder multiplier.** Combo bonus only if every clause lands hard same-sign; else a
-ramble penalty. Then intensifier `factor`, then topic **dodge** penalty (−5 if no on-topic
-card), clamp ±35 (±50 with intensifier).
+get a ×1.6 blunder multiplier.** **Combos are connector-fit** (`aggregate()` in scoring.ts):
+contributions joined by a *correctly-used* conjunction bind into a combo group (summed full, then
+×mult) — `and` 1.25 / `because`/`and therefore` 1.30 / `but` 1.40 (pivot: them-bad→you-good,
+different sides). `and`/`because` need both clauses good & **distinct** (by side or predicate base
+id), strength ≥COMBO_MIN. Everything else (periods, misused connectors, singletons) is **residual**:
+short diminishing-returns stack `[1.0,0.3,0.1,0.04,0.02]` by |delta| desc, so periods help
+marginally and piles of single sentences flatten fast (asymptote ≈1.45× the best clause), while a
+real combo multiplies past them. **Rambling:** past `RAMBLE_LIMIT` (3) *residual* (non-combo)
+sentences, each extra one subtracts `RAMBLE_STEP` (2.5) — so piling 4+ simple sentences actively
+hurts (combos are exempt). A `but` after a **self-own** *mitigates* it (blunder 1.6→1.1,
+×1.0) and forces a `confused` label when net-negative. The **hidden crowd** boosts only your single
+*best* on-taste contribution (×boost), not every matching clause — so monotonous piling can't farm
+it; a combo containing the matched clause still multiplies the boosted value. `reaction.combo{kind,
+mult}` drives the UI callout. Then intensifier `factor`, **off-topic** is *multiplicative*
+(positive totals ×`OFF_TOPIC_MULT` 0.75 — a big statement can't cheaply ignore the question), clamp
+±35 (±50 with intensifier).
+**Tuning (rebalanced 2026-06: keep this ratio):** `SCALE=2.5` is deliberately small vs the ±35 cap
+so one strong clause ≈⅓ of the cap, leaving headroom for combos to out-climb piles (if a clause
+nearly caps, *everything* saturates and combos lose their edge — that was the bug). `COMBO_MIN=3`,
+`CONFUSED_PENALTY −2.5` and `RAMBLE_STEP 2.5` scale with SCALE (off-topic is now a multiplier, not
+flat). If you change SCALE, rescale COMBO_MIN, those penalties, and the delta-unit thresholds in **ai.ts** (`chooseMove`:
+Forgot ≥4, soundbite ≥5, search <2.5, redraw <2) together — plus the absolute-magnitude assertions
+in tests/scoring.test.ts & tests/ai.test.ts. The worked-examples table lives in tests/scoring.test.ts.
 
 ## Game loop (game.ts)
 A debate = several **questions**. Each question deals a fixed **shared pool** (~9, contested) +
-a small **private hand**; **nothing replenishes** mid-question. You may only **End** on a
-complete statement (or when truly stuck → confused); **Pass** to wait on an empty/complete line;
-**Call a Recess** (once/question, costs turn) reshuffles the **pool only** (not your hand).
-After both speak the round **pauses** (`awaitingNext` → `nextQuestion()`). Win at ±100
-(landslide) or lead after `maxRounds` (default 8). Each statement's `delta` is applied toward
-its speaker (`+player`/`−ai` on the bar).
+a small **private hand**; **nothing replenishes** mid-question. **End** is allowed on ANY non-empty
+line (no soft-lock, no forced self-own): an incomplete/ungrammatical line just scores **lenient
+"confused"** (partial intent ×0.5, capped ±8, + a coaching note — see `scoreStatement`). The free
+**period** (`from:'period'`) ends a clause and opens a new one anywhere the grammar allows; **Pass**
+to wait on an empty/endable line; **Call a Recess** (once/question, costs turn) reshuffles the
+**pool only** (not your hand). After both speak the round **pauses** (`awaitingNext` →
+`nextQuestion()`). Win at ±100 (landslide) or lead after `maxRounds` (default 8). Each statement's
+`delta` is applied toward its speaker (`+player`/`−ai` on the bar).
 
-Per-debate hidden state: a **topic** (dodging penalized), a **crowd** with a HIDDEN `loves`
-category (×boost at resolution only — the AI never sees it), and a named **opponent** with a
-style. **Private decks are persistent** across the debate (built once; a played card like Plant
-won't recur). Shared deck is re-dealt each question.
+Per-debate hidden state: a **topic** — a moderator **question** (`Topic.question`) you address with
+any `topics`-tagged card; **no green "topic card" is offered** anymore (that idea is parked on
+`Topic.card` for a future bonus-phrase mechanic). `ensurePoolHasTopic` guarantees ≥1 on-topic card
+is dealt; on-topic cards are highlighted in the UI; dodging the topic is the **multiplicative**
+off-topic penalty. Also a **crowd** with a HIDDEN `loves` category (×boost at resolution only — the
+AI never sees it), and a named **opponent** with a style. **Private decks are persistent** across
+the debate (built once; a played card like Plant won't recur). Shared deck is re-dealt each question.
 
 ## AI (ai.ts)
 Re-plans every turn: bounded DFS over reachable grammatical completions, scored by the real
@@ -85,8 +117,8 @@ gibberish); Hot Mic to steal the player's power-up; Search/Soundbite situational
 ## Power-ups (`Move{kind:'power'}`)
 Search (draw 5, FREE), Filibuster (adds 3 connectors, FREE), Soundbite (`nextMultiplier` ×1.5),
 Plant (`knowsCrowd`, reveal crowd for the debate), Teleprompter Typo (jam a card onto the
-opponent's line — player targets, AI auto-picks the worst self-own; victim can recover with a
-connector+clause), Forgot My Line (pop the opponent's last line card — discarded, not returned;
+opponent's line — player targets, AI auto-picks the worst self-own; victim softens it by tacking
+on another sentence — a `but` pivot helps most), Forgot My Line (pop the opponent's last line card — discarded, not returned;
 player just plays it, AI plays it to wreck a strong/long line the player is sitting on),
 Hot Mic (`knowsOppHand` reveals opp hand for the CURRENT QUESTION + steal a card permanently).
 Both Typo and Forgot set `state.lastSabotage{victim,by,text,kind:'typo'|'forgot'}`, which drives
@@ -96,12 +128,72 @@ a must-dismiss modal when the player is the victim. FREE power-ups don't cost th
 `LADDER` (cards.ts) = 6 opponents of rising `maxExtend`. Win → pick 1 of 3 `REWARDS` (exclusive,
 stronger: ±4 predicates + intensity-1.6 subjects; never in starting decks) → added to `run.bonus`
 → carried via `createGame({playerBonus})` → shuffled into the player's deck. Lose/tie → run
-resets to default deck. UI state: `run`, `runScreen` ('map'|'reward'|'victory'|'defeat'),
-`checkDebateEnd`, `startDebate`/`newRun`, modals. The `'map'` screen is a Slay-the-Spire-style
-straight-line ladder (`ladderHtml`) shown before the first debate and between debates (after the
-reward pick); the first-run map also shows a `HOW_TO_PLAY` onboarding block. `startDebate` builds
-the next game eagerly, then `runScreen='map'` overlays it; the Begin button clears the screen.
+resets to default deck. UI state: `run`, `runScreen` ('tutorial'|'map'|'reward'|'victory'|'defeat'),
+`checkDebateEnd`, `startDebate`/`newRun`, modals. A fresh run opens on the `'tutorial'` screen
+(`TUTORIAL_BODY`: periods/combos/`but` with examples) → `'map'`. The `'map'` screen is a
+Slay-the-Spire-style straight-line ladder (`ladderHtml`) shown before the first debate and between
+debates (after the reward pick). `startDebate` builds the next game eagerly, then the run screen
+overlays it; the Begin button clears the screen.
 Decision: path is a straight line (no branching) — too few opponents to make path choice meaningful.
+
+## Roadmap (triaged — DON'T build until the current scoring is playtested)
+Ordered by priority/dependency. Engine work stays pure/seeded (no `Math.random` — thread the game
+RNG); player-only meta lives in `ui/main.ts`. Source: `~/Downloads/debate_game_session_notes.md`.
+
+**P1 · small · independent — Per-card scoring ceiling ("headliners").** A powerful card raises the
+statement cap (e.g. ±35 → ±45) *in addition to* adding score, so strong cards feel strong instead of
+clipping. Derive `STATEMENT_CAP` from the cards in the line (a `ceiling` field on the card). Do this
+**first** — it's what makes the reward/shop cards below actually land. (Reality check: the 35 cap
+binds ~5% of AI / ~16% of skilled-player statements today — not "most" — but powerful cards *are*
+muted when they push an already-good line into the cap. Per-card ceiling fixes that without the
+global bar-pace change we deliberately avoided.)
+
+**P1 · medium — In-debate card-award events (player-only, hidden, probabilistic).** Reuse the existing
+3-card reward modal to award a card mid-debate on certain plays: big combos, on-/off-topic streaks
+(track per-run), and crucially **self-own / heel-turn (insult-audience) / compliment-opponent as a
+risk-reward gamble** ("own-goal for a card!"). This gives the now-lenient self-own a *positive reason
+to exist*. Hidden (discovered, not documented). Opponent never gets awards. New cards shuffle into the
+player's persistent private deck. Seed the RNG.
+
+**P2 · large epic — Campaign donation economy + shop** (the long-deferred roguelike meta; needs its
+own design pass + phasing). Donations trickle in per-statement by type, scaled by your **chosen
+character's donor taste** (KNOWN to you) vs the **crowd's hidden taste** — the core win-vs-fund
+tension. Self-owns *refund* donations (net loss); opponent insults / off-taste plays reduce the
+trickle. Between debates, a **shop**: buy cards (priced by power) / remove cards (deck pruning).
+Player-only (opponent donations never shown — they can't spend). Phase: accrual → shop buy/remove →
+character select. Watch the **complexity budget** — decide if donations augment or partly replace
+existing incentives.
+
+**P2 · ongoing — Skill-based difficulty ladder.** Today difficulty scales *only* via
+`AiOptions.maxExtend`. Give each rung distinct skill knobs on `Opponent`/`LADDER` consumed in `ai.ts`
+(`plan`/`chooseMove`): `selfOwnRate` (early opponents make frequent unforced self-owns — praise a
+villain, trash themselves — and *look embarrassed* once we have graphics; later ones never do),
+`comboSkill` (gate combo-seeking), `cardGreed` (reach for top cards). Deterministic/seeded.
+
+**P3 · medium — Curse cards** (depends on shop + heel-turn). Opponent sabotage that injects toxic
+pre-formed statements into your deck ("…and that's why I despise my voters"), clogging your hand.
+Remove in the shop, or play deliberately to attempt a Heel Turn.
+
+**P3 · trivial — Remove the on-topic card hint.** The green glow + "on topic ✓" tag (`cardHtml` in
+ui/main.ts) is a **temporary debug aid** for catching mislabeled `topics`; once the data is trusted,
+remove it so players learn to spot on-topic cards themselves.
+
+**P3 · small — Varied reaction text.** `describe()` in scoring.ts returns one fixed line per
+reaction tier ("the audience nods along", etc.), plus the single confused/ramble flavor strings — so
+resolutions read identically across a debate. Give each tier a pool of phrasings (and the
+confused/combo notes too), picked with the game RNG (deterministic). Pattern mirrors `Topic.questions`
+(35 phrasings across 7 topics, picked per question — done). Cosmetic; pairs well with the juice pass.
+
+**P2 · large — Graphics, animation & juice.** The UI is a functional prototype. Make it *feel* good:
+character art / reaction faces (an opponent that looks embarrassed on a self-own), animated card
+plays, **screen shake + combo flourishes when a statement resolves/scores**, donation/score
+tickers, audience reactions. Tied to this: properly **stage the opponent's turn** — show the pool,
+"opponent's turn", the AI "thinking", then it picks a card (currently just an `AI_DELAY` pause with
+"Your opponent is speaking…"). The combo callout (`comboHtml`) and reaction text are already
+structured as placeholders to swap for juiced versions.
+
+**Why gated:** the connector-fit scoring + combo/period/topic system just landed; get playtest data
+on *its* feel before layering meta-progression on top.
 
 ## Source control & deploy (IMPORTANT — two GitHub accounts on this machine)
 - **Commit attribution:** all commits in this repo must be authored as **Daniel McPherson

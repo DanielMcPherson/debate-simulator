@@ -3,8 +3,8 @@ import type { Card, GameState, Move, Reaction } from '../engine/types';
 import { createGame, applyMove, canEnd, nextQuestion } from '../engine/game';
 import { chooseMove } from '../engine/ai';
 import { displayWords, cardLabel } from '../engine/morphology';
-import { isComplete } from '../engine/grammar';
-import { LADDER, REWARDS, OPPONENTS } from '../data/cards';
+import { isComplete, canAppend } from '../engine/grammar';
+import { LADDER, REWARDS, OPPONENTS, PERIOD } from '../data/cards';
 
 const app = document.getElementById('app')!;
 const AI_DELAY = 650;
@@ -16,7 +16,7 @@ let ackedSabotage: GameState['lastSabotage'] = undefined; // sabotage the player
 
 // --- campaign run (Slay-the-Spire-style ladder) ---
 let run = { rung: 0, bonus: [] as Card[] }; // current rung + earned reward cards
-let runScreen: 'map' | 'reward' | 'defeat' | 'victory' | null = null;
+let runScreen: 'tutorial' | 'map' | 'reward' | 'defeat' | 'victory' | null = null;
 let rewardChoices: Card[] = [];
 let aiMaxExtend = LADDER[0].maxExtend;
 
@@ -43,7 +43,7 @@ let game = startDebate();
 function newRun(): void {
   run = { rung: 0, bonus: [] };
   game = startDebate();
-  runScreen = 'map'; // open on the campaign map + tutorial before debate 1
+  runScreen = 'tutorial'; // tutorial first, then the campaign map before debate 1
   render();
 }
 
@@ -71,7 +71,8 @@ function checkDebateEnd(): void {
 }
 
 function partialText(line: Card[]): string {
-  return displayWords(line).join(' ').trim();
+  // Collapse the space before a period card so an in-progress line reads "…jackass."
+  return displayWords(line).join(' ').replace(/\s+\./g, '.').trim();
 }
 
 function reactionClass(r?: Reaction): string {
@@ -81,11 +82,30 @@ function reactionClass(r?: Reaction): string {
   return 'bad';
 }
 
+// Short, punchy callouts — placeholders for real combo graphics/screen-shake later.
+// The ×mult conveys the payoff; the word conveys the move. No explanation.
+const COMBO_BLURB: Record<'and' | 'logic' | 'but', string> = {
+  and: 'COMBO!',
+  logic: 'CHAIN!',
+  but: 'PIVOT!',
+};
+
+/** A punchy combo callout under a resolved statement (juice it later). */
+function comboHtml(r?: Reaction): string {
+  if (!r?.combo) return '';
+  return `<div class="combo-callout">⚡ ${COMBO_BLURB[r.combo.kind]} ×${r.combo.mult}</div>`;
+}
+
 function canPlay(): boolean {
   return game.turn === 'player' && !game.player.done && !game.winner;
 }
 
-function cardHtml(c: Card, source: 'pool' | 'hand' | 'topic', held: boolean): string {
+/** Does this card help answer the current question's topic? */
+function onTopic(c: Card): boolean {
+  return !!game.topic && !!c.topics?.includes(game.topic.id);
+}
+
+function cardHtml(c: Card, source: 'pool' | 'hand', held: boolean): string {
   if (c.role === 'powerup') {
     const isTypo = c.effect === 'typo';
     // Typo needs a live opponent statement to jam; Forgot needs one with a card to drop.
@@ -96,14 +116,17 @@ function cardHtml(c: Card, source: 'pool' | 'hand' | 'topic', held: boolean): st
     return `<button class="card power${sel}" data-id="${c.id}" data-power="1" data-effect="${c.effect}" ${disabled}>${cardLabel(c)}</button>`;
   }
   // While choosing a Typo target, sentence cards become jam targets.
-  if (pendingTypo && (source === 'pool' || source === 'hand')) {
+  if (pendingTypo) {
     return `<button class="card ${source} target" data-id="${c.id}" data-from="${source}">${cardLabel(c)}</button>`;
   }
   const isIntens = c.role === 'intensifier';
   // A finisher can be grabbed any time, but only one may be held at once.
   const disabled = !canPlay() || (isIntens && held) ? 'disabled' : '';
-  const cls = `card ${source}${isIntens ? ' intens' : ''}`;
-  const tag = isIntens ? '<span class="role">commit finisher ✦</span>' : '';
+  // TEMPORARY (debug aid): the on-topic glow + "on topic ✓" tag make it obvious if any
+  // card's `topics` are mislabeled. REMOVE LATER — players should learn to spot on-topic
+  // cards themselves (drop the `.ontopic` class + the tag below, and `onTopic`/.ontopic CSS).
+  const cls = `card ${source}${isIntens ? ' intens' : ''}${onTopic(c) ? ' ontopic' : ''}`;
+  const tag = isIntens ? '<span class="role">commit finisher ✦</span>' : onTopic(c) ? '<span class="role">on topic ✓</span>' : '';
   return `<button class="${cls}" data-id="${c.id}" data-from="${source}" ${disabled}>${tag}${cardLabel(c)}</button>`;
 }
 
@@ -113,10 +136,11 @@ function oppCardHtml(c: Card): string {
   return `<span class="oppcard">${cardLabel(c)}</span>`;
 }
 
+// Phrased to make the SUBJECT unambiguous (who's doing/receiving what).
 const CROWD_LABEL: Record<string, string> = {
-  praise_self: 'self-praise',
-  attack_opp: 'attacks on your opponent',
-  pander_aud: 'pandering to them',
+  praise_self: 'you talking yourself up',
+  attack_opp: 'you attacking your opponent',
+  pander_aud: 'being pandered to',
 };
 
 function opponentName(id: string): string {
@@ -143,24 +167,42 @@ function ladderHtml(): string {
   }).join('');
 }
 
-const HOW_TO_PLAY = `
+const TUTORIAL_BODY = `
   <div class="howto">
     <div class="howto-title">How to win a debate</div>
     <ul>
-      <li>Build a statement one card at a time. Start with a <b>subject</b> (who you're
-        talking about), then add a <b>predicate</b> (what they do).</li>
-      <li><b>Praise</b> yourself and the audience; <b>attack</b> your opponent. Never praise
-        a villain or trash yourself — the crowd will boo a self-own.</li>
-      <li>You can only <b>End</b> on a complete sentence. Chain clauses with connectors
-        (and / but / because) for combo bonuses, and cap with a finisher.</li>
-      <li>Stay <b>on topic</b>, play <b>power-ups</b> (steal cards, sabotage their line,
-        read the crowd), and watch the meter — most audience favor after 8 questions wins.</li>
+      <li><b>Build a sentence</b> one card at a time: a <b>subject</b> (who you're talking about),
+        then a <b>predicate</b> (what they do). <b>Praise</b> yourself and the audience,
+        <b>attack</b> your opponent — never praise a villain or trash yourself (the crowd boos a self-own).</li>
+      <li><b>Periods are free and unlimited.</b> Tap <b>“.”</b> to end a sentence and start a new one.
+        Extra sentences each help a little, but with diminishing returns —
+        <i>“My opponent eats babies. I love this country.”</i></li>
+      <li><b>Conjunctions score combos — when used correctly.</b> Chain <i>different</i> points that
+        both help you with <b>and</b> / <b>because</b>: <i>“…is corrupt and kicks puppies”</i> beats
+        two flat sentences. Repeating the same point doesn't combo.</li>
+      <li><b>“But” is the strongest combo</b>, on a them-bad → you-good pivot:
+        <i>“My opponent is bad but I am great.”</i> Misusing a connector just fizzles (no penalty),
+        and a well-placed <b>but</b> can even soften a self-own from outrage into a confused shrug.</li>
+      <li><b>Answer the question.</b> Each round has a topic — cards that address it glow
+        <span style="color:#6fcf97">green ✓</span>. Ignore the question and your score shrinks, so
+        weave the topic into your best line. <b>Don't ramble:</b> past ~3 plain sentences the crowd
+        nods off — tighten up or combo instead.</li>
+      <li>Play <b>power-ups</b> (steal cards, sabotage their line, read the crowd), and watch the
+        meter — most audience favor after 8 questions wins. You can <b>End</b> anytime, but an
+        unfinished sentence just leaves the crowd confused — so finish your thought.</li>
     </ul>
     <div class="howto-foot">Win a debate to draft a powerful card and climb the ladder. Lose
       and the run resets. Good luck out there. 🇺🇸</div>
   </div>`;
 
 function runModalHtml(): string {
+  if (runScreen === 'tutorial') {
+    return `<div class="modal-backdrop"><div class="modal map-modal">
+      <div class="modal-title" style="color:var(--gold)">📝 How to Debate</div>
+      ${TUTORIAL_BODY}
+      <button class="action" id="beginTutorial">Got it — show me the ladder ▶</button>
+    </div></div>`;
+  }
   if (runScreen === 'map') {
     const first = run.rung === 0 && run.bonus.length === 0;
     const title = first ? '🏛️ Welcome to the Campaign Trail' : '🏛️ The Campaign Trail';
@@ -172,7 +214,6 @@ function runModalHtml(): string {
       <div class="modal-title" style="color:var(--gold)">${title}</div>
       ${lead}
       <div class="ladder">${ladderHtml()}</div>
-      ${first ? HOW_TO_PLAY : ''}
       <button class="action" id="beginDebate">Begin Debate ${run.rung + 1}: ${opponentName(LADDER[run.rung].opponentId)} ▶</button>
     </div></div>`;
   }
@@ -216,6 +257,8 @@ function render(): void {
   const complete = isComplete(game.player.line);
   const held = !!game.player.heldFinisher;
   const endOk = canPlay() && canEnd(game);
+  // The free period is offered wherever the grammar allows a new clause to open.
+  const periodOk = canPlay() && !pendingTypo && !pendingHotMic && canAppend(game.player.line, PERIOD);
 
   const hint = game.winner
     ? 'Debate over.'
@@ -238,7 +281,7 @@ function render(): void {
   const sabotage = sabotaged
     ? isForgot
       ? `<div class="sabotage">⚠️ ${oppName} rattled you — you forgot “<b>${game.lastSabotage!.text}</b>” and it dropped off your statement! Keep building to finish your thought — or End with what's left.</div>`
-      : `<div class="sabotage">⚠️ ${oppName} jammed “<b>${game.lastSabotage!.text}</b>” into your statement! Try a connector (and / but) + a clause to recover — or End and cut your losses.</div>`
+      : `<div class="sabotage">⚠️ ${oppName} jammed “<b>${game.lastSabotage!.text}</b>” into your statement! Spin it forward — tack on another sentence to soften it (a “but …” softens it most) — or End and cut your losses.</div>`
     : '';
 
   const notes: string[] = [];
@@ -266,7 +309,8 @@ function render(): void {
     <div class="scorebar-wrap">
       <div class="scorebar-labels"><span class="them">◀ Opponent</span><span class="you">You ▶</span></div>
       <div class="scorebar"><div class="needle" style="left:${needle}%"></div></div>
-      <div class="round-pill">Question ${game.round} / ${game.maxRounds} &nbsp;·&nbsp; Topic: <b>${game.topic?.label ?? '—'}</b> &nbsp;·&nbsp; Audience favor: ${Math.round(game.bar)}</div>
+      <div class="round-pill">Question ${game.round} / ${game.maxRounds} &nbsp;·&nbsp; Audience favor: ${Math.round(game.bar)}</div>
+      <div class="question-pill"><span class="q-topic">${game.topic?.label ?? '—'}</span> — “${game.question ?? ''}”</div>
     </div>
 
     <div class="stage">
@@ -274,18 +318,17 @@ function render(): void {
         <div class="who">You</div>
         <div class="speech">${partialText(game.player.line) || '<span style="color:var(--muted)">…</span>'}</div>
         <div class="reaction ${reactionClass(game.player.lastReaction)}">${game.player.lastReaction?.detail.split('—').pop()?.trim() ?? ''}</div>
+        ${comboHtml(game.player.lastReaction)}
       </div>
       <div class="podium them">
         <div class="who">${game.opponent?.name ?? 'Opponent'}</div>
         <div class="speech">${partialText(game.ai.line) || '<span style="color:var(--muted)">…</span>'}</div>
         <div class="reaction ${reactionClass(game.ai.lastReaction)}">${game.ai.lastReaction?.detail.split('—').pop()?.trim() ?? ''}</div>
+        ${comboHtml(game.ai.lastReaction)}
       </div>
     </div>
 
-    <div class="zone-title">Topic phrase — always available to both, never used up (green)</div>
-    <div class="cards" id="topic">${game.topic ? cardHtml(game.topic.card, 'topic', held) : ''}</div>
-
-    <div class="zone-title">Shared Pool — contested, no refill (gold)</div>
+    <div class="zone-title">Shared Pool — contested, no refill (gold) &nbsp;·&nbsp; <span class="ontopic-key">✓ on topic</span></div>
     <div class="cards" id="pool">${game.pool.map((c) => cardHtml(c, 'pool', held)).join('') || '<span style="color:var(--muted)">(pool empty)</span>'}</div>
 
     <div class="zone-title">Your Hand — private, no refill (blue)</div>
@@ -304,6 +347,7 @@ function render(): void {
     <div class="controls">
       ${game.awaitingNext ? '<button class="action" id="next">Next Question ▶</button>' : ''}
       <button class="action" id="end" ${endOk ? '' : 'disabled'}>End Statement</button>
+      <button class="ghost" id="period" ${periodOk ? '' : 'disabled'} title="Free — finish this sentence and start a new one. No combo bonus; use a connector for that.">Add “.” (new sentence)</button>
       <button class="ghost" id="pass" ${canPlay() && (complete || game.player.line.length === 0) ? '' : 'disabled'}>Pass (wait)</button>
       <button class="ghost" id="regroup" ${canPlay() && !game.player.usedRedraw ? '' : 'disabled'}>↻ Call a Recess (fresh talking points, costs your turn)</button>
       <button class="ghost" id="restart">Abandon Run</button>
@@ -328,8 +372,8 @@ function render(): void {
             <p>${oppName} used a <b>Teleprompter Typo</b> to jam
             “<b>${game.lastSabotage!.text}</b>” into your statement. It now reads:</p>
             <p class="modal-quote">“${partialText(game.player.line) || '…'}”</p>
-            <p>Recover by chaining a connector (<b>and</b> / <b>but</b>) + a clause to flip it back —
-            or End and cut your losses.</p>
+            <p>You can spin it forward — add another sentence to soften the blow (a “<b>but …</b>”
+            softens it most), or End and cut your losses.</p>
             <button class="action" id="ackSabotage">Got it — continue</button>
           </div></div>`
         : ''
@@ -375,8 +419,7 @@ function render(): void {
           render();
           return;
         }
-        const from = btn.dataset.from as 'pool' | 'hand' | 'topic';
-        if (from === 'topic') return; // can't jam the topic phrase
+        const from = btn.dataset.from as 'pool' | 'hand';
         const typoId = pendingTypo;
         pendingTypo = null;
         playerMove({ kind: 'power', cardId: typoId, targetFrom: from, targetCardId: id });
@@ -396,7 +439,7 @@ function render(): void {
         playerMove({ kind: 'power', cardId: id });
         return;
       }
-      const from = btn.dataset.from as 'pool' | 'hand' | 'topic';
+      const from = btn.dataset.from as 'pool' | 'hand';
       playerMove({ kind: 'take', from, cardId: id });
     });
   });
@@ -408,6 +451,11 @@ function render(): void {
   app.querySelector<HTMLButtonElement>('#ackSabotage')?.addEventListener('click', () => {
     ackedSabotage = game.lastSabotage; // dismiss the modal; the banner reminder stays
     render();
+  });
+  app.querySelector<HTMLButtonElement>('#period')?.addEventListener('click', () => {
+    pendingTypo = null;
+    pendingHotMic = null;
+    playerMove({ kind: 'take', from: 'period', cardId: PERIOD.id });
   });
   app.querySelector<HTMLButtonElement>('#pass')?.addEventListener('click', () => {
     pendingTypo = null;
@@ -425,13 +473,18 @@ function render(): void {
     pendingHotMic = null;
     nextQuestion(game);
     render();
-    driveAI(); // new question starts on the player's turn, so this is a no-op
+    driveAI(); // even questions start on the AI's turn — let it speak first
   });
   app.querySelector<HTMLButtonElement>('#restart')?.addEventListener('click', newRun);
   app.querySelector<HTMLButtonElement>('#newrun')?.addEventListener('click', newRun);
+  app.querySelector<HTMLButtonElement>('#beginTutorial')?.addEventListener('click', () => {
+    runScreen = 'map'; // tutorial dismissed — show the campaign ladder
+    render();
+  });
   app.querySelector<HTMLButtonElement>('#beginDebate')?.addEventListener('click', () => {
     runScreen = null; // dismiss the map and step onto the debate stage
     render();
+    driveAI(); // (debate 1 opens player-first, but stay robust if that changes)
   });
 }
 
@@ -460,5 +513,5 @@ function driveAI(): void {
   }, AI_DELAY);
 }
 
-runScreen = 'map'; // open on the campaign map + tutorial before the first debate
+runScreen = 'tutorial'; // open on the tutorial, then the campaign map, before the first debate
 render();

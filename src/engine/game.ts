@@ -1,8 +1,8 @@
 import type { Card, GameState, Move, PlayerId, PlayerState } from './types';
-import { isComplete, isValidPrefix, canAppend } from './grammar';
+import { isComplete, canAppend } from './grammar';
 import { scoreStatement } from './scoring';
 import { renderSentence, cardLabel } from './morphology';
-import { TOPICS, OPPONENTS, CROWDS, findDef } from '../data/cards';
+import { TOPICS, OPPONENTS, CROWDS, findDef, PERIOD } from '../data/cards';
 import {
   buildPrivateDeck,
   buildSharedDeck,
@@ -29,8 +29,6 @@ export interface GameOptions {
 // prototype we keep a module-side map keyed by the state object.
 const rngFor = new WeakMap<GameState, Rng>();
 
-const MAX_LINE = 14; // statements can't run on forever (caps combos, prevents stalls)
-
 function newPlayer(id: PlayerId): PlayerState {
   return { id, deck: [], hand: [], line: [], done: false };
 }
@@ -40,15 +38,13 @@ function dealRound(state: GameState): void {
   // Each question gets ONE deal that does not replenish — scarcity is the source
   // of pressure (you may be forced to finish with a bad card).
   state.topic = TOPICS[Math.floor(rng() * TOPICS.length)];
-  // Don't deal a regular card identical to the always-available topic phrase.
-  const dup = state.topic.card.text?.toLowerCase();
-  const noDup = (cards: Card[]): Card[] => (dup ? cards.filter((c) => c.text?.toLowerCase() !== dup) : cards);
-
-  state.sharedDeck = noDup(shuffle(buildSharedDeck(), rng));
+  state.sharedDeck = shuffle(buildSharedDeck(), rng);
   state.pool = [];
   refill(state.sharedDeck, state.pool, state.poolSize);
-  ensurePoolPlayable(state);
+  // Order matters: insert the topic card FIRST (it pops a pool card to make room),
+  // THEN re-assert playability last so a topic swap can't evict the only subject.
   ensurePoolHasTopic(state, state.topic.id);
+  ensurePoolPlayable(state);
 
   for (const p of [state.player, state.ai]) {
     // The opponent's private deck is tilted toward its debating style.
@@ -72,8 +68,13 @@ function dealRound(state: GameState): void {
     p.lastReaction = undefined;
     // knowsCrowd persists for the whole debate (Plant reveals it once).
   }
-  state.turn = 'player';
+  // Alternate who speaks first each question so the player doesn't always get
+  // first dibs on a contested on-topic card (odd questions player, even AI).
+  state.turn = state.round % 2 === 1 ? 'player' : 'ai';
   state.passes = 0;
+  // Pick a moderator phrasing LAST (after all card deals) so it doesn't perturb
+  // the deterministic deal for a given seed.
+  state.question = state.topic.questions[Math.floor(rng() * state.topic.questions.length)];
 }
 
 /** Swap a card matching `pred` into the pool from the deck if none is present. */
@@ -142,6 +143,23 @@ function other(id: PlayerId): PlayerId {
 }
 
 /**
+ * The line to actually judge when ending: the **longest complete prefix**, or null
+ * if no prefix is complete. So a statement that ends on trailing junk — a dangling
+ * connector (a period tapped to "finish", an unused "and"/"but") or a half-started
+ * next clause ("…is a disgrace. My opponent") — is judged on its last complete
+ * thought, the trailing scraps dropped. This is why the AI never "mumbles": even if
+ * it strands itself, it falls back to its best complete prefix. A line with NO
+ * complete prefix (e.g. a bare subject) returns null → lenient "confused" scoring.
+ */
+export function endableLine(line: Card[]): Card[] | null {
+  for (let end = line.length; end > 0; end--) {
+    const trimmed = line.slice(0, end);
+    if (isComplete(trimmed)) return trimmed;
+  }
+  return null;
+}
+
+/**
  * Legal moves for the player whose turn it is. Building is freeform (any card,
  * any order — you may build nonsense), with two rules that create pressure:
  *  - You may only END on a complete sentence (no bailing on a safe fragment) —
@@ -152,7 +170,10 @@ export function legalMoves(state: GameState): Move[] {
   if (state.winner) return [];
   const p = activePlayer(state);
   if (p.done) return [];
-  const complete = isComplete(p.line);
+  // "Endable" = complete, or completable by dropping a trailing dangling connector
+  // (e.g. a period tapped to finish). Used for both End and Pass so a trailing
+  // period never locks you out.
+  const endable = endableLine(p.line) !== null;
   const moves: Move[] = [];
   const offer = (c: { role: string; id: string }, from: 'pool' | 'hand') => {
     if (c.role === 'powerup') {
@@ -166,50 +187,18 @@ export function legalMoves(state: GameState): Move[] {
   };
   for (const c of state.pool) offer(c, 'pool');
   for (const c of p.hand) offer(c, 'hand');
-  // The topic phrase is always available to both players and never consumed.
-  if (state.topic) moves.push({ kind: 'take', from: 'topic', cardId: state.topic.card.id });
+  // The period is free and unlimited, but only where the grammar allows it to
+  // open a new clause (after a complete clause) — never on an empty/partial line.
+  if (canAppend(p.line, PERIOD)) moves.push({ kind: 'take', from: 'period', cardId: PERIOD.id });
   if (!p.usedRedraw) moves.push({ kind: 'redraw' }); // once per question, costs your turn
-  // You may end when complete. Otherwise you're held to "must finish" — UNLESS the
-  // statement can no longer be completed (gibberish), or it has run on too long, in
-  // which case ending early takes the "confused" penalty rather than soft-locking.
-  if (complete) moves.push({ kind: 'end' });
-  else if (p.line.length > 0 && (p.line.length >= MAX_LINE || !canComplete(state, p))) {
-    moves.push({ kind: 'end' });
-  }
-  // Pass to wait — allowed on an untouched (empty) or a complete statement, but
-  // not mid-way through an incomplete one (you must finish what you started).
-  if (complete || p.line.length === 0) moves.push({ kind: 'pass' });
+  // You may End any non-empty line. Ending an incomplete/ungrammatical one is
+  // allowed (no soft-lock, no forced self-own) — it just scores as a muffled,
+  // "confused" statement (see scoreStatement). Completing well is still better.
+  if (p.line.length > 0) moves.push({ kind: 'end' });
+  // Pass to wait — allowed on an untouched (empty) or an endable statement, but
+  // not mid-way through an incomplete clause (you must finish what you started).
+  if (endable || p.line.length === 0) moves.push({ kind: 'pass' });
   return moves;
-}
-
-/** Can the player's current line still be finished into a complete statement? */
-function canComplete(state: GameState, p: PlayerState): boolean {
-  const start = p.line;
-  if (isComplete(start)) return true;
-  if (!isValidPrefix(start)) return false; // already broken — no extension can fix it
-  const reusable = state.topic ? [state.topic.card] : []; // topic card never depletes
-  const consumable = [...state.pool, ...p.hand].filter((c) => c.role !== 'powerup'); // power-ups aren't tokens
-  const MAX_EXT = 6;
-  let budget = 4000;
-
-  const dfs = (cur: Card[], remaining: Card[]): boolean => {
-    if (budget-- <= 0) return false;
-    if (isComplete(cur)) return true;
-    if (cur.length - start.length >= MAX_EXT) return false;
-    for (const c of reusable) {
-      if (canAppend(cur, c) && dfs([...cur, c], remaining)) return true;
-    }
-    const seen = new Set<string>();
-    for (let i = 0; i < remaining.length; i++) {
-      const c = remaining[i];
-      const sig = `${c.role}|${c.text ?? c.id}|${c.open}`;
-      if (seen.has(sig) || !canAppend(cur, c)) continue;
-      seen.add(sig);
-      if (dfs([...cur, c], remaining.slice(0, i).concat(remaining.slice(i + 1)))) return true;
-    }
-    return false;
-  };
-  return dfs(start, consumable);
 }
 
 /** Can the active player end their statement right now? */
@@ -218,6 +207,11 @@ export function canEnd(state: GameState): boolean {
 }
 
 function resolveStatement(state: GameState, p: PlayerState): void {
+  // Trim trailing junk (a dangling connector or a half-started next clause) back to
+  // the last complete thought, so we judge that — not an incomplete line. If nothing
+  // is complete (e.g. a bare subject), keep it as-is → lenient "confused" scoring.
+  const endable = endableLine(p.line);
+  if (endable) p.line = endable;
   // A committed finisher is appended to the very end before judging.
   if (p.heldFinisher) {
     p.line.push(p.heldFinisher);
@@ -400,7 +394,7 @@ export function applyMove(state: GameState, move: Move): GameState {
   }
 
   if (move.kind === 'pass') {
-    if (p.line.length > 0 && !isComplete(p.line)) return state; // can't bail mid-statement
+    if (p.line.length > 0 && endableLine(p.line) === null) return state; // can't bail mid-clause
     state.passes = (state.passes ?? 0) + 1;
     // Stalemate: opponent already locked in, or both passed in a row -> resolve.
     if (state[other(p.id)].done || (state.passes ?? 0) >= 2) {
@@ -427,17 +421,17 @@ export function applyMove(state: GameState, move: Move): GameState {
     state.pool = [];
     state.sharedDeck = shuffle(state.sharedDeck, rng);
     refill(state.sharedDeck, state.pool, state.poolSize);
-    ensurePoolPlayable(state);
-    if (state.topic) ensurePoolHasTopic(state, state.topic.id);
+    if (state.topic) ensurePoolHasTopic(state, state.topic.id); // topic first…
+    ensurePoolPlayable(state); // …then re-assert playability (see dealRound)
     p.usedRedraw = true;
     advanceTurn(state); // costs your turn
     return state;
   }
 
-  // Taking the topic phrase appends a copy and never depletes it.
-  if (move.from === 'topic') {
-    if (!state.topic) return state;
-    p.line.push(instances(state.topic.card, 1)[0]);
+  // The free period: append a fresh copy (never consumed), if it's legal here.
+  if (move.from === 'period') {
+    if (!canAppend(p.line, PERIOD)) return state;
+    p.line.push(instances(PERIOD, 1)[0]);
     advanceTurn(state);
     return state;
   }

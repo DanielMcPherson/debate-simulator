@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { createGame, applyMove, legalMoves, canEnd, nextQuestion } from '../src/engine/game';
 import { isValidPrefix } from '../src/engine/grammar';
-import { findDef } from '../src/data/cards';
+import { scoreStatement } from '../src/engine/scoring';
+import { findDef, PERIOD, TOPICS } from '../src/data/cards';
 
 const complete = () => [findDef('s_opp')!, findDef('p_disgrace')!]; // "My opponent is a national disgrace"
 
@@ -21,25 +22,28 @@ describe('resource model — chunk cards, no replenish, must-finish', () => {
     }
   });
 
-  it('never deals into the shared pool a card identical to the topic phrase', () => {
-    for (let seed = 1; seed <= 20; seed++) {
-      const g = createGame({ seed });
-      const dup = g.topic!.card.text?.toLowerCase();
-      if (!dup) continue; // predicate topics have no single text to duplicate
-      expect(g.pool.some((c) => c.text?.toLowerCase() === dup)).toBe(false);
+  it('every topic carries several moderator questions, and one is picked per round', () => {
+    for (const t of TOPICS) {
+      expect(t.questions.length).toBeGreaterThanOrEqual(2);
+      for (const q of t.questions) expect(q.length).toBeGreaterThan(0);
     }
+    const g = createGame({ seed: 1 });
+    expect(g.topic!.questions).toContain(g.question); // the chosen one is from the topic's list
   });
 
-  it('still forces you to finish a completable statement (no early bail)', () => {
+  it('lets you End any non-empty line — even an incomplete one (no forced self-own)', () => {
     const g = createGame({ seed: 2 });
     g.turn = 'player';
     const subj = g.pool.find((c) => c.role === 'np' && !!c.side && c.side !== 'neutral')!;
-    applyMove(g, { kind: 'take', from: 'pool', cardId: subj.id });
+    applyMove(g, { kind: 'take', from: 'pool', cardId: subj.id }); // just a subject, incomplete
     g.turn = 'player';
-    expect(canEnd(g)).toBe(false); // a predicate is reachable → must keep going
+    expect(canEnd(g)).toBe(true); // lenient: you may bail (it scores as "confused")
+    applyMove(g, { kind: 'end' });
+    expect(g.player.lastReaction?.label).toBe('confused');
+    expect(g.player.lastReaction?.grammatical).toBe(false);
   });
 
-  it('lets you end an uncompletable (gibberish) line instead of soft-locking', () => {
+  it('an incomplete line scores its mild parsed intent, not a hard zero/lock', () => {
     const g = createGame({ seed: 2 });
     g.turn = 'player';
     const np1 = g.pool.find((c) => c.role === 'np')!;
@@ -49,7 +53,8 @@ describe('resource model — chunk cards, no replenish, must-finish', () => {
     applyMove(g, { kind: 'take', from: 'pool', cardId: np2.id });
     g.turn = 'player';
     expect(isValidPrefix(g.player.line)).toBe(false);
-    expect(canEnd(g)).toBe(true); // not soft-locked — can bail (confused)
+    expect(canEnd(g)).toBe(true); // not soft-locked
+    expect(Math.abs(scoreStatement(g.player.line).delta)).toBeLessThanOrEqual(8); // mild, capped
   });
 
   it('assigns a named opponent and a hidden crowd, fixed for the whole debate', () => {
@@ -257,15 +262,12 @@ describe('resource model — chunk cards, no replenish, must-finish', () => {
     expect(g.player.line.length).toBe(0);
   });
 
-  it('the topic card is always available and not consumed when used', () => {
-    const g = createGame({ seed: 6 });
-    const topicId = g.topic!.card.id;
-    expect(legalMoves(g).some((m) => m.kind === 'take' && m.from === 'topic')).toBe(true);
-    applyMove(g, { kind: 'take', from: 'topic', cardId: topicId });
-    expect(g.player.line.length).toBe(1);
-    expect(g.player.line[0].topics).toContain(g.topic!.id);
-    g.turn = 'player';
-    expect(legalMoves(g).some((m) => m.kind === 'take' && m.from === 'topic')).toBe(true);
+  it('always deals a pool with at least one on-topic card to address the question', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const g = createGame({ seed });
+      const onTopic = g.pool.some((c) => c.topics?.includes(g.topic!.id));
+      expect(onTopic).toBe(true); // the green card is gone — the pool must cover the topic
+    }
   });
 
   it('pauses on the result after both statements, then advances on nextQuestion', () => {
@@ -300,5 +302,62 @@ describe('resource model — chunk cards, no replenish, must-finish', () => {
       applyMove(g, end ?? take ?? { kind: 'end' });
     }
     expect(g.winner).toBeDefined();
+  });
+});
+
+describe('the free period', () => {
+  it('is offered once a clause is complete, but never on an empty/partial line', () => {
+    const g = createGame({ seed: 1 });
+    g.turn = 'player';
+    const hasPeriod = () => legalMoves(g).some((m) => m.kind === 'take' && m.from === 'period');
+    expect(hasPeriod()).toBe(false); // empty line — nothing to end
+    g.player.line = complete(); // "My opponent is a national disgrace"
+    expect(hasPeriod()).toBe(true);
+  });
+
+  it('plays a period without consuming anything from the pool or hand', () => {
+    const g = createGame({ seed: 1 });
+    g.turn = 'player';
+    g.player.line = complete();
+    const poolBefore = g.pool.length;
+    const handBefore = g.player.hand.length;
+    const lineBefore = g.player.line.length;
+    applyMove(g, { kind: 'take', from: 'period', cardId: 'c_period' });
+    expect(g.player.line.length).toBe(lineBefore + 1);
+    expect(g.player.line[g.player.line.length - 1].conj).toBe('period');
+    expect(g.pool.length).toBe(poolBefore); // virtual — nothing drawn
+    expect(g.player.hand.length).toBe(handBefore);
+  });
+
+  it('a trailing period never locks you out of End (it drops the dangling period)', () => {
+    const g = createGame({ seed: 1 });
+    g.turn = 'player';
+    g.player.line = [...complete(), PERIOD]; // "My opponent is a national disgrace." — a dangling period
+    expect(canEnd(g)).toBe(true); // not soft-locked
+    applyMove(g, { kind: 'end' });
+    expect(g.player.lastReaction?.grammatical).toBe(true); // scored the clause, not "confused"
+    expect(g.player.line[g.player.line.length - 1].role).not.toBe('connector'); // the period was trimmed off
+  });
+
+  it('can end a two-sentence statement that ends on a period', () => {
+    const g = createGame({ seed: 1 });
+    g.turn = 'player';
+    g.player.line = [
+      findDef('s_opp')!, findDef('p_disgrace')!, PERIOD,
+      findDef('s_people')!, findDef('p_love_fd')!, PERIOD,
+    ];
+    expect(canEnd(g)).toBe(true);
+    applyMove(g, { kind: 'end' });
+    expect(g.player.lastReaction?.grammatical).toBe(true);
+  });
+
+  it('ending on a half-started next clause scores the last complete thought (no mumble)', () => {
+    const g = createGame({ seed: 1 });
+    g.turn = 'player';
+    // a complete clause, then a dangling new clause with just a subject
+    g.player.line = [findDef('s_opp')!, findDef('p_disgrace')!, PERIOD, findDef('s_people')!];
+    applyMove(g, { kind: 'end' });
+    expect(g.player.lastReaction?.grammatical).toBe(true); // trimmed to "My opponent is a national disgrace"
+    expect(g.player.line.map((c) => c.id)).toEqual(['s_opp', 'p_disgrace']); // trailing scraps dropped
   });
 });

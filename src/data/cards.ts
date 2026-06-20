@@ -79,7 +79,7 @@ export const SUBJECTS: Card[] = [
 // --- objects (noun phrases that fill an open predicate's slot) --------------
 
 export const OBJECTS: Card[] = [
-  { ...NP('o_satan', 'Satan', 'neutral', -3, { topics: ['freedom'] }), proper: true },
+  { ...NP('o_satan', 'Satan', 'neutral', -3), proper: true }, // generic evil — no topic
   NP('o_swamp', 'the swamp', 'neutral', -2, { topics: ['economy'] }),
   NP('o_taxes', 'higher taxes', 'neutral', -2, { number: 'plural', topics: ['economy'] }),
   NP('o_lobbyists', 'shady lobbyists', 'neutral', -2, { number: 'plural', topics: ['economy'] }),
@@ -89,6 +89,8 @@ export const OBJECTS: Card[] = [
   NP('o_smallbiz', 'small businesses', 'neutral', 2, { number: 'plural', topics: ['economy'] }),
   NP('o_middle', 'the middle class', 'neutral', 2, { topics: ['economy'] }),
   NP('o_borders', 'our borders', 'neutral', 2, { number: 'plural', topics: ['security'] }),
+  NP('o_schools', 'our public schools', 'neutral', 2, { number: 'plural', topics: ['children'] }),
+  NP('o_constitution', 'the Constitution', 'neutral', 3, { topics: ['freedom'] }),
 ];
 
 // --- predicates -------------------------------------------------------------
@@ -103,25 +105,32 @@ export const COMMON_PRAISE: Card[] = [
   pc('p_standup', 'stand', 'up for the little guy', 2),
   pc('p_protect_vets', 'protect', 'our veterans', 3, { topics: ['security'] }),
   pc('p_cut_taxes', 'cut', 'taxes for working families', 2, { topics: ['economy'] }),
+  pi('p_fund_schools', 'will fully fund our schools', 3, { topics: ['children'] }),
+  pi('p_defend_liberty', 'will defend our liberty', 3, { topics: ['freedom'] }),
   pi('p_fight_for_you', 'will always fight for you', 2),
   pi('p_have_back', 'will always have your back', 2),
   pi('p_keep_safe', 'will keep this country safe', 3, { topics: ['security'] }),
 ];
 
+// Every insult also counts for the Name-Calling ('jackass') topic — slinging any
+// mud answers "how much does your opponent suck?". (Tag appended below.)
 export const COMMON_INSULTS: Card[] = [
   pc('p_kick_pup', 'kick', 'puppies', -2),
   pc('p_eat_babies', 'eat', 'babies', -2, { pre: 'secretly' }),
   pc('p_lie', 'lie', 'to your face', -2),
   pc('p_disgrace', 'be', 'a national disgrace', -3),
   pc('p_weak', 'be', 'weak and out of touch', -2),
+  pc('p_jackass', 'be', 'an unscrupulous jackass', -3),
   pc('p_raise_taxes', 'want', 'to raise your taxes', -2, { topics: ['economy'] }),
-  pc('p_worship', 'worship', 'Satan', -3, { topics: ['freedom'] }),
+  pc('p_cut_lunch', 'want', 'to cancel school lunch', -2, { topics: ['children'] }),
+  pc('p_silence', 'want', 'to silence free speech', -2, { topics: ['freedom'] }),
+  pc('p_worship', 'worship', 'Satan', -3), // generic smear → Name-Calling only (jackass via map)
   pc('p_ignore_vets', 'ignore', 'our veterans', -2, { topics: ['security'] }),
   pi('p_cant_trust', "can't be trusted", -2),
   pi('p_say_anything', 'will say anything to get elected', -2),
   pi('p_destroy_country', 'will destroy this country', -3),
   pi('p_ashamed', 'should be ashamed', -2),
-];
+].map((c) => ({ ...c, topics: [...(c.topics ?? []), 'jackass'] }));
 
 // SIGNATURE predicates — punchy, characterful zingers found ONLY in private decks
 // (never in the shared pool), grouped by archetype. These are the cards worth
@@ -141,7 +150,7 @@ export const SIG_ATTACK: Card[] = [
   pc('p_crayons', 'eat', 'crayons at cabinet meetings', -3),
   pc('p_handshake', 'have', 'a secret handshake with the deep state', -3),
   pi('p_timeshare', 'will sell this country to a Florida timeshare scheme', -3),
-];
+].map((c) => ({ ...c, topics: [...(c.topics ?? []), 'jackass'] })); // smears answer Name-Calling
 
 export const SIG_PANDER: Card[] = [
   pi('p_free_icecream', 'will deliver free ice cream every Friday', 3),
@@ -197,12 +206,20 @@ export const PREDICATES: Card[] = [
 
 export const CONNECTORS: Card[] = [
   { id: 'c_and', role: 'connector', text: 'and', conj: 'and' },
-  { id: 'c_but', role: 'connector', text: 'but', conj: 'and therefore' },
+  { id: 'c_but', role: 'connector', text: 'but', conj: 'but' },
   { id: 'c_because', role: 'connector', text: 'because', conj: 'because' },
   { id: 'c_therefore', role: 'connector', text: 'and therefore', conj: 'and therefore' },
   { id: 'c_which', role: 'connector', text: 'which is why', conj: 'and therefore' },
   { id: 'c_frankly', role: 'connector', text: 'and frankly', conj: 'and therefore' },
 ];
+
+/**
+ * The free, unlimited period — a virtual card that is ALWAYS available (never
+ * drawn, never consumed), so it is deliberately NOT part of CONNECTORS/ALL and
+ * never enters a deck. It ends the current clause and opens a fresh one with no
+ * combo bonus (legal-only glue). The grammar/scoring treat `conj: 'period'`.
+ */
+export const PERIOD: Card = { id: 'c_period', role: 'connector', text: '.', conj: 'period' };
 
 // --- intensifiers (finishers) -----------------------------------------------
 
@@ -239,15 +256,59 @@ const tPred = (id: string, sentiment: number, fields: Partial<Card>): Card => ({
   ...fields,
 });
 
+// Each topic carries several interchangeable open-ended moderator phrasings; one is
+// picked per question so prompts don't repeat. They're flavor — the `id` (not the
+// wording) is what cards address. The `card` is reserved/unused — see Topic.
 export const TOPICS: Topic[] = [
-  { id: 'economy', label: 'The Economy', card: tNp('economy', 'the economy', 'neutral', 2) },
-  { id: 'security', label: 'National Security', card: tNp('security', 'national security', 'neutral', 2) },
-  { id: 'freedom', label: 'Freedom & Liberty', card: tNp('freedom', 'our freedom', 'neutral', 2) },
-  { id: 'opponent', label: 'Your Opponent', card: tNp('opponent', 'my opponent', 'opponent', -1) },
-  { id: 'record', label: 'Your Record', card: tNp('record', 'my record', 'self', 1) },
-  { id: 'children', label: 'The Children', card: tNp('children', 'our children', 'audience', 2, { number: 'plural' }) },
-  // A required insult phrase: "<subject> is an unscrupulous jackass".
-  { id: 'jackass', label: 'Name-Calling', card: tPred('jackass', -3, { lead: 'be', post: 'an unscrupulous jackass' }) },
+  { id: 'economy', label: 'The Economy', card: tNp('economy', 'the economy', 'neutral', 2), questions: [
+    "What's your plan for the economy?",
+    'The economy: total disaster, or catastrophic dumpster fire?',
+    'Voters are broke. Whose fault is it?',
+    'Money — how do we get more of it?',
+    'Is the economy doing great, or are we all doomed?',
+  ] },
+  { id: 'security', label: 'National Security', card: tNp('security', 'national security', 'neutral', 2), questions: [
+    'How will you keep this country safe?',
+    'Are we safe? Lie if you have to.',
+    'Who should we be afraid of, and why is it your opponent?',
+    'What scary thing will you protect us from today?',
+    'How do you plan to defend this great nation?',
+  ] },
+  { id: 'freedom', label: 'Freedom & Liberty', card: tNp('freedom', 'our freedom', 'neutral', 2), questions: [
+    'Is freedom overrated, or is it the best thing ever?',
+    'Why is our country so awesome?',
+    'Freedom: are we losing it, and who do we blame?',
+    'What will you do to protect our precious liberty?',
+    'How free is too free?',
+  ] },
+  { id: 'opponent', label: 'Your Opponent', card: tNp('opponent', 'my opponent', 'opponent', -1), questions: [
+    'Why is your opponent such an asshole?',
+    "What's the single worst thing about your opponent?",
+    'Your opponent: incompetent, corrupt, or both?',
+    'Why are you the marginally-less-terrible choice?',
+    'Tell us why your opponent is the real villain here.',
+  ] },
+  { id: 'record', label: 'Your Record', card: tNp('record', 'my record', 'self', 1), questions: [
+    'How are you so incredibly awesome?',
+    'Brag about yourself. Go.',
+    'Why do you deserve this more than literally everyone else?',
+    "What's your proudest accomplishment? Make one up if needed.",
+    'Remind the good people how great you are.',
+  ] },
+  { id: 'children', label: 'The Children', card: tNp('children', 'our children', 'audience', 2, { number: 'plural' }), questions: [
+    'Our children: national treasure, or lazy jerks who should get off TikTok?',
+    'What about the children? Seriously, what about them?',
+    'The next generation: our future, or a lost cause?',
+    'Won’t somebody PLEASE think of the children?',
+    'How will you save the kids from whatever is threatening them this week?',
+  ] },
+  { id: 'jackass', label: 'Name-Calling', card: tPred('jackass', -3, { lead: 'be', post: 'an unscrupulous jackass' }), questions: [
+    'Just how much does your opponent suck?',
+    'Insult your opponent. We’ll wait.',
+    'How big a jerk is your opponent, exactly?',
+    "Don't be polite — roast your opponent.",
+    'Gloves off: what do you REALLY think of your opponent?',
+  ] },
 ];
 
 // Named opponents, each with a fixed debating style (and a style-tuned deck).

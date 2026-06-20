@@ -57,13 +57,21 @@ export function displayWords(line: Card[]): string[] {
     for (const p of clause.preds) words[p.predIdx] = predicateText(line[p.predIdx], person, number);
   }
 
+  // Capitalize the first word of each sentence (start, and after every period);
+  // lower-case mid-sentence noun-phrase articles ("My"/"The"), but never "I".
+  const cap = (w: string) => w.charAt(0).toUpperCase() + w.slice(1);
+  const lower = (w: string) => w.charAt(0).toLowerCase() + w.slice(1);
+  let sentenceStart = true;
   for (let i = 0; i < line.length; i++) {
-    const isNp = roleAt[i] === 'subject' || roleAt[i] === 'object';
-    if (i > 0 && isNp && words[i] !== 'I' && !line[i].proper) {
-      words[i] = words[i].charAt(0).toLowerCase() + words[i].slice(1);
+    const role = roleAt[i];
+    const isNp = role === 'subject' || role === 'object';
+    if (words[i] && isNp) {
+      if (sentenceStart) words[i] = cap(words[i]);
+      else if (words[i] !== 'I' && !line[i].proper) words[i] = lower(words[i]);
     }
+    if (role === 'conn' && line[i].conj === 'period') sentenceStart = true;
+    else if (words[i]) sentenceStart = false;
   }
-  if (words.length > 0) words[0] = words[0].charAt(0).toUpperCase() + words[0].slice(1);
   return words;
 }
 
@@ -71,5 +79,7 @@ export function displayWords(line: Card[]): string[] {
 export function renderSentence(line: Card[]): string {
   const words = displayWords(line).filter(Boolean);
   if (words.length === 0) return '';
-  return words.join(' ').replace(/\s+/g, ' ').trim() + '.';
+  // A period card renders as ".": attach it to the previous word (no leading space).
+  const s = words.join(' ').replace(/\s+/g, ' ').replace(/\s+\./g, '.').trim();
+  return /[.!?]$/.test(s) ? s : s + '.';
 }

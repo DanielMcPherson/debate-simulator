@@ -28,8 +28,8 @@ A debate is a series of **questions**. Each question:
   Each topic has its own **topic card** (a subject, object, or predicate) that is
   always available to *both* players and never used up, so you can always work
   the topic in. Dodging it is penalized.
-- If your deal is bad (e.g. nothing good to start with), **↻ Regroup** once per
-  question to reshuffle the pool and your hand — it costs you the turn.
+- If your deal is bad (e.g. nothing good to start with), **↻ Call a Recess** once per
+  question to reshuffle the pool — it costs you the turn (your hand is left untouched).
 - Your deck also holds one-shot **power-ups** (played from hand, costs your turn):
   **📋 Search Notes** (draw 5), **🎤 Teleprompter Typo** (jam a card onto the
   opponent's statement to wreck it), **🧠 Forgot My Line** (knock the opponent's
@@ -42,8 +42,10 @@ A debate is a series of **questions**. Each question:
   your turn. The AI uses them too (but never Plant — it's blind to the crowd by
   design). When the opponent **Typos** *you* (jams a card in) or makes you **Forget
   your line** (drops your last one), a red alert shows what changed — the line stays
-  grammatical either way, so you can keep building to recover (the AI auto-picks the
-  most damaging Typo, and uses Forgot to wreck a strong line you're sitting on).
+  grammatical either way, so you can spin it forward: tack on another sentence to
+  soften the blow (a **but** pivot helps most), or End and cut your losses (the AI
+  auto-picks the most damaging Typo, and uses Forgot to wreck a strong line you're
+  sitting on).
 - Deals a fixed **shared pool** (~9 cards, contested) and a small **private hand**
   to each player. **Nothing replenishes** during the question — cards only run out.
 - The two are **different kinds of cards**: the shared pool holds generic
@@ -58,9 +60,9 @@ A debate is a series of **questions**. Each question:
   won't come back next question. (The shared pool is re-dealt fresh each question.)
 - Players alternate, drafting **one word/phrase per turn** from the pool or hand.
 - You may only **End** on a *complete* sentence (no bailing on a safe fragment).
-  Combined with the shrinking pool, this is the pressure: commit to a structure
-  and the only card left to finish it may be a self-own — or you ramble and
-  "confuse" the crowd. Going long for a combo increases the risk.
+  Combined with the shrinking pool, this is the pressure: commit to a clause and
+  the only card left to finish it may be a self-own. Building a longer, combo'd
+  statement scores far more but exposes you to sabotage and to a botched finish.
 - Cards are **chunks** (Oh...Sir!!-style): **subjects** ("My opponent", "Our
   children"), chunky **predicates** that are mostly complete ("kicks puppies",
   "is a national disgrace", "loves freedom and democracy") or **open** with a
@@ -69,6 +71,17 @@ A debate is a series of **questions**. Each question:
   "and frankly"). `and` coordinates predicates under one subject; the others open
   a new clause. Predicates auto-conjugate to the subject ("My opponent **kicks**"
   vs "Our children **kick**", "is/are a national disgrace").
+- The **period (".") is free and unlimited** — tap it any time a clause is finished
+  to end the sentence and start a new one. Stringing extra sentences together helps,
+  but each one is worth progressively less, so a pile of periods only nudges your
+  score. **Combos come from connectors, and only when used correctly:**
+  - **`and` / `because`** reward chaining *different* points that both help you
+    ("…is corrupt **and** kicks puppies"). Repeating the same point doesn't combo.
+  - **`but` is the strongest combo**, on a them-bad → you-good pivot ("My opponent
+    is bad **but** I am great").
+  - Misusing a connector (e.g. "but" with no real contrast) simply fizzles — no
+    bonus, but no penalty either. A well-placed **`but`** can even soften a self-own,
+    turning the crowd's outrage into a merely confused shrug.
 - "Thing" nouns act as **heroes or villains** when used as the subject: praising
   a hero (the economy, our veterans) and **bashing a villain** ("Shady lobbyists
   are a national disgrace", "The swamp can't be trusted") both score for you;
@@ -130,8 +143,13 @@ tests/                 grammar, scoring (the brief's examples), and AI suites
 3. **Delta toward the speaker** — praising yourself or pandering to the audience
    helps; making the opponent look good (or insulting yourself/the audience)
    backfires; magnitude scales with sentiment, so bland lines barely move the bar.
-   A multi-clause statement earns a combo bonus only when *every* clause lands
-   hard in the same direction; padding with weak/empty clauses is penalized.
+4. **Combos & diminishing returns** — clauses joined by a *correctly-used*
+   conjunction bind into a combo group (summed, then multiplied — `but`'s pivot
+   beats `and`/`because`); a misused connector earns nothing. Everything else
+   (period-joined or standalone clauses) stacks with **diminishing returns** —
+   each extra sentence helps less than the last — so a tight combo far outscores a
+   rambling pile of sentences. A `but` after a self-own *mitigates* it rather than
+   comboing, reading as confusion instead of outrage.
 
 Grammaticality is recognized with a small **Earley parser** over the *role*
 sequence (memoized, so the AI's deep search stays fast), and a **segmenter**
@@ -147,7 +165,8 @@ just changes what's reachable and it falls back to the next-best line — never
 gibberish, never settling for a bland line when a stronger one is reachable.
 It's deliberately handicapped (`AiOptions.maxExtend`, default 4 ≈ one solid
 clause) so it plays human-scale statements and is beatable by a player who chains
-their own combos — in self-play a full-combo player beats it ~80% of the time.
+their own combos. It will use a free period to add a sentence, but plans no deeper
+than its handicap — so a player who lands a correct `but`/`and` combo out-scores it.
 
 ## Campaign (run progression)
 
@@ -155,8 +174,9 @@ A debate is one rung of a **6-opponent campaign ladder** of rising difficulty
 (Gov. Patty Pander → … → Maximilian Q. Grandstand III, the final boss; the AI
 plays longer combos the higher you climb). Before the first debate and between
 each one, a **Slay-the-Spire-style campaign map** shows the straight-line ladder —
-who you've beaten, who's next, and the rising difficulty — and a first-run map
-also carries a short **how-to-play** tutorial to onboard new players. **Win a
+who you've beaten, who's next, and the rising difficulty. A fresh run opens on a
+**how-to-play tutorial** (periods, combos, and the `but` pivot, with examples)
+before the first map, to onboard new players. **Win a
 debate → choose one of three reward cards** to add to your deck. Rewards are
 exclusive (never in a starting deck) and stronger than normal — ±4 predicates and
 high-intensity loaded subjects ("My crooked, treasonous opponent"). They **carry

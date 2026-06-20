@@ -68,6 +68,20 @@ h1 {
   color: var(--muted);
   margin-top: 6px;
 }
+.question-pill {
+  text-align: center;
+  font-size: 15px;
+  margin-top: 2px;
+  color: #cdd6e4;
+}
+.question-pill .q-topic {
+  font-weight: 700;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 12px;
+}
+.ontopic-key { color: var(--you); font-weight: 600; }
 .run-pill {
   text-align: center;
   font-size: 12px;
@@ -104,6 +118,18 @@ h1 {
 .podium .reaction { font-size: 13px; margin-top: 10px; color: var(--gold); min-height: 18px; }
 .reaction.bad { color: var(--them); }
 .reaction.good { color: var(--you); }
+.combo-callout {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--gold);
+  background: rgba(243, 201, 105, 0.12);
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  padding: 3px 10px;
+  display: inline-block;
+}
 
 /* --- card rows --- */
 .zone-title {
@@ -129,6 +155,9 @@ h1 {
 .card.pool { border-left: 3px solid var(--gold); }
 .card.hand { border-left: 3px solid var(--you); }
 .card.intens { border: 1px dashed var(--gold); background: #2a2616; font-style: italic; }
+/* On-topic cards answer the current question — glow green so they're easy to spot. */
+.card.ontopic { border: 1px solid #4caf6e; box-shadow: 0 0 0 1px rgba(76, 175, 110, 0.4) inset; }
+.card.ontopic .role { color: #6fcf97; }
 .card.topic { border-left: 3px solid #4ad07a; background: #14271b; font-weight: 600; }
 .oppcard {
   display: inline-block;
