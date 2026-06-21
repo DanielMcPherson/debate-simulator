@@ -47,7 +47,7 @@ h1 {
   position: relative;
   height: 22px;
   border-radius: 11px;
-  background: linear-gradient(90deg, var(--them) 0%, #2a2f40 50%, var(--you) 100%);
+  background: linear-gradient(90deg, var(--you) 0%, #2a2f40 50%, var(--them) 100%);
   overflow: hidden;
   border: 1px solid var(--line);
 }

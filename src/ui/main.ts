@@ -305,7 +305,9 @@ function bannerHtml(): string {
 }
 
 function render(): void {
-  const needle = ((game.bar + 100) / 200) * 100; // 0..100 left%
+  const needle = ((100 - game.bar) / 200) * 100; // 0..100 left%; You favored → left (matches podiums)
+  // Zero-sum 1v1: bar (-100..+100, signed toward player) shown as audience-support % that sums to 100.
+  const youSupport = Math.round((game.bar + 100) / 2);
   const complete = isComplete(game.player.line);
   const held = !!game.player.heldFinisher;
   const endOk = canPlay() && canEnd(game);
@@ -360,9 +362,9 @@ function render(): void {
     <div class="run-pill">🏛️ Campaign — Debate ${run.rung + 1} / ${LADDER.length} &nbsp;·&nbsp; vs <b>${game.opponent?.name ?? '—'}</b> &nbsp;·&nbsp; Earned cards: ${run.bonus.length}</div>
     ${bannerHtml()}
     <div class="scorebar-wrap">
-      <div class="scorebar-labels"><span class="them">◀ Opponent</span><span class="you">You ▶</span></div>
+      <div class="scorebar-labels"><span class="you">◀ You</span><span class="them">Opponent ▶</span></div>
       <div class="scorebar"><div class="needle" style="left:${needle}%"></div></div>
-      <div class="round-pill">Question ${game.round} / ${game.maxRounds} &nbsp;·&nbsp; Audience favor: ${Math.round(game.bar)}</div>
+      <div class="round-pill">Question ${game.round} / ${game.maxRounds} &nbsp;·&nbsp; Audience support — You ${youSupport}% · Opponent ${100 - youSupport}%</div>
       <div class="question-pill"><span class="q-topic">${game.topic?.label ?? '—'}</span> — “${game.question ?? ''}”</div>
     </div>
 
