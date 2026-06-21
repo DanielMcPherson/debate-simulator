@@ -240,7 +240,8 @@ const TUTORIAL_BODY = `
         weave the topic into your best line. <b>Don't ramble:</b> past ~3 plain sentences the crowd
         nods off — tighten up or combo instead.</li>
       <li>Play <b>power-ups</b> (steal cards, sabotage their line, read the crowd), and watch the
-        meter — most audience favor after 8 questions wins. You can <b>End</b> anytime, but an
+        meter — most audience favor after 8 questions wins, or pin the meter to one side for an
+      instant landslide. You can <b>End</b> anytime, but an
         unfinished sentence just leaves the crowd confused — so finish your thought.</li>
     </ul>
     <div class="howto-foot">Win a debate to draft a powerful card and climb the ladder. Lose
