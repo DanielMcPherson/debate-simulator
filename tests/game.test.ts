@@ -135,6 +135,18 @@ describe('resource model — chunk cards, no replenish, must-finish', () => {
     expect(g.player.hand.length).toBe(myBefore + 1); // -1 hotmic, +1 stolen
   });
 
+  it("the opponent's Hot Mic steal flags a must-dismiss sabotage on the player", () => {
+    const g = createGame({ seed: 1 });
+    g.turn = 'ai';
+    g.ai.hand = [{ id: 'pw_hm', role: 'powerup', effect: 'hotmic', text: 'x' }];
+    g.player.hand = [{ id: 'pw_sb', role: 'powerup', effect: 'soundbite', text: '👏 Soundbite' }];
+    applyMove(g, { kind: 'power', cardId: 'pw_hm' }); // AI auto-targets the player's power-up
+    expect(g.lastSabotage?.kind).toBe('hotmic');
+    expect(g.lastSabotage?.victim).toBe('player'); // → the player gets the modal
+    expect(g.player.hand.some((c) => c.id === 'pw_sb')).toBe(false); // stolen away
+    expect(g.ai.hand.some((c) => c.id === 'pw_sb')).toBe(true); // now the AI's
+  });
+
   it('reward cards carried by the run land in the player deck only', () => {
     const reward = findDef('r_traitor')!;
     const g = createGame({ seed: 1, playerBonus: [reward] });
@@ -353,14 +365,48 @@ describe('the free period', () => {
     expect(g.player.lastReaction?.grammatical).toBe(true);
   });
 
-  it('ending on a half-started next clause scores the last complete thought (no mumble)', () => {
+  it('the period is limited to one per statement', () => {
+    const g = createGame({ seed: 1 });
+    g.turn = 'player';
+    g.player.line = [findDef('s_opp')!, findDef('p_disgrace')!]; // a complete clause
+    const periodMove = () => legalMoves(g).find((m) => m.kind === 'take' && m.from === 'period');
+    expect(periodMove()).toBeDefined(); // first period offered
+    applyMove(g, { kind: 'take', from: 'period', cardId: PERIOD.id }); // advances turn to ai
+    expect(g.player.usedPeriod).toBe(true);
+    // Build out a complete second clause, then it's the player's turn again: a SECOND
+    // period must NOT be offered, even though the grammar would otherwise allow it.
+    g.player.line.push(findDef('s_people')!, findDef('p_love_fd')!);
+    g.turn = 'player';
+    g.ai.done = true;
+    expect(canEnd(g)).toBe(true); // the two-sentence line is endable
+    expect(periodMove()).toBeUndefined();
+  });
+
+  it('ending on a half-started next clause is "confused" — content is never silently dropped', () => {
     const g = createGame({ seed: 1 });
     g.turn = 'player';
     // a complete clause, then a dangling new clause with just a subject
     g.player.line = [findDef('s_opp')!, findDef('p_disgrace')!, PERIOD, findDef('s_people')!];
     applyMove(g, { kind: 'end' });
-    expect(g.player.lastReaction?.grammatical).toBe(true); // trimmed to "My opponent is a national disgrace"
-    expect(g.player.line.map((c) => c.id)).toEqual(['s_opp', 'p_disgrace']); // trailing scraps dropped
+    // The "s_people" content is NOT trimmed away to a clean prefix — the unfinished
+    // thought stays and scores lenient "confused" with coaching.
+    expect(g.player.lastReaction?.label).toBe('confused');
+    expect(g.player.lastReaction?.grammatical).toBe(false);
+    expect(g.player.line.map((c) => c.id)).toEqual(['s_opp', 'p_disgrace', PERIOD.id, 's_people']);
+  });
+
+  it('a run-on (two clauses jammed with no connector) is "confused", not the first clause only', () => {
+    const g = createGame({ seed: 1 });
+    g.turn = 'player';
+    // "My opponent is a national disgrace[ ] the American people love freedom" — no period, no conjunction
+    g.player.line = [findDef('s_opp')!, findDef('p_disgrace')!, findDef('s_people')!, findDef('p_love_fd')!];
+    applyMove(g, { kind: 'end' });
+    expect(g.player.lastReaction?.label).toBe('confused');
+    expect(g.player.lastReaction?.grammatical).toBe(false);
+    // It is NOT silently scored as just the first clause (would be a clean attack).
+    expect(g.player.line.length).toBe(4);
+    // The coaching points at punctuation/connectors, not word order.
+    expect(g.player.lastReaction?.detail).toMatch(/connector|period|two thoughts/i);
   });
 
   it('Teleprompter Typo REPLACES the victim\'s last card with the chosen one', () => {

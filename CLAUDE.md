@@ -43,9 +43,11 @@ Cards are **chunks**, not single words. `Card.role`:
   puppies") or **open** (`open:true` + `affinity`/`deed`, takes an object, e.g. "wants to
   destroy ___"). Conjugates via `pre`/`lead`/`post` (or `invariant:true` for modal/past text).
 - `connector` — `conj`: `and` (coordinates predicates → CCAND); `because`/`and therefore`/`but`
-  join clauses (CJOIN); `period` is the **free, unlimited** clause break. The `PERIOD` card
-  (cards.ts) is **virtual** — always available, never drawn/consumed, NOT in CONNECTORS/ALL/decks;
-  played via `Move{kind:'take', from:'period'}`.
+  join clauses (CJOIN); `period` is the **free** clause break, but limited to **one per statement**
+  (`PlayerState.usedPeriod`, reset each question in `dealRound`; the AI's `availFor` honors it too) —
+  so a statement is at most two sentences and rambling-by-period is impossible (chain conjunctions for
+  more, and a combo). The `PERIOD` card (cards.ts) is **virtual** — never drawn/consumed, NOT in
+  CONNECTORS/ALL/decks; played via `Move{kind:'take', from:'period'}`.
 - `intensifier` — sentence-final finisher (`factor` multiplies the whole statement).
 - `powerup` — one-shot action card (`effect`), never part of the sentence.
 
@@ -76,7 +78,12 @@ hurts (combos are exempt). A `but` after a **self-own** *mitigates* it (blunder 
 ×1.0) and forces a `confused` label when net-negative. The **hidden crowd** boosts only your single
 *best* on-taste contribution (×boost), not every matching clause — so monotonous piling can't farm
 it; a combo containing the matched clause still multiplies the boosted value. `reaction.combo{kind,
-mult}` drives the UI callout. Then intensifier `factor`, **off-topic** is *multiplicative*
+mult}` is the single strongest group (kept for the analytics log); `reaction.comboChips[{tokenIdx,
+kind}]` lists **every** connector token that formed a combo, each tagged with its OWN tier — the UI
+paints these as inline **combo chips** on the junction words of the JUDGED statement (no multiplier
+number, no separate callout). The connector token index is threaded `segmentDetailed → parse →
+contributions → aggregate` (Clause/PredInstance/Contrib all carry `connIdx`). Then intensifier
+`factor`, **off-topic** is *multiplicative*
 (positive totals ×`OFF_TOPIC_MULT` 0.75 — a big statement can't cheaply ignore the question), clamp
 ±35 (±50 with intensifier).
 **Tuning (rebalanced 2026-06: keep this ratio):** `SCALE=2.5` is deliberately small vs the ±35 cap
@@ -91,8 +98,13 @@ in tests/scoring.test.ts & tests/ai.test.ts. The worked-examples table lives in 
 A debate = several **questions**. Each question deals a fixed **shared pool** (~9, contested) +
 a small **private hand**; **nothing replenishes** mid-question. **End** is allowed on ANY non-empty
 line (no soft-lock, no forced self-own): an incomplete/ungrammatical line just scores **lenient
-"confused"** (partial intent ×0.5, capped ±8, + a coaching note — see `scoreStatement`). The free
-**period** (`from:'period'`) ends a clause and opens a new one anywhere the grammar allows; **Pass**
+"confused"** (partial intent ×0.5, capped ±8, + a coaching note — see `scoreStatement`/`confusedDetail`,
+which distinguishes a **run-on** ("two thoughts crammed in" — `looksRunOn`), an unfinished line, and
+word-salad). `endableLine` strips **only a trailing dangling connector** (a tapped-but-unused
+period/"and"/"but") — never real content — so jamming two clauses together (a run-on) or stranding a
+half-clause scores "confused", instead of silently keeping just the first thought. The free **period**
+(`from:'period'`, **one per statement** — see above) ends a clause and opens a new one anywhere the
+grammar allows; **Pass**
 to wait on an empty/endable line; **Call a Recess** (once/question, costs turn) reshuffles the
 **pool only** (not your hand). After both speak the round **pauses** (`awaitingNext` →
 `nextQuestion()`). Win at ±100 (landslide) or lead after `maxRounds` (default 8). Each statement's
@@ -102,7 +114,15 @@ Per-debate hidden state: a **topic** — a moderator **question** (`Topic.questi
 any `topics`-tagged card; **no green "topic card" is offered** anymore (that idea is parked on
 `Topic.card` for a future bonus-phrase mechanic). `ensurePoolHasTopic` guarantees ≥1 on-topic card
 is dealt; on-topic cards are highlighted in the UI; dodging the topic is the **multiplicative**
-off-topic penalty. Also a **crowd** with a HIDDEN `loves` category (×boost at resolution only — the
+off-topic penalty. The 8 topics: economy/security/freedom/children/**pander** ("The Voters") are
+*content-driven* (tag the topical noun/predicate). The two **attack topics share one pool** — a card
+that attacks the opponent answers BOTH **opponent** ("Your Opponent") and **jackass** ("Name-Calling"):
+the `NP` helper auto-derives `['opponent','jackass']` from `side:'opponent'` (and `['record']` from
+`side:'self'`) via `SIDE_TOPIC`, so opponent/self subjects are NEVER hand-tagged (no drift); every
+insult predicate is `.map`-tagged `['jackass','opponent']` (de-duped, keeping any issue topic like
+'economy'). So both the target subject *and* the smear glow for either attack question. Audience-side
+subjects have no implied topic — tag generic pander `['pander']`, patriotic-nation `['freedom']`,
+child/family `['children']`. Also a **crowd** with a HIDDEN `loves` category (×boost at resolution only — the
 AI never sees it), and a named **opponent** with a style. **Private decks are persistent** across
 the debate (built once; a played card like Plant won't recur). Shared deck is re-dealt each question.
 
@@ -122,8 +142,10 @@ self-own via `bestTypoJam`, which searches *replacements* of the victim's last c
 by tacking on another sentence — a `but` pivot helps most), Forgot My Line (pop the opponent's last line card — discarded, not returned;
 player just plays it, AI plays it to wreck a strong/long line the player is sitting on),
 Hot Mic (`knowsOppHand` reveals opp hand for the CURRENT QUESTION + steal a card permanently).
-Both Typo and Forgot set `state.lastSabotage{victim,by,text,kind:'typo'|'forgot'}`, which drives
-a must-dismiss modal when the player is the victim. FREE power-ups don't cost the turn; others do.
+Typo, Forgot, and Hot Mic all set `state.lastSabotage{victim,by,text,kind:'typo'|'forgot'|'hotmic'}`,
+which drives a must-dismiss modal (+ banner) when the player is the victim — so a stolen card is as
+visible as a typo'd word, not just a passing log line (the Hot Mic modal has no "your line now reads"
+quote, since it's a hand steal, not a line edit). FREE power-ups don't cost the turn; others do.
 
 ## Campaign run (lives in ui/main.ts, not the engine)
 `LADDER` (cards.ts) = 6 opponents of rising `maxExtend`. Win → pick 1 of 3 `REWARDS` (exclusive,
@@ -226,8 +248,9 @@ character art / reaction faces (an opponent that looks embarrassed on a self-own
 plays, **screen shake + combo flourishes when a statement resolves/scores**, donation/score
 tickers, audience reactions. Tied to this: properly **stage the opponent's turn** — show the pool,
 "opponent's turn", the AI "thinking", then it picks a card (currently just an `AI_DELAY` pause with
-"Your opponent is speaking…"). The combo callout (`comboHtml`) and reaction text are already
-structured as placeholders to swap for juiced versions.
+"Your opponent is speaking…"). The inline **combo chips** (`renderSentenceWithChips`/`.combo-chip`)
+and reaction text are already structured as placeholders to swap for juiced versions (animate the
+chip popping in on the connector when the statement resolves).
 
 **Why gated:** the connector-fit scoring + combo/period/topic system just landed; get playtest data
 on *its* feel before layering meta-progression on top.

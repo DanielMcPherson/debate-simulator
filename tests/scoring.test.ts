@@ -154,6 +154,21 @@ describe('scoring — periods, conjunctions & combos', () => {
     expect(but.delta).toBeGreaterThan(and);
   });
 
+  it('comboChips mark each combo-forming connector token, tagged with its own tier', () => {
+    // "My opponent kicks puppies AND the people love freedom BECAUSE I am a patriot"
+    // tokens:    0 s_opp  1 p_kick_pup  2 c_and  3 s_people  4 p_love_fd  5 c_because  6 s_i  7 p_patriot
+    const r = scoreStatement(cards('s_opp', 'p_kick_pup', 'c_and', 's_people', 'p_love_fd', 'c_because', 's_i', 'p_patriot'));
+    expect(r.comboChips).toEqual([
+      { tokenIdx: 2, kind: 'and' },
+      { tokenIdx: 5, kind: 'logic' },
+    ]);
+  });
+
+  it('a misused connector paints no chip', () => {
+    const r = scoreStatement(cards('s_opp', 'p_kick_pup', 'c_but', 's_opp', 'p_lie')); // same side — no pivot
+    expect(r.comboChips).toBeUndefined();
+  });
+
   it('a misused "but" (no pivot, same side) just fizzles — no combo, no penalty', () => {
     const misused = scoreStatement(cards('s_opp', 'p_kick_pup', 'c_but', 's_opp', 'p_lie'));
     const period = delta('s_opp', 'p_kick_pup', 'c_period', 's_opp', 'p_lie');

@@ -144,6 +144,8 @@ interface SegPred {
   /** The connector coordinating this predicate with the prior one in the clause
    * (undefined for a clause's first predicate). */
   joinedBy?: Conj;
+  /** Token index of that coordinating connector (for inline combo chips). */
+  connIdx?: number;
 }
 
 interface Seg {
@@ -151,6 +153,8 @@ interface Seg {
   preds: SegPred[];
   /** The clause-joining connector that opened this clause (undefined for the first). */
   joinedBy?: Conj;
+  /** Token index of that clause-joining connector (for inline combo chips). */
+  connIdx?: number;
 }
 
 export function segmentDetailed(tokens: Card[]): { clauses: Seg[]; roleAt: TokenRole[] } {
@@ -160,6 +164,7 @@ export function segmentDetailed(tokens: Card[]): { clauses: Seg[]; roleAt: Token
   let started = false;
   let open: SegPred | null = null; // predicate awaiting an object
   let pendingConn: Conj | undefined; // a connector awaiting the predicate it coordinates
+  let pendingConnIdx: number | undefined; // its token index
   const push = () => {
     if (started) clauses.push(cur);
   };
@@ -192,8 +197,12 @@ export function segmentDetailed(tokens: Card[]): { clauses: Seg[]; roleAt: Token
         const p: SegPred = { predIdx: i };
         // A predicate after the clause's first one is coordinated by the pending
         // connector (plain "and", or an elided "and therefore"/"but"/etc.).
-        if (cur.preds.length > 0) p.joinedBy = pendingConn ?? 'and';
+        if (cur.preds.length > 0) {
+          p.joinedBy = pendingConn ?? 'and';
+          p.connIdx = pendingConnIdx;
+        }
         pendingConn = undefined;
+        pendingConnIdx = undefined;
         cur.preds.push(p);
         roleAt[i] = 'pred';
         started = true;
@@ -210,12 +219,14 @@ export function segmentDetailed(tokens: Card[]): { clauses: Seg[]; roleAt: Token
         // coordinates the next predicate under the shared subject.
         if (conj === 'period' || (next && next.role === 'np')) {
           push();
-          cur = { preds: [], joinedBy: conj };
+          cur = { preds: [], joinedBy: conj, connIdx: i };
           started = false;
           pendingConn = undefined;
+          pendingConnIdx = undefined;
         } else {
           // Subject elided ("…and therefore will destroy…").
           pendingConn = conj;
+          pendingConnIdx = i;
         }
         break;
       }
@@ -232,10 +243,12 @@ export function parse(tokens: Card[]): SentenceStructure {
   const clauses: Clause[] = segmentDetailed(tokens).clauses.map((s) => ({
     subject: s.subjectIdx !== undefined ? tokens[s.subjectIdx] : undefined,
     joinedByPrev: s.joinedBy,
+    connIdx: s.connIdx,
     preds: s.preds.map((p) => ({
       card: tokens[p.predIdx],
       object: p.objIdx !== undefined ? tokens[p.objIdx] : undefined,
       joinedBy: p.joinedBy,
+      connIdx: p.connIdx,
     })),
   }));
   return { clauses };

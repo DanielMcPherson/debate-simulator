@@ -86,6 +86,8 @@ interface Contrib {
   predBase: string;
   /** Connector immediately preceding this contribution (undefined = first). */
   joinedByPrev?: NonNullable<Card['conj']>;
+  /** Token index of that connector — marks the junction word for an inline chip. */
+  connIdx?: number;
 }
 
 function contributions(structure: SentenceStructure): Contrib[] {
@@ -103,7 +105,8 @@ function contributions(structure: SentenceStructure): Contrib[] {
       // predicate's coordinating connector; for a clause's first predicate it's
       // the clause-join from the previous clause.
       const joinedByPrev = pi > 0 ? p.joinedBy : clause.joinedByPrev;
-      out.push({ delta, category, side, predBase: p.card.id.split('#')[0], joinedByPrev });
+      const connIdx = pi > 0 ? p.connIdx : clause.connIdx;
+      out.push({ delta, category, side, predBase: p.card.id.split('#')[0], joinedByPrev, connIdx });
     });
   });
   return out;
@@ -170,6 +173,9 @@ interface Aggregated {
   mitigated: boolean;
   /** How many simple (non-combo) sentences the line stacked — drives the ramble penalty. */
   residualCount: number;
+  /** Each connector token that formed a combo, tagged with its own tier (so the UI
+   * can paint a chip on that exact junction word). */
+  chips: { tokenIdx: number; kind: 'and' | 'logic' | 'but' }[];
 }
 
 /**
@@ -180,7 +186,7 @@ interface Aggregated {
  */
 function aggregate(cs: Contrib[]): Aggregated {
   const n = cs.length;
-  if (n === 0) return { total: 0, mitigated: false, residualCount: 0 };
+  if (n === 0) return { total: 0, mitigated: false, residualCount: 0, chips: [] };
 
   const used = new Array<boolean>(n).fill(false); // consumed by a 'but' mitigation
   let mitigatedTotal = 0;
@@ -242,7 +248,17 @@ function aggregate(cs: Contrib[]): Aggregated {
   // Residual — singletons & period-joined clauses stack with diminishing returns.
   const residual = cs.filter((_, i) => !used[i] && !inGroup[i]).map((c) => c.delta);
   const total = comboTotal + decayAggregate(residual) + mitigatedTotal;
-  return { total, combo: best, mitigated, residualCount: residual.length };
+
+  // A chip per connector that formed a combo, each tagged with ITS OWN tier (so
+  // "A and B because C" paints the "and" as COMBO and the "because" as CHAIN).
+  const chips: Aggregated['chips'] = [];
+  for (let i = 1; i < n; i++) {
+    const t = bonds[i];
+    if (t === null || t === 'none') continue;
+    const idx = cs[i].connIdx;
+    if (idx !== undefined) chips.push({ tokenIdx: idx, kind: TIER_KIND[t] });
+  }
+  return { total, combo: best, mitigated, residualCount: residual.length, chips };
 }
 
 export interface ScoreOptions {
@@ -316,16 +332,35 @@ export function scoreStatement(line: Card[], opts: ScoreOptions = {}): Reaction 
     detail: `${renderSentence(line)} — ${describe(label, total)}${note}`,
     grammatical: true,
     combo: agg.combo,
+    comboChips: agg.chips.length ? agg.chips : undefined,
   };
+}
+
+/**
+ * A run-on: two (or more) complete thoughts jammed together with no connector,
+ * e.g. "My opponent sucks I am great". Detected by a clean split into two complete
+ * sentences. Distinct from a half-finished line (needs an ending) or word salad.
+ */
+function looksRunOn(line: Card[]): boolean {
+  for (let i = 1; i < line.length; i++) {
+    if (isComplete(line.slice(0, i)) && isComplete(line.slice(i))) return true;
+  }
+  return false;
 }
 
 /** Flavor for an incomplete/ungrammatical statement — coaching, deterministic by shape. */
 function confusedDetail(line: Card[], total: number): string {
-  // A valid-but-unfinished line just needs an ending; a jumbled one needs grammar.
-  const lead = isValidPrefix(line)
-    ? 'the audience waits for you to finish that thought — punctuation is your friend'
-    : 'the crowd blinks in confusion — try your words in order, and mind your grammar';
-  const gist = total > 1 ? ` (they caught the gist, +${total})` : total < -1 ? ` (and it landed badly, ${total})` : '';
+  // Three shapes: a run-on needs punctuation/a connector; a valid-but-unfinished line
+  // needs an ending; anything else is jumbled and needs its grammar sorted out.
+  let lead: string;
+  if (looksRunOn(line)) {
+    lead = 'the crowd can’t tell where one thought ends and the next begins — you slammed two thoughts together at full speed. Hit the brakes with a period, or bolt them into a real combo with “and”, “but”, or “because”';
+  } else if (isValidPrefix(line)) {
+    lead = 'the audience leans in for the rest of that sentence… and you just stop — land the thought before you drop the mic';
+  } else {
+    lead = 'the crowd blinks, then mutters — that came out as word salad. Try your words in an order a human would actually say';
+  }
+  const gist = total > 1 ? ` (they caught your drift anyway, +${total})` : total < -1 ? ` (and somehow it still landed badly, ${total})` : '';
   return `${renderSentence(line)} — ${lead}.${gist}`;
 }
 

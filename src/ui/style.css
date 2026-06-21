@@ -118,17 +118,31 @@ h1 {
 .podium .reaction { font-size: 13px; margin-top: 10px; color: var(--gold); min-height: 18px; }
 .reaction.bad { color: var(--them); }
 .reaction.good { color: var(--you); }
+/* Combo badge under a resolved statement — names the move (COMBO/CHAIN/PIVOT) with a
+   ×N link count, colored by tier. */
 .combo-callout {
   margin-top: 6px;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.3px;
-  color: var(--gold);
-  background: rgba(243, 201, 105, 0.12);
-  border: 1px solid var(--gold);
   border-radius: 999px;
   padding: 3px 10px;
   display: inline-block;
+}
+.combo-callout.badge-and {
+  color: #6fcf97;
+  background: rgba(111, 207, 151, 0.12);
+  border: 1px solid #6fcf97;
+}
+.combo-callout.badge-logic {
+  color: #b48ef0;
+  background: rgba(180, 142, 240, 0.12);
+  border: 1px solid #b48ef0;
+}
+.combo-callout.badge-but {
+  color: var(--gold);
+  background: rgba(243, 201, 105, 0.12);
+  border: 1px solid var(--gold);
 }
 
 /* --- card rows --- */

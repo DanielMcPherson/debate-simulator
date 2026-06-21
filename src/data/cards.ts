@@ -13,17 +13,26 @@ interface NpOpts {
   topics?: string[];
   intensity?: number;
 }
-const NP = (id: string, text: string, side: Side, sentiment: number, o: NpOpts = {}): Card => ({
-  id,
-  role: 'np',
-  text,
-  side,
-  sentiment,
-  person: o.person ?? 3,
-  number: o.number ?? 'sing',
-  topics: o.topics,
-  intensity: o.intensity,
-});
+// A subject's SIDE implies its topic(s): every self subject answers "Your Record";
+// every opponent subject answers BOTH "Your Opponent" and "Name-Calling" (naming the
+// target is half of a roast). Derived here so the data can't drift — a new
+// self/opponent NP is auto-tagged; you never hand-type these. (audience/neutral have
+// no implied topic; tag those explicitly via `o.topics`.)
+const SIDE_TOPIC: Partial<Record<Side, string[]>> = { self: ['record'], opponent: ['opponent', 'jackass'] };
+const NP = (id: string, text: string, side: Side, sentiment: number, o: NpOpts = {}): Card => {
+  const topics = [...new Set([...(SIDE_TOPIC[side] ?? []), ...(o.topics ?? [])])];
+  return {
+    id,
+    role: 'np',
+    text,
+    side,
+    sentiment,
+    person: o.person ?? 3,
+    number: o.number ?? 'sing',
+    topics: topics.length ? topics : undefined,
+    intensity: o.intensity,
+  };
+};
 
 interface PredExtra {
   pre?: string;
@@ -61,19 +70,19 @@ const po = (
 // --- subjects (noun phrases with a side) ------------------------------------
 
 export const SUBJECTS: Card[] = [
-  NP('s_i', 'I', 'self', 1, { person: 1, topics: ['record'] }),
-  NP('s_admin', 'My administration', 'self', 1, { topics: ['record'] }),
-  NP('s_record', 'My record', 'self', 1, { topics: ['record'] }),
-  NP('s_policies', 'My policies', 'self', 1, { number: 'plural', topics: ['record'] }),
-  NP('s_opp', 'My opponent', 'opponent', -1, { topics: ['opponent'] }),
-  NP('s_opp_wife', "My opponent's wife", 'opponent', -1, { topics: ['opponent'] }),
-  NP('s_opp_donors', "My opponent's donors", 'opponent', -1, { number: 'plural', topics: ['opponent'] }),
-  NP('s_career', 'Career politicians', 'opponent', -1, { number: 'plural', topics: ['opponent'] }),
-  NP('s_insiders', 'Washington insiders', 'opponent', -1, { number: 'plural', topics: ['opponent'] }),
-  NP('s_people', 'The American people', 'audience', 2, { number: 'plural' }),
+  NP('s_i', 'I', 'self', 1, { person: 1 }),
+  NP('s_admin', 'My administration', 'self', 1),
+  NP('s_record', 'My record', 'self', 1),
+  NP('s_policies', 'My policies', 'self', 1, { number: 'plural' }),
+  NP('s_opp', 'My opponent', 'opponent', -1),
+  NP('s_opp_wife', "My opponent's wife", 'opponent', -1),
+  NP('s_opp_donors', "My opponent's donors", 'opponent', -1, { number: 'plural' }),
+  NP('s_career', 'Career politicians', 'opponent', -1, { number: 'plural' }),
+  NP('s_insiders', 'Washington insiders', 'opponent', -1, { number: 'plural' }),
+  NP('s_people', 'The American people', 'audience', 2, { number: 'plural', topics: ['pander'] }),
   NP('s_families', 'Hardworking families', 'audience', 2, { number: 'plural', topics: ['children'] }),
   NP('s_children', 'Our children', 'audience', 2, { number: 'plural', topics: ['children'] }),
-  NP('s_nation', 'This great nation', 'audience', 2),
+  NP('s_nation', 'This great nation', 'audience', 2, { topics: ['freedom'] }),
 ];
 
 // --- objects (noun phrases that fill an open predicate's slot) --------------
@@ -102,21 +111,22 @@ export const COMMON_PRAISE: Card[] = [
   pc('p_love_fd', 'love', 'freedom and democracy', 3, { topics: ['freedom'] }),
   pc('p_patriot', 'be', 'a true patriot', 3),
   pc('p_strong', 'be', 'strong and decisive', 2),
-  pc('p_standup', 'stand', 'up for the little guy', 2),
+  pc('p_standup', 'stand', 'up for the little guy', 2, { topics: ['pander'] }),
   pc('p_protect_vets', 'protect', 'our veterans', 3, { topics: ['security'] }),
   pc('p_cut_taxes', 'cut', 'taxes for working families', 2, { topics: ['economy'] }),
   pi('p_fund_schools', 'will fully fund our schools', 3, { topics: ['children'] }),
   pi('p_defend_liberty', 'will defend our liberty', 3, { topics: ['freedom'] }),
-  pi('p_fight_for_you', 'will always fight for you', 2),
-  pi('p_have_back', 'will always have your back', 2),
+  pi('p_fight_for_you', 'will always fight for you', 2, { topics: ['pander'] }),
+  pi('p_have_back', 'will always have your back', 2, { topics: ['pander'] }),
   pi('p_keep_safe', 'will keep this country safe', 3, { topics: ['security'] }),
 ];
 
-// Every insult also counts for the Name-Calling ('jackass') topic — slinging any
-// mud answers "how much does your opponent suck?". (Tag appended below.)
+// Every insult answers BOTH attack topics — Name-Calling ('jackass') and Your
+// Opponent ('opponent'): slinging mud IS the worst-thing-about-them. (Tags appended
+// below; de-duped so a topical insult like p_raise_taxes keeps 'economy' too.)
 export const COMMON_INSULTS: Card[] = [
   pc('p_kick_pup', 'kick', 'puppies', -2),
-  pc('p_eat_babies', 'eat', 'babies', -2, { pre: 'secretly' }),
+  pc('p_eat_babies', 'eat', 'babies', -2, { pre: 'secretly', topics: ['children'] }), // a child-harm, like cancelling school lunch
   pc('p_lie', 'lie', 'to your face', -2),
   pc('p_disgrace', 'be', 'a national disgrace', -3),
   pc('p_weak', 'be', 'weak and out of touch', -2),
@@ -130,7 +140,7 @@ export const COMMON_INSULTS: Card[] = [
   pi('p_say_anything', 'will say anything to get elected', -2),
   pi('p_destroy_country', 'will destroy this country', -3),
   pi('p_ashamed', 'should be ashamed', -2),
-].map((c) => ({ ...c, topics: [...(c.topics ?? []), 'jackass'] }));
+].map((c) => ({ ...c, topics: [...new Set([...(c.topics ?? []), 'jackass', 'opponent'])] }));
 
 // SIGNATURE predicates — punchy, characterful zingers found ONLY in private decks
 // (never in the shared pool), grouped by archetype. These are the cards worth
@@ -150,13 +160,13 @@ export const SIG_ATTACK: Card[] = [
   pc('p_crayons', 'eat', 'crayons at cabinet meetings', -3),
   pc('p_handshake', 'have', 'a secret handshake with the deep state', -3),
   pi('p_timeshare', 'will sell this country to a Florida timeshare scheme', -3),
-].map((c) => ({ ...c, topics: [...(c.topics ?? []), 'jackass'] })); // smears answer Name-Calling
+].map((c) => ({ ...c, topics: [...new Set([...(c.topics ?? []), 'jackass', 'opponent'])] })); // smears answer Name-Calling + Your Opponent
 
 export const SIG_PANDER: Card[] = [
-  pi('p_free_icecream', 'will deliver free ice cream every Friday', 3),
+  pi('p_free_icecream', 'will deliver free ice cream every Friday', 3, { topics: ['pander'] }),
   pc('p_tuck_vets', 'tuck', 'in every veteran at night', 3, { topics: ['security'] }),
-  pi('p_golden', 'will give every family a golden retriever', 3),
-  pc('p_highfive', 'high-five', 'every single voter personally', 2),
+  pi('p_golden', 'will give every family a golden retriever', 3, { topics: ['pander'] }),
+  pc('p_highfive', 'high-five', 'every single voter personally', 2, { topics: ['pander'] }),
 ];
 
 // SIGNATURE noun phrases — flavorful openers/objects, private decks only.
@@ -165,12 +175,12 @@ export const SIG_SUBJ_BRAG: Card[] = [
   NP('s_genius', 'A stable genius such as myself', 'self', 1, { intensity: 1.3 }),
 ];
 export const SIG_SUBJ_ATTACK: Card[] = [
-  NP('s_idiot_opp', 'My idiot freedom-hating opponent', 'opponent', -2, { topics: ['opponent'], intensity: 1.3 }),
-  NP('s_crook_opp', 'My crooked, do-nothing opponent', 'opponent', -2, { topics: ['opponent'], intensity: 1.3 }),
+  NP('s_idiot_opp', 'My idiot freedom-hating opponent', 'opponent', -2, { intensity: 1.3 }),
+  NP('s_crook_opp', 'My crooked, do-nothing opponent', 'opponent', -2, { intensity: 1.3 }),
 ];
 export const SIG_SUBJ_PANDER: Card[] = [
-  NP('s_proud_nation', 'This great and proud nation', 'audience', 2, { intensity: 1.3 }),
-  NP('s_wonderful_people', 'The wonderful, beautiful people of this country', 'audience', 2, { number: 'plural', intensity: 1.3 }),
+  NP('s_proud_nation', 'This great and proud nation', 'audience', 2, { topics: ['freedom'], intensity: 1.3 }),
+  NP('s_wonderful_people', 'The wonderful, beautiful people of this country', 'audience', 2, { number: 'plural', topics: ['pander'], intensity: 1.3 }),
 ];
 export const SIG_OBJECTS: Card[] = [
   NP('o_radical', 'the radical fringe', 'neutral', -2),
@@ -304,6 +314,13 @@ export const TOPICS: Topic[] = [
     'Won’t somebody PLEASE think of the children?',
     'How will you save the kids from whatever is threatening them this week?',
   ] },
+  { id: 'pander', label: 'The Voters', card: tNp('pander', 'the wonderful voters', 'audience', 2, { number: 'plural' }), questions: [
+    'These fine people are watching — tell them what they want to hear.',
+    'Pander to the crowd. Subtlety is for losers.',
+    'What will you promise the voters today?',
+    'Win over the room — shameless flattery encouraged.',
+    'Say something the base will cheer for.',
+  ] },
   { id: 'jackass', label: 'Name-Calling', card: tPred('jackass', -3, { lead: 'be', post: 'an unscrupulous jackass' }), questions: [
     'Just how much does your opponent suck?',
     'Insult your opponent. We’ll wait.',
@@ -358,16 +375,16 @@ export const CROWDS: Crowd[] = [
 // REWARD cards — exclusive to the campaign ladder (never in a starting deck).
 // Stronger than normal cards: ±4 predicates and high-intensity loaded subjects.
 export const REWARDS: Card[] = [
-  pc('r_traitor', 'be', 'a traitor to this very nation', -4),
-  pc('r_lizard', 'be', 'secretly a lizard person', -4),
-  pi('r_christmas', 'wants to cancel Christmas forever', -4),
-  pc('r_eatpup', 'eat', 'live puppies on national television', -4),
+  pc('r_traitor', 'be', 'a traitor to this very nation', -4, { topics: ['jackass', 'opponent'] }),
+  pc('r_lizard', 'be', 'secretly a lizard person', -4, { topics: ['jackass', 'opponent'] }),
+  pi('r_christmas', 'wants to cancel Christmas forever', -4, { topics: ['jackass', 'opponent'] }),
+  pc('r_eatpup', 'eat', 'live puppies on national television', -4, { topics: ['jackass', 'opponent'] }),
   pc('r_greatest', 'be', 'the greatest leader in human history', 4),
   pi('r_cured', 'personally cured a deadly disease last Tuesday', 4),
   pi('r_pony', 'will give every citizen a pony and a tax cut', 4),
   pc('r_oncegen', 'be', 'a once-in-a-generation genius', 4),
-  NP('r_treason_opp', 'My crooked, treasonous opponent', 'opponent', -2, { topics: ['opponent'], intensity: 1.6 }),
-  NP('r_blessed_nation', 'This blessed and chosen nation', 'audience', 2, { intensity: 1.6 }),
+  NP('r_treason_opp', 'My crooked, treasonous opponent', 'opponent', -2, { intensity: 1.6 }),
+  NP('r_blessed_nation', 'This blessed and chosen nation', 'audience', 2, { topics: ['freedom'], intensity: 1.6 }),
 ];
 
 export const ALL: Card[] = [

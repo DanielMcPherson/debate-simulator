@@ -137,6 +137,8 @@ export interface PredInstance {
   /** The connector coordinating this predicate with the prior one in its clause
    * (e.g. "and", or an elided "and therefore"); undefined for a clause's first. */
   joinedBy?: NonNullable<Card['conj']>;
+  /** Token index of that coordinating connector (for inline combo chips). */
+  connIdx?: number;
 }
 
 /** One parsed clause: a subject and the predicate(s) said about it. */
@@ -146,6 +148,8 @@ export interface Clause {
   /** The connector that joined this clause to the previous one (undefined for
    * the first clause). Drives connector-fit combo scoring. */
   joinedByPrev?: NonNullable<Card['conj']>;
+  /** Token index of that clause-joining connector (for inline combo chips). */
+  connIdx?: number;
 }
 
 export interface SentenceStructure {
@@ -166,9 +170,14 @@ export interface Reaction {
   label: ReactionLabel;
   detail: string;
   grammatical: boolean;
-  /** Set when a correctly-used conjunction earned a combo (drives the UI callout).
-   * `kind`: 'and' reinforce, 'logic' because/therefore, 'but' pivot. */
+  /** Set when a correctly-used conjunction earned a combo (the single strongest
+   * group — kept for the analytics log). `kind`: 'and' reinforce, 'logic'
+   * because/therefore, 'but' pivot. */
   combo?: { kind: 'and' | 'logic' | 'but'; mult: number };
+  /** Every connector token that actually formed a combo, with its tier — drives the
+   * inline combo chips painted onto the junction words of the JUDGED statement.
+   * `tokenIdx` indexes the scored line. */
+  comboChips?: { tokenIdx: number; kind: 'and' | 'logic' | 'but' }[];
 }
 
 export type PlayerId = 'player' | 'ai';
@@ -185,6 +194,9 @@ export interface PlayerState {
   heldFinisher?: Card;
   /** Whether this player has used their once-per-question redraw. */
   usedRedraw?: boolean;
+  /** Whether this player has used their one free period this statement (caps a
+   * statement at two sentences — chain with conjunctions for more, and a combo). */
+  usedPeriod?: boolean;
   /** AI only: this statement is a flub-in-progress — build toward a self-own.
    * Rolled once when the statement starts (in `aiTurn`), cleared at resolution. */
   gaffing?: boolean;
@@ -229,7 +241,7 @@ export interface GameState {
   /** Set when a sabotage power-up just hit someone (for the UI alert). `kind`
    * distinguishes a Teleprompter Typo (jammed a card on) from a Forgot My Line
    * (knocked their last card off). Defaults to 'typo' when absent. */
-  lastSabotage?: { victim: PlayerId; by: PlayerId; text: string; kind?: 'typo' | 'forgot' };
+  lastSabotage?: { victim: PlayerId; by: PlayerId; text: string; kind?: 'typo' | 'forgot' | 'hotmic' };
   /** Both statements are in; paused on the result until the player continues. */
   awaitingNext?: boolean;
   winner?: PlayerId | 'tie';

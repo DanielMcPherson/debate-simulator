@@ -76,6 +76,7 @@ function dealRound(state: GameState): void {
     p.line = [];
     p.heldFinisher = undefined;
     p.usedRedraw = false;
+    p.usedPeriod = false;
     p.gaffing = false;
     p.nextMultiplier = undefined;
     p.knowsOppHand = false; // Hot Mic reveal lasts only the question it's played
@@ -168,24 +169,24 @@ function other(id: PlayerId): PlayerId {
 }
 
 /**
- * The line to actually judge when ending: the **longest complete prefix**, or null
- * if no prefix is complete. So a statement that ends on trailing junk — a dangling
- * connector (a period tapped to "finish", an unused "and"/"but") or a half-started
- * next clause ("…is a disgrace. My opponent") — is judged on its last complete
- * thought, the trailing scraps dropped. This is why the AI never "mumbles": even if
- * it strands itself, it falls back to its best complete prefix. A line with NO
- * complete prefix (e.g. a bare subject) returns null → lenient "confused" scoring.
+ * The line to actually judge when ending: the line with any **trailing dangling
+ * connector** dropped (a period tapped to "finish", an unused "and"/"but"), or null
+ * if what remains still isn't a complete sentence. We strip ONLY trailing connectors,
+ * never real content — so a run-on ("opponent sucks I am great", two clauses jammed
+ * with no connector) or a stranded half-clause keeps all its words and falls through
+ * to lenient "confused" scoring + coaching, instead of silently scoring just the
+ * first thought. The AI still never "mumbles": it only ever ends on a complete line.
  */
 export function endableLine(line: Card[]): Card[] | null {
-  // Never trim away a Teleprompter-Typo'd card: the prefix must include every
-  // jammed card, so sabotage sticks (an unrecovered jam → incomplete → "confused").
+  // Never trim away a Teleprompter-Typo'd card: every jammed card must survive, so
+  // sabotage sticks (an unrecovered jam → incomplete → "confused").
   let minLen = 1;
   for (let i = 0; i < line.length; i++) if (line[i].jammed) minLen = i + 1;
-  for (let end = line.length; end >= minLen; end--) {
-    const trimmed = line.slice(0, end);
-    if (isComplete(trimmed)) return trimmed;
-  }
-  return null;
+  // Drop a trailing dangling connector (and only that — content is never discarded).
+  let end = line.length;
+  while (end > minLen && line[end - 1].role === 'connector') end--;
+  const trimmed = line.slice(0, end);
+  return isComplete(trimmed) ? trimmed : null;
 }
 
 /**
@@ -216,9 +217,10 @@ export function legalMoves(state: GameState): Move[] {
   };
   for (const c of state.pool) offer(c, 'pool');
   for (const c of p.hand) offer(c, 'hand');
-  // The period is free and unlimited, but only where the grammar allows it to
-  // open a new clause (after a complete clause) — never on an empty/partial line.
-  if (canAppend(p.line, PERIOD)) moves.push({ kind: 'take', from: 'period', cardId: PERIOD.id });
+  // The period is free but limited to ONE per statement (caps you at two sentences —
+  // chain conjunctions for more, and a combo). Offered only where the grammar allows
+  // it to open a new clause (after a complete clause) — never on an empty/partial line.
+  if (!p.usedPeriod && canAppend(p.line, PERIOD)) moves.push({ kind: 'take', from: 'period', cardId: PERIOD.id });
   if (!p.usedRedraw) moves.push({ kind: 'redraw' }); // once per question, costs your turn
   // You may End any non-empty line. Ending an incomplete/ungrammatical one is
   // allowed (no soft-lock, no forced self-own) — it just scores as a muffled,
@@ -400,6 +402,9 @@ function applyPowerup(state: GameState, p: PlayerState, move: { cardId: string; 
           const who = p.id === 'player' ? 'You' : state.opponent?.name ?? 'Opponent';
           const them = p.id === 'player' ? state.opponent?.name ?? 'your opponent' : 'you';
           state.log.push(`${who} catch ${them} on a hot mic and grab "${cardLabel(steal)}"!`);
+          // Flag the theft so the victim gets a must-dismiss modal (like Typo/Forgot).
+          // Only the player-as-victim case surfaces a modal (the AI never sees one).
+          state.lastSabotage = { victim: opp.id, by: p.id, text: cardLabel(steal), kind: 'hotmic' };
         }
       }
       break;
@@ -506,10 +511,12 @@ export function applyMove(state: GameState, move: Move): GameState {
     return state;
   }
 
-  // The free period: append a fresh copy (never consumed), if it's legal here.
+  // The free period: append a fresh copy (the PERIOD card itself is never consumed),
+  // but it's limited to one per statement — mark it used.
   if (move.from === 'period') {
-    if (!canAppend(p.line, PERIOD)) return state;
+    if (p.usedPeriod || !canAppend(p.line, PERIOD)) return state;
     p.line.push(instances(PERIOD, 1)[0]);
+    p.usedPeriod = true;
     logEvent(state, 'take', { by: p.id, from: 'period', card: PERIOD.id, text: '.', role: 'connector' });
     advanceTurn(state);
     return state;

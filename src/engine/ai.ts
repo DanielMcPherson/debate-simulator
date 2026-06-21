@@ -115,7 +115,7 @@ function availFor(state: GameState): Avail[] {
   const usable = (c: Card) => c.role !== 'powerup' && !(held && c.role === 'intensifier');
   for (const c of state.pool) if (usable(c)) a.push({ card: c, source: 'pool' });
   for (const c of state.ai.hand) if (usable(c)) a.push({ card: c, source: 'hand' });
-  a.push({ card: PERIOD, source: 'period' }); // free, always-available clause break
+  if (!state.ai.usedPeriod) a.push({ card: PERIOD, source: 'period' }); // free, one per statement
   return a;
 }
 

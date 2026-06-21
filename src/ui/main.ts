@@ -126,18 +126,18 @@ function reactionClass(r?: Reaction): string {
   return 'bad';
 }
 
-// Short, punchy callouts — placeholders for real combo graphics/screen-shake later.
-// The ×mult conveys the payoff; the word conveys the move. No explanation.
-const COMBO_BLURB: Record<'and' | 'logic' | 'but', string> = {
-  and: 'COMBO!',
-  logic: 'CHAIN!',
-  but: 'PIVOT!',
-};
-
-/** A punchy combo callout under a resolved statement (juice it later). */
+// The combo indicator lives ON the junction word now: a JUDGED statement paints
+// each combo-forming connector as a colored chip (the color conveys the move —
+// COMBO / CHAIN / PIVOT). No number, no separate callout box. (Juice it later.)
+// A punchy combo badge under a resolved statement (placeholder for real juice later).
+// `kind` names the move (COMBO/CHAIN/PIVOT, colored by tier); the ×N counts how many
+// connectors comboed — magnitude without the (confusing) raw multiplier.
+const COMBO_BLURB: Record<'and' | 'logic' | 'but', string> = { and: 'COMBO!', logic: 'CHAIN!', but: 'PIVOT!' };
 function comboHtml(r?: Reaction): string {
   if (!r?.combo) return '';
-  return `<div class="combo-callout">⚡ ${COMBO_BLURB[r.combo.kind]} ×${r.combo.mult}</div>`;
+  const n = r.comboChips?.length ?? 1;
+  const count = n > 1 ? ` ×${n}` : '';
+  return `<div class="combo-callout badge-${r.combo.kind}">⚡ ${COMBO_BLURB[r.combo.kind]}${count}</div>`;
 }
 
 function canPlay(): boolean {
@@ -226,9 +226,9 @@ const TUTORIAL_BODY = `
       <li><b>Build a sentence</b> one card at a time: a <b>subject</b> (who you're talking about),
         then a <b>predicate</b> (what they do). <b>Praise</b> yourself and the audience,
         <b>attack</b> your opponent — never praise a villain or trash yourself (the crowd boos a self-own).</li>
-      <li><b>Periods are free and unlimited.</b> Tap <b>“.”</b> to end a sentence and start a new one.
-        Extra sentences each help a little, but with diminishing returns —
-        <i>“My opponent eats babies. I love this country.”</i></li>
+      <li><b>You get one free period per statement.</b> Tap <b>“.”</b> to end a sentence and start
+        a second one — <i>“My opponent eats babies. I love this country.”</i> Run two thoughts together
+        with no connector and the crowd is just baffled, so punctuate (or chain a connector below).</li>
       <li><b>Conjunctions score combos — when used correctly.</b> Chain <i>different</i> points that
         both help you with <b>and</b> / <b>because</b>: <i>“…is corrupt and kicks puppies”</i> beats
         two flat sentences. Repeating the same point doesn't combo.</li>
@@ -311,8 +311,9 @@ function render(): void {
   const complete = isComplete(game.player.line);
   const held = !!game.player.heldFinisher;
   const endOk = canPlay() && canEnd(game);
-  // The free period is offered wherever the grammar allows a new clause to open.
-  const periodOk = canPlay() && !pendingTypo && !pendingHotMic && canAppend(game.player.line, PERIOD);
+  // The free period is offered wherever the grammar allows a new clause to open —
+  // but only once per statement (you get a single period; chain conjunctions for more).
+  const periodOk = canPlay() && !pendingTypo && !pendingHotMic && !game.player.usedPeriod && canAppend(game.player.line, PERIOD);
 
   const hint = game.winner
     ? 'Debate over.'
@@ -332,11 +333,14 @@ function render(): void {
   const showSabotageModal = sabotaged && game.lastSabotage !== ackedSabotage;
   const oppName = game.opponent?.name ?? 'Your opponent';
   const isForgot = game.lastSabotage?.kind === 'forgot';
-  const sabotage = sabotaged
-    ? isForgot
-      ? `<div class="sabotage">⚠️ ${oppName} rattled you — you forgot “<b>${game.lastSabotage!.text}</b>” and it dropped off your statement! Keep building to finish your thought — or End with what's left.</div>`
-      : `<div class="sabotage">⚠️ ${oppName} hit the teleprompter — your last word is now “<b>${game.lastSabotage!.text}</b>”! Spin it forward — tack on another sentence to recover (a “but …” helps most) — or End and cut your losses.</div>`
-    : '';
+  const isHotMic = game.lastSabotage?.kind === 'hotmic';
+  const sabotage = !sabotaged
+    ? ''
+    : isHotMic
+    ? `<div class="sabotage">🎙️ ${oppName} caught you on a hot mic and swiped “<b>${game.lastSabotage!.text}</b>” out of your hand!</div>`
+    : isForgot
+    ? `<div class="sabotage">⚠️ ${oppName} rattled you — you forgot “<b>${game.lastSabotage!.text}</b>” and it dropped off your statement! Keep building to finish your thought — or End with what's left.</div>`
+    : `<div class="sabotage">⚠️ ${oppName} hit the teleprompter — your last word is now “<b>${game.lastSabotage!.text}</b>”! Spin it forward — tack on another sentence to recover (a “but …” helps most) — or End and cut your losses.</div>`;
 
   // A loud, unmistakable mode banner while a Typo is armed (the word it'll replace
   // is also highlighted on the opponent's podium).
@@ -403,7 +407,7 @@ function render(): void {
     <div class="controls">
       ${game.awaitingNext ? '<button class="action" id="next">Next Question ▶</button>' : ''}
       <button class="action" id="end" ${endOk ? '' : 'disabled'}>End Statement</button>
-      <button class="ghost" id="period" ${periodOk ? '' : 'disabled'} title="Free — finish this sentence and start a new one. No combo bonus; use a connector for that.">Add “.” (new sentence)</button>
+      <button class="ghost" id="period" ${periodOk ? '' : 'disabled'} title="${game.player.usedPeriod ? 'Already used your one period this statement — chain a connector to keep going.' : 'Free, once per statement — finish this sentence and start a new one. No combo bonus; use a connector for that.'}">Add “.” (new sentence)${game.player.usedPeriod ? ' — used' : ''}</button>
       <button class="ghost" id="pass" ${canPlay() && (complete || game.player.line.length === 0) ? '' : 'disabled'}>Pass (wait)</button>
       <button class="ghost" id="regroup" ${canPlay() && !game.player.usedRedraw ? '' : 'disabled'}>↻ Call a Recess (fresh talking points, costs your turn)</button>
       <button class="ghost" id="restart">Abandon Run</button>
@@ -415,7 +419,15 @@ function render(): void {
 
     ${
       showSabotageModal
-        ? isForgot
+        ? isHotMic
+          ? `<div class="modal-backdrop"><div class="modal">
+            <div class="modal-title">🎙️ Caught on a hot mic!</div>
+            <p>${oppName} caught you on a hot mic and swiped “<b>${game.lastSabotage!.text}</b>”
+            right out of your hand — and got a peek at the rest of it.</p>
+            <p>Nothing to be done about it now. Make the cards you've still got count.</p>
+            <button class="action" id="ackSabotage">Got it — continue</button>
+          </div></div>`
+          : isForgot
           ? `<div class="modal-backdrop"><div class="modal">
             <div class="modal-title">🧠 You forgot your line!</div>
             <p>${oppName} used <b>Forgot My Line</b> to knock “<b>${game.lastSabotage!.text}</b>”
