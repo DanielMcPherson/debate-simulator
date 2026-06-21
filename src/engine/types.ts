@@ -32,11 +32,21 @@ export type Category =
 
 export type DebateStyle = 'brag' | 'attack' | 'pander';
 
-/** A named AI opponent with a fixed debating style. */
+/** What rattles an opponent into a gaffe (discovered by the player, never told). */
+export type NervousTrigger = 'attacked' | 'pander' | 'self_brag';
+
+/** A named AI opponent with a fixed debating style and a skill/nerves profile. */
 export interface Opponent {
   id: string;
   name: string;
   style: DebateStyle;
+  /** One-line character read shown in the UI (e.g. "Nervous. Prone to gaffes."). */
+  blurb: string;
+  /** Base per-statement chance (0..1) of flubbing into a self-own. High = rookie. */
+  gaffeChance: number;
+  /** Player statements that fluster this opponent, raising the gaffe chance that
+   * turn. Empty/undefined = unflappable. */
+  nervousOf?: NervousTrigger[];
 }
 
 /** A crowd with a HIDDEN preference: statements of `loves` land harder. */
@@ -110,6 +120,11 @@ export interface Card {
 
   // --- powerup ---
   effect?: PowerEffect;
+
+  // --- transient (instance flag) ---
+  /** Set on a card a Teleprompter Typo jammed onto a line. The end-trim must NOT
+   * strip a jammed card (else the sabotage gets silently undone). */
+  jammed?: boolean;
 }
 
 /** A card instance placed in a player's building line, in order. */
@@ -170,6 +185,9 @@ export interface PlayerState {
   heldFinisher?: Card;
   /** Whether this player has used their once-per-question redraw. */
   usedRedraw?: boolean;
+  /** AI only: this statement is a flub-in-progress — build toward a self-own.
+   * Rolled once when the statement starts (in `aiTurn`), cleared at resolution. */
+  gaffing?: boolean;
   /** Multiplier armed by Soundbite, applied to the next completed statement. */
   nextMultiplier?: number;
   /** Whether this player has revealed the crowd's taste (via Plant in the Audience). */
@@ -216,6 +234,18 @@ export interface GameState {
   awaitingNext?: boolean;
   winner?: PlayerId | 'tie';
   log: string[];
+  /** Structured analytics/debug trail (every deal, play, power-up, resolution,
+   * sabotage, win) — downloadable from the UI for bug-hunting & difficulty tuning. */
+  events: GameEvent[];
+}
+
+/** One structured event in the analytics trail. `t` is the type; the rest is
+ * type-specific (card/source on a play, delta/combo/gaffe on a resolution, etc.). */
+export interface GameEvent {
+  t: 'deal' | 'take' | 'power' | 'redraw' | 'pass' | 'sabotage' | 'resolve' | 'win';
+  round: number;
+  by?: PlayerId;
+  [k: string]: unknown;
 }
 
 export type Move =

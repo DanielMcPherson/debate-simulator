@@ -165,10 +165,10 @@ describe('resource model — chunk cards, no replenish, must-finish', () => {
     expect(g.player.knowsCrowd).toBe(true);
   });
 
-  it('auto Typo jams a card that completes the victim into a self-own', () => {
+  it('auto Typo swaps the victim\'s last word into a self-own', () => {
     const g = createGame({ seed: 1 });
-    g.ai.line = [findDef('s_i')!]; // victim has "I …"
-    g.pool = [findDef('p_disgrace')!]; // "…am a national disgrace" => self-own
+    g.ai.line = [{ ...findDef('s_i')! }, { ...findDef('p_patriot')! }]; // "I am a true patriot"
+    g.pool = [findDef('p_disgrace')!]; // replace last → "I am a national disgrace" (self-own)
     g.player.hand.push({ id: 'pw_ty', role: 'powerup', effect: 'typo', text: 'x' });
     applyMove(g, { kind: 'power', cardId: 'pw_ty' }); // no target -> auto-pick
     expect(g.ai.line.map((c) => c.id.split('#')[0])).toEqual(['s_i', 'p_disgrace']);
@@ -179,11 +179,11 @@ describe('resource model — chunk cards, no replenish, must-finish', () => {
     const g = createGame({ seed: 7 });
     g.turn = 'ai';
     g.ai.hand.push({ id: 'pw_ty', role: 'powerup', effect: 'typo', text: 'x' });
-    g.player.line = [findDef('s_opp')!]; // "My opponent …"
-    g.pool = [findDef('p_patriot')!]; // "…is a true patriot" => the player praises the opponent
+    g.player.line = [{ ...findDef('s_opp')! }, { ...findDef('p_disgrace')! }]; // "My opponent is a national disgrace"
+    g.pool = [findDef('p_patriot')!]; // replace → "My opponent is a true patriot" (player praises the opp)
     applyMove(g, { kind: 'power', cardId: 'pw_ty' });
     expect(g.lastSabotage?.victim).toBe('player');
-    expect(g.player.line.length).toBe(2);
+    expect(g.player.line.map((c) => c.id.split('#')[0])).toEqual(['s_opp', 'p_patriot']);
   });
 
   it('Forgot My Line knocks the last card off the opponent and flags the victim', () => {
@@ -217,12 +217,14 @@ describe('resource model — chunk cards, no replenish, must-finish', () => {
     expect(g.player.hand.some((c) => c.id === 'pw_fg2')).toBe(false); // still consumed
   });
 
-  it('Teleprompter Typo jams the CHOSEN card when targeted', () => {
+  it('Teleprompter Typo replaces the victim\'s last word with the CHOSEN card when targeted', () => {
     const g = createGame({ seed: 1 });
+    g.ai.line = [{ ...findDef('s_opp')! }, { ...findDef('p_patriot')! }]; // victim mid-statement
     const target = g.pool[2];
     g.player.hand.push({ id: 'pw_ty2', role: 'powerup', effect: 'typo', text: 'x' });
     applyMove(g, { kind: 'power', cardId: 'pw_ty2', targetFrom: 'pool', targetCardId: target.id });
     expect(g.ai.line[g.ai.line.length - 1].id).toBe(target.id); // exactly the picked card
+    expect(g.ai.line.length).toBe(2); // replaced the last word, not appended
     expect(g.pool.some((c) => c.id === target.id)).toBe(false); // removed from pool
   });
 
@@ -359,5 +361,50 @@ describe('the free period', () => {
     applyMove(g, { kind: 'end' });
     expect(g.player.lastReaction?.grammatical).toBe(true); // trimmed to "My opponent is a national disgrace"
     expect(g.player.line.map((c) => c.id)).toEqual(['s_opp', 'p_disgrace']); // trailing scraps dropped
+  });
+
+  it('Teleprompter Typo REPLACES the victim\'s last card with the chosen one', () => {
+    const g = createGame({ seed: 1 });
+    g.turn = 'player';
+    const jam = { ...findDef('p_disgrace')! }; // clone so we don't mutate the shared def
+    g.player.hand = [{ id: 'pw_ty', role: 'powerup', effect: 'typo', text: 'x' }, jam];
+    g.ai.line = [{ ...findDef('s_opp')! }, { ...findDef('p_patriot')! }]; // "My opponent is a true patriot"
+    applyMove(g, { kind: 'power', cardId: 'pw_ty', targetFrom: 'hand', targetCardId: jam.id });
+    // last word (p_patriot) swapped for p_disgrace, not appended
+    expect(g.ai.line.map((c) => c.id.split('#')[0])).toEqual(['s_opp', 'p_disgrace']);
+    expect(g.ai.line[g.ai.line.length - 1].jammed).toBe(true);
+  });
+
+  it('Teleprompter Typo replaces the last SPOKEN word, skipping a trailing period', () => {
+    const g = createGame({ seed: 1 });
+    g.turn = 'player';
+    const jam = { ...findDef('p_disgrace')! };
+    g.player.hand = [{ id: 'pw_ty', role: 'powerup', effect: 'typo', text: 'x' }, jam];
+    // victim's last *card* is a dangling period; the last *word* is the predicate
+    g.ai.line = [{ ...findDef('s_opp')! }, { ...findDef('p_patriot')! }, { ...PERIOD }];
+    applyMove(g, { kind: 'power', cardId: 'pw_ty', targetFrom: 'hand', targetCardId: jam.id });
+    // p_patriot (the spoken word) swapped for p_disgrace; the period is gone, not appended-after
+    expect(g.ai.line.map((c) => c.id.split('#')[0])).toEqual(['s_opp', 'p_disgrace']);
+  });
+
+  it('a Teleprompter Typo sticks — the end-trim does NOT strip a jammed trailing card', () => {
+    const g = createGame({ seed: 1 });
+    g.player.done = true;
+    g.turn = 'ai';
+    const jam = { ...findDef('c_and')!, jammed: true }; // a jam that leaves the line incomplete
+    g.ai.line = [findDef('s_opp')!, findDef('p_disgrace')!, jam];
+    applyMove(g, { kind: 'end' });
+    // NOT rescued back to "My opponent is a national disgrace" — the jam holds, so it's confused
+    expect(g.ai.lastReaction?.grammatical).toBe(false);
+    expect(g.ai.line.some((c) => c.jammed)).toBe(true);
+  });
+
+  it('an UNjammed trailing connector is still trimmed (lenient end preserved)', () => {
+    const g = createGame({ seed: 1 });
+    g.player.done = true;
+    g.turn = 'ai';
+    g.ai.line = [findDef('s_opp')!, findDef('p_disgrace')!, findDef('c_and')!]; // no jam flag
+    applyMove(g, { kind: 'end' });
+    expect(g.ai.lastReaction?.grammatical).toBe(true); // trimmed to the complete prefix, as before
   });
 });

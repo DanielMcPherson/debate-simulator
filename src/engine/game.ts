@@ -1,4 +1,4 @@
-import type { Card, GameState, Move, PlayerId, PlayerState } from './types';
+import type { Card, GameEvent, GameState, Move, PlayerId, PlayerState } from './types';
 import { isComplete, canAppend } from './grammar';
 import { scoreStatement } from './scoring';
 import { renderSentence, cardLabel } from './morphology';
@@ -28,6 +28,20 @@ export interface GameOptions {
 // The RNG lives alongside the state so a save/restore could persist it; for the
 // prototype we keep a module-side map keyed by the state object.
 const rngFor = new WeakMap<GameState, Rng>();
+
+/** The game's seeded RNG (for ai.ts's gaffe rolls — keeps the AI deterministic). */
+export function gameRng(state: GameState): Rng {
+  return rngFor.get(state)!;
+}
+
+/** Append a structured event to the analytics/debug trail (stamped with the round).
+ * Auto-attaches the acting player's available power-ups (so a log can answer "did I
+ * even have a Typo when I thought I played one?"). */
+function logEvent(state: GameState, t: GameEvent['t'], data: Record<string, unknown> = {}): void {
+  const by = data.by as PlayerId | undefined;
+  const powerups = by ? state[by].hand.filter((c) => c.role === 'powerup').map((c) => c.effect) : undefined;
+  state.events.push({ t, round: state.round, ...(powerups ? { powerups } : {}), ...data });
+}
 
 function newPlayer(id: PlayerId): PlayerState {
   return { id, deck: [], hand: [], line: [], done: false };
@@ -62,6 +76,7 @@ function dealRound(state: GameState): void {
     p.line = [];
     p.heldFinisher = undefined;
     p.usedRedraw = false;
+    p.gaffing = false;
     p.nextMultiplier = undefined;
     p.knowsOppHand = false; // Hot Mic reveal lasts only the question it's played
     p.done = false;
@@ -75,6 +90,15 @@ function dealRound(state: GameState): void {
   // Pick a moderator phrasing LAST (after all card deals) so it doesn't perturb
   // the deterministic deal for a given seed.
   state.question = state.topic.questions[Math.floor(rng() * state.topic.questions.length)];
+  logEvent(state, 'deal', {
+    topic: state.topic.id,
+    question: state.question,
+    crowdLoves: state.crowd?.loves, // the HIDDEN taste — recorded for analysis only
+    opponent: state.opponent?.id,
+    first: state.turn,
+    playerHand: state.player.hand.map(cardLabel),
+    aiHand: state.ai.hand.map(cardLabel),
+  });
 }
 
 /** Swap a card matching `pred` into the pool from the deck if none is present. */
@@ -122,6 +146,7 @@ export function createGame(opts: GameOptions = {}): GameState {
     ai: newPlayer('ai'),
     turn: 'player',
     log: [],
+    events: [],
   };
   const rng = makeRng(opts.seed ?? 1);
   rngFor.set(state, rng);
@@ -152,7 +177,11 @@ function other(id: PlayerId): PlayerId {
  * complete prefix (e.g. a bare subject) returns null → lenient "confused" scoring.
  */
 export function endableLine(line: Card[]): Card[] | null {
-  for (let end = line.length; end > 0; end--) {
+  // Never trim away a Teleprompter-Typo'd card: the prefix must include every
+  // jammed card, so sabotage sticks (an unrecovered jam → incomplete → "confused").
+  let minLen = 1;
+  for (let i = 0; i < line.length; i++) if (line[i].jammed) minLen = i + 1;
+  for (let end = line.length; end >= minLen; end--) {
     const trimmed = line.slice(0, end);
     if (isComplete(trimmed)) return trimmed;
   }
@@ -231,7 +260,33 @@ function resolveStatement(state: GameState, p: PlayerState): void {
   state.bar = Math.max(-100, Math.min(100, state.bar + signed));
   const who = p.id === 'player' ? 'You' : (state.opponent?.name ?? 'Opponent');
   state.log.push(`${who}: "${renderSentence(p.line)}" → ${reaction.label} (${signed >= 0 ? '+' : ''}${Math.round(signed * 10) / 10})`);
+  logEvent(state, 'resolve', {
+    by: p.id,
+    text: renderSentence(p.line),
+    cards: p.line.map((c) => c.id),
+    delta: reaction.delta, // toward the SPEAKER (+ = good for them), matches `label`
+    label: reaction.label,
+    grammatical: reaction.grammatical,
+    combo: reaction.combo?.kind,
+    gaffe: p.id === 'ai' ? !!p.gaffing : undefined,
+    bar: Math.round(state.bar), // resulting audience bar (+player / −ai)
+  });
+  // A flustered opponent that actually flubbed reacts (the lightweight stand-in for
+  // the embarrassed-face / inner-monologue we'll add with graphics).
+  if (p.id === 'ai' && p.gaffing && reaction.delta < 0) {
+    const name = state.opponent?.name ?? 'Your opponent';
+    const tell = GAFFE_TELLS[Math.floor(rngFor.get(state)!() * GAFFE_TELLS.length)];
+    state.log.push(tell.replace('%n', name));
+  }
+  p.gaffing = false;
 }
+
+const GAFFE_TELLS = [
+  '%n winces — "…did I say that out loud?"',
+  '%n turns pale and loosens their collar.',
+  '%n forces a panicked, sweaty smile.',
+  '%n looks like they want the floor to swallow them.',
+];
 
 function endRoundIfDone(state: GameState): void {
   if (!state.player.done || !state.ai.done) return;
@@ -243,6 +298,7 @@ function endRoundIfDone(state: GameState): void {
   } else {
     state.awaitingNext = true; // hold on the reveal until nextQuestion() is called
   }
+  if (state.winner) logEvent(state, 'win', { winner: state.winner, bar: Math.round(state.bar) });
 }
 
 /** Advance to the next question after the result has been shown. */
@@ -264,20 +320,31 @@ function advanceTurn(state: GameState): void {
 }
 
 /**
- * Find the pool card that, jammed onto the victim's line, COMPLETES it into the
- * worst (lowest-scoring) statement for the victim — i.e. forces a real self-own
- * (praising the opponent / a villain, insulting themselves or the crowd). Returns
- * index -1 and delta +∞ when no jam can force such a self-own (so the AI shouldn't
- * bother Typo-ing). Never produces gibberish — only grammatical completions.
+ * Find the pool card that, swapped in for the victim's LAST card (Teleprompter
+ * Typo replaces, it doesn't append), makes the worst (lowest-scoring) COMPLETE
+ * statement for the victim — i.e. flips their own line into a self-own ("…will
+ * give everyone a puppy" → "…will destroy this country"). Returns index -1 /
+ * delta +∞ when no replacement forces such a self-own (so the AI won't bother).
+ * Only grammatical, complete results — never gibberish.
  */
+/** Index of the last SPOKEN word (non-connector) — what Typo replaces, so a dangling
+ * trailing period/"and" isn't mistaken for the opponent's last word. -1 if none. */
+function lastContentIndex(line: Card[]): number {
+  for (let i = line.length - 1; i >= 0; i--) if (line[i].role !== 'connector') return i;
+  return -1;
+}
+
 export function bestTypoJam(state: GameState, victimLine: Card[]): { index: number; delta: number } {
+  const ci = lastContentIndex(victimLine);
+  if (ci < 0) return { index: -1, delta: Infinity }; // nothing spoken to replace
+  const base = victimLine.slice(0, ci); // replace the last spoken word (drop trailing connectors)
   let index = -1;
   let delta = Infinity;
   for (let i = 0; i < state.pool.length; i++) {
     const c = state.pool[i];
-    if (!canAppend(victimLine, c)) continue;
-    const line = [...victimLine, c];
-    if (!isComplete(line)) continue; // must complete into a real statement
+    if (!canAppend(base, c)) continue;
+    const line = [...base, c];
+    if (!isComplete(line)) continue; // must replace into a real statement
     const d = scoreStatement(line, { topicId: state.topic?.id }).delta; // toward the victim
     if (d < delta) {
       delta = d;
@@ -293,6 +360,7 @@ function applyPowerup(state: GameState, p: PlayerState, move: { cardId: string; 
   if (idx === -1) return;
   const card = p.hand[idx];
   p.hand.splice(idx, 1); // power-ups are one-shot
+  logEvent(state, 'power', { by: p.id, effect: card.effect });
   let free = false;
 
   switch (card.effect) {
@@ -343,6 +411,7 @@ function applyPowerup(state: GameState, p: PlayerState, move: { cardId: string; 
       if (!opp.done && opp.line.length > 0) {
         const dropped = opp.line.pop()!;
         state.lastSabotage = { victim: opp.id, by: p.id, text: cardLabel(dropped), kind: 'forgot' };
+        logEvent(state, 'sabotage', { by: p.id, victim: opp.id, kind: 'forgot', text: cardLabel(dropped) });
         const who = p.id === 'player' ? 'You' : state.opponent?.name ?? 'Opponent';
         const them = p.id === 'player' ? state.opponent?.name ?? 'your opponent' : 'you';
         state.log.push(`${who} rattles the other podium — ${them} forgets "${cardLabel(dropped)}"!`);
@@ -350,25 +419,32 @@ function applyPowerup(state: GameState, p: PlayerState, move: { cardId: string; 
       break;
     }
     case 'typo': {
-      // Jam a card onto the opponent's in-progress statement.
+      // Teleprompter Typo: knock the opponent's LAST word off and swap in a card
+      // you choose (or, for the AI, the one that forces the worst self-own).
       const opp = state[other(p.id)];
-      if (!opp.done) {
+      if (!opp.done && opp.line.length > 0) {
         let sabotage: Card | undefined;
         if (move.targetCardId && move.targetFrom) {
-          // The player picks the card to jam.
+          // The player picks the replacement card (from the pool or their hand).
           const src = move.targetFrom === 'pool' ? state.pool : p.hand;
           const ti = src.findIndex((c) => c.id === move.targetCardId);
           if (ti !== -1) sabotage = src.splice(ti, 1)[0];
         } else {
-          // The AI auto-picks the jam that forces the worst self-own (it only
-          // chooses to play Typo when such a jam exists — see chooseMove).
+          // The AI auto-picks the replacement that forces the worst self-own (it
+          // only chooses to play Typo when one exists — see chooseMove).
           const jam = bestTypoJam(state, opp.line);
           if (jam.index !== -1) sabotage = state.pool.splice(jam.index, 1)[0];
         }
-        if (sabotage) {
+        const ci = lastContentIndex(opp.line); // the last SPOKEN word (skip a trailing period)
+        if (sabotage && ci >= 0) {
+          const removed = opp.line[ci];
+          opp.line.splice(ci); // drop the last spoken word + any trailing connectors
+          sabotage.jammed = true; // must stick — the end-trim won't strip it (see endableLine)
           opp.line.push(sabotage);
           state.lastSabotage = { victim: opp.id, by: p.id, text: cardLabel(sabotage) };
-          state.log.push(`${p.id === 'player' ? 'You' : state.opponent?.name ?? 'Opponent'} jams "${cardLabel(sabotage)}" into the other podium!`);
+          logEvent(state, 'sabotage', { by: p.id, victim: opp.id, kind: 'typo', text: cardLabel(sabotage), replaced: cardLabel(removed) });
+          const who = p.id === 'player' ? 'You' : state.opponent?.name ?? 'Opponent';
+          state.log.push(`${who} hit the teleprompter — "${cardLabel(removed)}" twists into "${cardLabel(sabotage)}"!`);
         }
       }
       break;
@@ -395,6 +471,7 @@ export function applyMove(state: GameState, move: Move): GameState {
 
   if (move.kind === 'pass') {
     if (p.line.length > 0 && endableLine(p.line) === null) return state; // can't bail mid-clause
+    logEvent(state, 'pass', { by: p.id });
     state.passes = (state.passes ?? 0) + 1;
     // Stalemate: opponent already locked in, or both passed in a row -> resolve.
     if (state[other(p.id)].done || (state.passes ?? 0) >= 2) {
@@ -424,6 +501,7 @@ export function applyMove(state: GameState, move: Move): GameState {
     if (state.topic) ensurePoolHasTopic(state, state.topic.id); // topic first…
     ensurePoolPlayable(state); // …then re-assert playability (see dealRound)
     p.usedRedraw = true;
+    logEvent(state, 'redraw', { by: p.id });
     advanceTurn(state); // costs your turn
     return state;
   }
@@ -432,6 +510,7 @@ export function applyMove(state: GameState, move: Move): GameState {
   if (move.from === 'period') {
     if (!canAppend(p.line, PERIOD)) return state;
     p.line.push(instances(PERIOD, 1)[0]);
+    logEvent(state, 'take', { by: p.id, from: 'period', card: PERIOD.id, text: '.', role: 'connector' });
     advanceTurn(state);
     return state;
   }
@@ -446,12 +525,14 @@ export function applyMove(state: GameState, move: Move): GameState {
     if (p.heldFinisher) return state; // already committed to one
     source.splice(idx, 1);
     p.heldFinisher = card; // committed — appended when you end, for better or worse
+    logEvent(state, 'take', { by: p.id, from: move.from, card: card.id, text: cardLabel(card), role: card.role, finisher: true });
     advanceTurn(state);
     return state;
   }
 
   source.splice(idx, 1);
   p.line.push(card);
+  logEvent(state, 'take', { by: p.id, from: move.from, card: card.id, text: cardLabel(card), role: card.role });
   // No replenishment: the pool and hands only shrink over the question.
   advanceTurn(state);
   return state;

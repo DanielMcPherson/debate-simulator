@@ -31,20 +31,21 @@ A debate is a series of **questions**. Each question:
 - If your deal is bad (e.g. nothing good to start with), **↻ Call a Recess** once per
   question to reshuffle the pool — it costs you the turn (your hand is left untouched).
 - Your deck also holds one-shot **power-ups** (played from hand, costs your turn):
-  **📋 Search Notes** (draw 5), **🎤 Teleprompter Typo** (jam a card onto the
-  opponent's statement to wreck it), **🧠 Forgot My Line** (knock the opponent's
-  last word off their in-progress statement — discarded for good), **👏 Soundbite**
+  **📋 Search Notes** (draw 5), **🎤 Teleprompter Typo** (replace the opponent's last
+  word with a card you choose — twist "…will give everyone a puppy" into "…will
+  destroy this country"), **🧠 Forgot My Line** (knock the opponent's last word off
+  their in-progress statement — discarded for good, no replacement), **👏 Soundbite**
   (next statement ×1.5), **🕵️ Plant in the Audience** (reveal the crowd's hidden
   taste), **🎙️ Hot Mic** (reveal the opponent's hand for the rest of the debate AND
   steal a card from it — e.g. grab their Typo before they can use it), **🗣️
   Filibuster** (stock your hand with connectors so you can chain a long combo).
   **Search Notes and Filibuster are free** (don't cost your turn); the others cost
   your turn. The AI uses them too (but never Plant — it's blind to the crowd by
-  design). When the opponent **Typos** *you* (jams a card in) or makes you **Forget
-  your line** (drops your last one), a red alert shows what changed — the line stays
-  grammatical either way, so you can spin it forward: tack on another sentence to
-  soften the blow (a **but** pivot helps most), or End and cut your losses (the AI
-  auto-picks the most damaging Typo, and uses Forgot to wreck a strong line you're
+  design). When the opponent **Typos** *you* (swaps your last word) or makes you **Forget
+  your line** (drops your last one), a red alert shows what changed, so you can spin it
+  forward: tack on another sentence to recover (a **but** pivot helps most), or End and
+  cut your losses (the AI waits for a strong line, then Typos its last word into a
+  self-own, and uses Forgot to wreck a strong line you're
   sitting on).
 - Deals a fixed **shared pool** (~9 cards, contested) and a small **private hand**
   to each player. **Nothing replenishes** during the question — cards only run out.

@@ -223,15 +223,17 @@ export const PERIOD: Card = { id: 'c_period', role: 'connector', text: '.', conj
 
 // --- intensifiers (finishers) -----------------------------------------------
 
-// One-shot action cards (not part of the sentence). Played from the hand.
+// One-shot action cards (not part of the sentence). Played from the hand. The two
+// sabotage cards are worded as a contrasting pair (REPLACE vs DELETE) and colored
+// differently in the UI (see .card.fx-* in style.css) so they're not confused.
 export const POWERUPS: Card[] = [
-  { id: 'pw_search', role: 'powerup', effect: 'search', text: '📋 Search Notes (draw 5)' },
-  { id: 'pw_typo', role: 'powerup', effect: 'typo', text: "🎤 Teleprompter Typo (jam the opponent's line)" },
-  { id: 'pw_forgot', role: 'powerup', effect: 'forgot', text: "🧠 Forgot My Line (knock the opponent's last word off)" },
-  { id: 'pw_soundbite', role: 'powerup', effect: 'soundbite', text: '👏 Soundbite (next statement ×1.5)' },
-  { id: 'pw_plant', role: 'powerup', effect: 'plant', text: '🕵️ Plant in the Audience (reveal the crowd)' },
-  { id: 'pw_hotmic', role: 'powerup', effect: 'hotmic', text: '🎙️ Hot Mic (see their hand, steal a card)' },
-  { id: 'pw_filibuster', role: 'powerup', effect: 'filibuster', text: '🗣️ Filibuster (stock up on connectors)' },
+  { id: 'pw_search', role: 'powerup', effect: 'search', text: '📋 Search Notes — draw 5 cards' },
+  { id: 'pw_typo', role: 'powerup', effect: 'typo', text: "🎤 Teleprompter Typo — REPLACE their last word with yours" },
+  { id: 'pw_forgot', role: 'powerup', effect: 'forgot', text: "🧠 Forgot My Line — DELETE their last word" },
+  { id: 'pw_soundbite', role: 'powerup', effect: 'soundbite', text: '👏 Soundbite — your next statement ×1.5' },
+  { id: 'pw_plant', role: 'powerup', effect: 'plant', text: '🕵️ Plant in the Audience — reveal the crowd' },
+  { id: 'pw_hotmic', role: 'powerup', effect: 'hotmic', text: '🎙️ Hot Mic — see their hand, steal a card' },
+  { id: 'pw_filibuster', role: 'powerup', effect: 'filibuster', text: '🗣️ Filibuster — stock up on connectors' },
 ];
 
 export const INTENSIFIERS: Card[] = [
@@ -312,13 +314,16 @@ export const TOPICS: Topic[] = [
 ];
 
 // Named opponents, each with a fixed debating style (and a style-tuned deck).
+// gaffeChance falls up the ladder: opp 1 is a Glass-Joe rookie who flubs often and
+// cracks under any pressure; the boss is unflappable and plays optimally. nervousOf
+// is the opponent's *tell* — what fluster them — for the player to discover.
 export const OPPONENTS: Opponent[] = [
-  { id: 'pander', name: 'Gov. Patty Pander', style: 'pander' },
-  { id: 'blowhard', name: 'Senator Blowhard', style: 'brag' },
-  { id: 'passer', name: 'Mayor Buck Passer', style: 'pander' },
-  { id: 'smearwell', name: 'Rep. Dirk Smearwell', style: 'attack' },
-  { id: 'slander', name: 'Justice Vera Slander', style: 'attack' },
-  { id: 'grandstand', name: 'Maximilian Q. Grandstand III', style: 'brag' },
+  { id: 'pander', name: 'Gov. Patty Pander', style: 'pander', blurb: 'Nervous. Prone to gaffes.', gaffeChance: 0.45, nervousOf: ['attacked', 'pander', 'self_brag'] },
+  { id: 'blowhard', name: 'Senator Blowhard', style: 'brag', blurb: 'Big ego — rattled when shown up.', gaffeChance: 0.25, nervousOf: ['self_brag'] },
+  { id: 'passer', name: 'Mayor Buck Passer', style: 'pander', blurb: 'Slick, but cracks under a hot crowd.', gaffeChance: 0.12, nervousOf: ['pander'] },
+  { id: 'smearwell', name: 'Rep. Dirk Smearwell', style: 'attack', blurb: 'Sharp-tongued. Hates being attacked.', gaffeChance: 0.05, nervousOf: ['attacked'] },
+  { id: 'slander', name: 'Justice Vera Slander', style: 'attack', blurb: 'Polished. Rarely slips.', gaffeChance: 0.02 },
+  { id: 'grandstand', name: 'Maximilian Q. Grandstand III', style: 'brag', blurb: 'Unflappable. Never makes a mistake.', gaffeChance: 0 },
 ];
 
 /**
@@ -326,12 +331,20 @@ export const OPPONENTS: Opponent[] = [
  * earn a reward card and climb to the next; lose and the run ends. `maxExtend`
  * tunes how long/combo-heavy each opponent's statements get.
  */
+// Difficulty rises on two axes: deeper planning (maxExtend) and fewer gaffes
+// (Opponent.gaffeChance). The boss plans deep and never slips — beating it on the
+// DEFAULT deck should be near-impossible; deck upgrades (later) close the gap.
+// maxExtend tops out at 6: past that the ±35/50 scoring cap flattens it (deeper
+// planning just caps out, no extra edge). The early ramp (3→6) is the real depth
+// lever; the boss's "near-impossible on the default deck" must come from DECK
+// QUALITY (giving top opponents reward-tier cards — see Roadmap), tuned with the
+// deck-building pass. Gaffes (Opponent.gaffeChance) carry the easy/mid difficulty.
 export const LADDER: { opponentId: string; maxExtend: number }[] = [
   { opponentId: 'pander', maxExtend: 3 },
-  { opponentId: 'blowhard', maxExtend: 3 },
-  { opponentId: 'passer', maxExtend: 4 },
-  { opponentId: 'smearwell', maxExtend: 4 },
-  { opponentId: 'slander', maxExtend: 5 },
+  { opponentId: 'blowhard', maxExtend: 4 },
+  { opponentId: 'passer', maxExtend: 5 },
+  { opponentId: 'smearwell', maxExtend: 6 },
+  { opponentId: 'slander', maxExtend: 6 },
   { opponentId: 'grandstand', maxExtend: 6 }, // final boss
 ];
 

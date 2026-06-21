@@ -1,7 +1,7 @@
 import './style.css';
 import type { Card, GameState, Move, Reaction } from '../engine/types';
 import { createGame, applyMove, canEnd, nextQuestion } from '../engine/game';
-import { chooseMove } from '../engine/ai';
+import { aiTurn } from '../engine/ai';
 import { displayWords, cardLabel } from '../engine/morphology';
 import { isComplete, canAppend } from '../engine/grammar';
 import { LADDER, REWARDS, OPPONENTS, PERIOD } from '../data/cards';
@@ -47,6 +47,29 @@ function newRun(): void {
   render();
 }
 
+/** Download the current debate's structured event log as JSON (works on github.io —
+ * a user-clicked Blob download; the browser can't auto-write files). */
+function downloadDebugLog(): void {
+  const payload = {
+    exported: new Date().toISOString(),
+    debate: run.rung + 1,
+    opponent: game.opponent?.id,
+    earnedCards: run.bonus.map((c) => c.id),
+    question: game.round,
+    bar: Math.round(game.bar),
+    winner: game.winner,
+    events: game.events,
+    humanLog: game.log,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `debate-log-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function pickRewards(n: number): Card[] {
   const pool = [...REWARDS];
   const out: Card[] = [];
@@ -73,6 +96,27 @@ function checkDebateEnd(): void {
 function partialText(line: Card[]): string {
   // Collapse the space before a period card so an in-progress line reads "…jackass."
   return displayWords(line).join(' ').replace(/\s+\./g, '.').trim();
+}
+
+/** Index of the opponent's last SPOKEN word (skips a trailing period) — what Typo replaces. */
+function oppLastContentIdx(): number {
+  const line = game.ai.line;
+  for (let i = line.length - 1; i >= 0; i--) if (line[i].role !== 'connector') return i;
+  return -1;
+}
+function oppLastWord(): string {
+  const i = oppLastContentIdx();
+  return i < 0 ? '' : displayWords(game.ai.line)[i] || '';
+}
+
+/** The opponent's in-progress line; while a Typo is armed, highlight the word it'll replace. */
+function oppSpeechHtml(): string {
+  const line = game.ai.line;
+  if (!line.length) return '<span style="color:var(--muted)">…</span>';
+  if (!pendingTypo) return partialText(line) || '<span style="color:var(--muted)">…</span>';
+  const ci = oppLastContentIdx();
+  const words = displayWords(line).map((w, i) => (i === ci && w ? `<span class="typo-target-word">${w}</span>` : w));
+  return words.join(' ').replace(/\s+\./g, '.').trim();
 }
 
 function reactionClass(r?: Reaction): string {
@@ -109,11 +153,12 @@ function cardHtml(c: Card, source: 'pool' | 'hand', held: boolean): string {
   if (c.role === 'powerup') {
     const isTypo = c.effect === 'typo';
     // Typo needs a live opponent statement to jam; Forgot needs one with a card to drop.
-    const noTypoTarget = isTypo && game.ai.done;
+    const noTypoTarget = isTypo && (game.ai.done || game.ai.line.length === 0); // needs a last word to replace
     const noForgotTarget = c.effect === 'forgot' && (game.ai.done || game.ai.line.length === 0);
     const disabled = !canPlay() || noTypoTarget || noForgotTarget ? 'disabled' : '';
     const sel = pendingTypo === c.id || pendingHotMic === c.id ? ' selecting' : '';
-    return `<button class="card power${sel}" data-id="${c.id}" data-power="1" data-effect="${c.effect}" ${disabled}>${cardLabel(c)}</button>`;
+    // fx-<effect> gives each power-up its own color so they aren't all "the purple card".
+    return `<button class="card power fx-${c.effect}${sel}" data-id="${c.id}" data-power="1" data-effect="${c.effect}" ${disabled}>${cardLabel(c)}</button>`;
   }
   // While choosing a Typo target, sentence cards become jam targets.
   if (pendingTypo) {
@@ -147,10 +192,15 @@ function opponentName(id: string): string {
   return OPPONENTS.find((o) => o.id === id)?.name ?? id;
 }
 
-/** A 1–4 star difficulty read off the opponent's planning depth (maxExtend 3..6). */
-function difficultyStars(maxExtend: number): string {
-  const filled = Math.max(1, Math.min(4, maxExtend - 2));
-  return '★'.repeat(filled) + '☆'.repeat(4 - filled);
+function opponentBlurb(id: string): string {
+  return OPPONENTS.find((o) => o.id === id)?.blurb ?? '';
+}
+
+/** Difficulty by ladder position (1..6 filled stars) — overall toughness, not just
+ * planning depth (which plateaus), so the rising challenge reads clearly. */
+function difficultyStars(rung: number): string {
+  const filled = Math.max(1, Math.min(LADDER.length, rung + 1));
+  return '★'.repeat(filled) + '☆'.repeat(LADDER.length - filled);
 }
 
 /** The Slay-the-Spire-style ladder: a straight line of opponents you climb. */
@@ -159,10 +209,12 @@ function ladderHtml(): string {
     const status = i < run.rung ? 'done' : i === run.rung ? 'current' : 'locked';
     const icon = status === 'done' ? '✓' : status === 'current' ? '▶' : '🔒';
     const crown = i === LADDER.length - 1 ? ' 👑' : '';
+    // Hide the character read for opponents you haven't reached yet (a little mystery).
+    const blurb = status === 'locked' ? '' : `<span class="rung-blurb">${opponentBlurb(rung.opponentId)}</span>`;
     return `<div class="rung ${status}">
         <span class="rung-icon">${icon}</span>
-        <span class="rung-name">Debate ${i + 1}: ${opponentName(rung.opponentId)}${crown}</span>
-        <span class="rung-diff" title="difficulty">${difficultyStars(rung.maxExtend)}</span>
+        <span class="rung-name">Debate ${i + 1}: ${opponentName(rung.opponentId)}${crown}${blurb}</span>
+        <span class="rung-diff" title="difficulty">${difficultyStars(i)}</span>
       </div>`;
   }).join('');
 }
@@ -281,15 +333,16 @@ function render(): void {
   const sabotage = sabotaged
     ? isForgot
       ? `<div class="sabotage">⚠️ ${oppName} rattled you — you forgot “<b>${game.lastSabotage!.text}</b>” and it dropped off your statement! Keep building to finish your thought — or End with what's left.</div>`
-      : `<div class="sabotage">⚠️ ${oppName} jammed “<b>${game.lastSabotage!.text}</b>” into your statement! Spin it forward — tack on another sentence to soften it (a “but …” softens it most) — or End and cut your losses.</div>`
+      : `<div class="sabotage">⚠️ ${oppName} hit the teleprompter — your last word is now “<b>${game.lastSabotage!.text}</b>”! Spin it forward — tack on another sentence to recover (a “but …” helps most) — or End and cut your losses.</div>`
+    : '';
+
+  // A loud, unmistakable mode banner while a Typo is armed (the word it'll replace
+  // is also highlighted on the opponent's podium).
+  const typoBanner = pendingTypo
+    ? `<div class="typo-banner">🎤 <b>TELEPROMPTER TYPO ARMED.</b> Click one of <b>your</b> cards (pool or hand) to put it in ${oppName}'s mouth — it <b>replaces their last word</b>${oppLastWord() ? ` (the highlighted “<b>${oppLastWord()}</b>”)` : ''}. &nbsp; <i>Click the Typo card again to cancel.</i></div>`
     : '';
 
   const notes: string[] = [];
-  if (pendingTypo) {
-    notes.push(
-      `🎤 <b>Teleprompter Typo:</b> click a card from the pool or your hand to jam onto ${game.opponent?.name ?? 'your opponent'} — or click the power-up again to cancel.`,
-    );
-  }
   if (pendingHotMic) {
     notes.push(
       `🎙️ <b>Hot Mic:</b> click a card in ${game.opponent?.name ?? 'the opponent'}'s revealed hand below to steal it — or click the power-up again to cancel.`,
@@ -320,9 +373,9 @@ function render(): void {
         <div class="reaction ${reactionClass(game.player.lastReaction)}">${game.player.lastReaction?.detail.split('—').pop()?.trim() ?? ''}</div>
         ${comboHtml(game.player.lastReaction)}
       </div>
-      <div class="podium them">
+      <div class="podium them${pendingTypo ? ' typo-target' : ''}">
         <div class="who">${game.opponent?.name ?? 'Opponent'}</div>
-        <div class="speech">${partialText(game.ai.line) || '<span style="color:var(--muted)">…</span>'}</div>
+        <div class="speech">${oppSpeechHtml()}</div>
         <div class="reaction ${reactionClass(game.ai.lastReaction)}">${game.ai.lastReaction?.detail.split('—').pop()?.trim() ?? ''}</div>
         ${comboHtml(game.ai.lastReaction)}
       </div>
@@ -341,6 +394,7 @@ function render(): void {
         : ''
     }
 
+    ${typoBanner}
     ${sabotage}
     ${finisherNote}
 
@@ -351,6 +405,7 @@ function render(): void {
       <button class="ghost" id="pass" ${canPlay() && (complete || game.player.line.length === 0) ? '' : 'disabled'}>Pass (wait)</button>
       <button class="ghost" id="regroup" ${canPlay() && !game.player.usedRedraw ? '' : 'disabled'}>↻ Call a Recess (fresh talking points, costs your turn)</button>
       <button class="ghost" id="restart">Abandon Run</button>
+      <button class="ghost" id="dumplog" title="Download a JSON event log of this debate for bug analysis">🐞 Debug log</button>
       <span class="turn-hint">${hint}</span>
     </div>
 
@@ -369,11 +424,11 @@ function render(): void {
           </div></div>`
           : `<div class="modal-backdrop"><div class="modal">
             <div class="modal-title">⚠️ You've been sabotaged!</div>
-            <p>${oppName} used a <b>Teleprompter Typo</b> to jam
-            “<b>${game.lastSabotage!.text}</b>” into your statement. It now reads:</p>
+            <p>${oppName} hit the teleprompter — your last word got swapped to
+            “<b>${game.lastSabotage!.text}</b>”. Your statement now reads:</p>
             <p class="modal-quote">“${partialText(game.player.line) || '…'}”</p>
-            <p>You can spin it forward — add another sentence to soften the blow (a “<b>but …</b>”
-            softens it most), or End and cut your losses.</p>
+            <p>You can spin it forward — add another sentence to recover (a “<b>but …</b>”
+            helps most), or End and cut your losses.</p>
             <button class="action" id="ackSabotage">Got it — continue</button>
           </div></div>`
         : ''
@@ -476,6 +531,7 @@ function render(): void {
     driveAI(); // even questions start on the AI's turn — let it speak first
   });
   app.querySelector<HTMLButtonElement>('#restart')?.addEventListener('click', newRun);
+  app.querySelector<HTMLButtonElement>('#dumplog')?.addEventListener('click', downloadDebugLog);
   app.querySelector<HTMLButtonElement>('#newrun')?.addEventListener('click', newRun);
   app.querySelector<HTMLButtonElement>('#beginTutorial')?.addEventListener('click', () => {
     runScreen = 'map'; // tutorial dismissed — show the campaign ladder
@@ -504,7 +560,7 @@ function driveAI(): void {
   aiThinking = true;
   render();
   window.setTimeout(() => {
-    const move = chooseMove(game, { maxExtend: aiMaxExtend }); // difficulty rises up the ladder
+    const move = aiTurn(game, { maxExtend: aiMaxExtend }); // difficulty rises up the ladder
     applyMove(game, move);
     aiThinking = false;
     checkDebateEnd();

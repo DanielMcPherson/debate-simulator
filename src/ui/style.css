@@ -169,10 +169,38 @@ h1 {
   font-size: 13px;
 }
 .card.power { border: 1px solid #b07cff; background: #221a33; color: #e7dcff; }
-.card.power:hover:not(:disabled) { border-color: #d6bcff; }
-.card.power.selecting { background: #3a2a55; border-color: #d6bcff; box-shadow: 0 0 8px rgba(176, 124, 255, 0.6); }
+.card.power:hover:not(:disabled) { filter: brightness(1.2); }
+.card.power.selecting { box-shadow: 0 0 10px currentColor; filter: brightness(1.25); }
+/* Each power-up gets its own color so they're not all "the purple card". The two
+   sabotage cards are deliberately far apart: Typo = hot red, Forgot = amber. */
+.card.fx-typo { border-color: #ff5a5a; background: #2e1414; color: #ffc4c4; }
+.card.fx-forgot { border-color: #f0a020; background: #2c2310; color: #ffe2a8; }
+.card.fx-hotmic { border-color: #ff7ad6; background: #2e1426; color: #ffc4ee; }
+.card.fx-soundbite { border-color: #4caf6e; background: #14241a; color: #b9f0cc; }
+.card.fx-plant { border-color: #46b9c9; background: #112427; color: #b6ecf3; }
+.card.fx-search { border-color: #8aa0ff; background: #161a2e; color: #cdd6ff; }
+.card.fx-filibuster { border-color: #b07cff; background: #221a33; color: #e7dcff; }
 /* a card being offered as a Teleprompter Typo target */
 .card.target { border-style: dashed; border-color: var(--them); animation: pulse 1s ease-in-out infinite; }
+/* Teleprompter Typo "armed" mode: loud banner + highlight the word being replaced. */
+.typo-banner {
+  margin: 10px 0;
+  padding: 10px 14px;
+  border: 2px solid #ff5a5a;
+  border-radius: 8px;
+  background: rgba(255, 90, 90, 0.12);
+  color: #ffd9d9;
+  font-size: 14px;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.podium.them.typo-target { box-shadow: 0 0 0 2px #ff5a5a, 0 0 16px rgba(255, 90, 90, 0.5); }
+.typo-target-word {
+  background: #ff5a5a;
+  color: #1a0a0a;
+  font-weight: 700;
+  padding: 0 4px;
+  border-radius: 3px;
+}
 @keyframes pulse { 50% { border-color: #ff9a9a; } }
 .modal-backdrop {
   position: fixed;
@@ -237,6 +265,7 @@ h1 {
 }
 .rung-icon { width: 20px; text-align: center; font-size: 14px; }
 .rung-name { flex: 1; font-size: 14px; }
+.rung-blurb { display: block; font-size: 11px; font-weight: 400; font-style: italic; color: var(--muted); }
 .rung-diff { color: var(--gold); font-size: 12px; letter-spacing: 1px; }
 .rung.done { opacity: 0.6; }
 .rung.done .rung-icon { color: #4ad07a; }

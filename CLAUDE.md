@@ -116,9 +116,10 @@ gibberish); Hot Mic to steal the player's power-up; Search/Soundbite situational
 
 ## Power-ups (`Move{kind:'power'}`)
 Search (draw 5, FREE), Filibuster (adds 3 connectors, FREE), Soundbite (`nextMultiplier` ×1.5),
-Plant (`knowsCrowd`, reveal crowd for the debate), Teleprompter Typo (jam a card onto the
-opponent's line — player targets, AI auto-picks the worst self-own; victim softens it by tacking
-on another sentence — a `but` pivot helps most), Forgot My Line (pop the opponent's last line card — discarded, not returned;
+Plant (`knowsCrowd`, reveal crowd for the debate), Teleprompter Typo (**REPLACE** the opponent's
+last card — pop it, push a card you choose; player targets, AI auto-picks the swap forcing the worst
+self-own via `bestTypoJam`, which searches *replacements* of the victim's last card; victim recovers
+by tacking on another sentence — a `but` pivot helps most), Forgot My Line (pop the opponent's last line card — discarded, not returned;
 player just plays it, AI plays it to wreck a strong/long line the player is sitting on),
 Hot Mic (`knowsOppHand` reveals opp hand for the CURRENT QUESTION + steal a card permanently).
 Both Typo and Forgot set `state.lastSabotage{victim,by,text,kind:'typo'|'forgot'}`, which drives
@@ -164,11 +165,47 @@ Player-only (opponent donations never shown — they can't spend). Phase: accrua
 character select. Watch the **complexity budget** — decide if donations augment or partly replace
 existing incentives.
 
-**P2 · ongoing — Skill-based difficulty ladder.** Today difficulty scales *only* via
-`AiOptions.maxExtend`. Give each rung distinct skill knobs on `Opponent`/`LADDER` consumed in `ai.ts`
-(`plan`/`chooseMove`): `selfOwnRate` (early opponents make frequent unforced self-owns — praise a
-villain, trash themselves — and *look embarrassed* once we have graphics; later ones never do),
-`comboSkill` (gate combo-seeking), `cardGreed` (reach for top cards). Deterministic/seeded.
+**DONE (2026-06) — Gaffe/nerves difficulty system.** Each `Opponent` has a `gaffeChance` (falls up
+the ladder: rookie 0.45 → boss 0) and `nervousOf` triggers (`attacked`/`pander`/`self_brag`) that
+raise it when the player lands a big matching statement — the opponent's hidden tell. `ai.ts`:
+`aiTurn` (RNG-aware entry; rolls the gaffe via `gameRng`) → `chooseMove` with `gaffing` (build the
+**shortest clear self-own** via `plan(objective:'gaffe')` — a punchy howler like "Our veterans are a
+national disgrace", not a mushy −2) + `restrainPower` (rookies hold back Typo/Forgot/Hot Mic).
+Resolve adds a comedic "tell" log line. Opp 1 is a verified Glass Joe.
+
+**P1 · medium — Make the BOSS actually hard via DECK QUALITY (deck-building note).** Playtest sims
+show the late ladder is a flat ~55–60% plateau: the **±35/50 scoring cap flattens `maxExtend`**
+(deeper AI just caps out) so depth can't harden the top, and on equal-tier decks a clean player has
+a structural edge. The intended lever: **better opponents play better cards** — up the ladder,
+opponents get increasingly powerful decks (reward-tier `REWARDS`-style cards, then beyond), not the
+default deck played perfectly. The boss should be near-impossible on the *default* deck; the player
+must **deck-build even more powerful cards to compensate**. So opponent-deck-strength and the
+player's card economy must be **balanced together** in the deck-building epic (P2) — don't tune one
+without the other. (Player verifies human-beatability by playtest; sims can't.) Optional AI knobs
+still open: `comboSkill`/`cardGreed`.
+
+**P3 · large — 4-way debate (mid-ladder special).** Midway up the ladder, a debate with the player
++ 3 opponents; the player must finish on top to continue. Attacks become **directed**: aim an
+attack at a specific opponent to *lower their approval* — usually the leader, but you might kick the
+last-place candidate to keep them out. Opponents also direct attacks at specific candidates (not
+necessarily the player). Pander/self-praise boost your own approval. Needs a multi-candidate game
+state + targeted-attack moves + AI target selection.
+
+  **Scoring model (decided): independent approval bars, NOT zero-sum redistribution.** Each
+  candidate has their own approval %, all starting ~35%; **attacks just lower the target's bar (no
+  splash), pander/self-praise raise your own** — this is the whole point (cleanly separating the two
+  verbs), is *simpler* to reason about than zero-sum (no "where did the lost share go, and did it
+  feed the wrong rival?" math), makes "kick the last-place candidate" sensible, and matches real-poll
+  intuition (a nasty debate can tank the whole field). **Win = race to a threshold where attacks
+  *delay* rivals** (everyone needs ~60%; sprint yourself OR trip whoever's about to cross) — a plain
+  "boost yourself over X" makes attacks pointless, and "highest at the time limit" also works.
+  **Keep the zero-sum needle for 1v1 debates** — there it's strategically equivalent (lowering your
+  only opponent *is* raising your standing), simpler, and a more dramatic tug-of-war; independent
+  bars there add a second bar for no new decision. The engine fork is thin: the per-statement scoring
+  is identical; only how a delta routes changes (an attack clause → −target's bar). The rules change
+  is easy to explain at the 4-way intro (one screen) since it's a distinct event with poll-like
+  bars. (Open: could independent bars *also* replace the 1v1 needle? Decided no for now — the
+  tug-of-war feel is better head-to-head — but revisit if the two models feel jarring to switch between.)
 
 **P3 · medium — Curse cards** (depends on shop + heel-turn). Opponent sabotage that injects toxic
 pre-formed statements into your deck ("…and that's why I despise my voters"), clogging your hand.
@@ -220,7 +257,23 @@ on *its* feel before layering meta-progression on top.
 - When changing scoring/grammar, run the worked examples — the test suites encode the intended
   behavior; update them deliberately, not reflexively.
 
+## Debug / analytics log
+`GameState.events: GameEvent[]` is a structured trail (`logEvent` in game.ts) of every deal (incl.
+the HIDDEN `crowdLoves` + both starting hands), play (with `from` pool/hand/period + card/role),
+power-up, sabotage, resolution (speaker-delta, label, combo, gaffe flag, bar), and win. `logEvent`
+auto-attaches the actor's **available power-ups** to each event (answers "did I even have a Typo?").
+Power-ups are color-coded in the UI (`.card.fx-<effect>`; Typo=red, Forgot=amber, …) so they're not
+all "the purple card", and arming a Typo shows a loud banner + highlights the word it'll replace.
+The UI's **🐞 Debug log** button
+downloads it as JSON. **A browser app can't auto-write files** — not on github.io *or* local dev
+(both are sandboxed); only a Node process (our test scripts) can. So in-browser options are: this
+user-clicked download, `console.log`, and `localStorage`. Use the log to repro bugs and to analyze
+difficulty/skill.
+
 ## Gotchas
+- **Sabotage jams must stick:** a Teleprompter-Typo'd card is tagged `Card.jammed`; `endableLine`'s
+  end-trim refuses to strip a jammed card (else the lenient trim silently UNDID the typo — the
+  "opponent's old line came back" bug). Keep that invariant if you touch trimming.
 - Removed: a "for"/beneficiary connector (too niche). Don't reintroduce without asking.
 - `dominantCategory`/`bestTypoJam` are exported from scoring.ts/game.ts and imported by ai.ts
   (one-directional; no cycle — game.ts does NOT import ai.ts).

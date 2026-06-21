@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { plan, chooseMove } from '../src/engine/ai';
+import { plan, chooseMove, aiTurn } from '../src/engine/ai';
 import { dominantCategory } from '../src/engine/scoring';
 import { isComplete } from '../src/engine/grammar';
 import { createGame, applyMove, legalMoves, nextQuestion } from '../src/engine/game';
@@ -44,17 +44,17 @@ describe('AI planner', () => {
     expect(chooseMove(game).kind).not.toBe('end'); // builds or plays a power-up, but doesn't bail
   });
 
-  it('plays Teleprompter Typo only when it can force a self-own', () => {
+  it('plays Teleprompter Typo only when replacing the last word forces a self-own', () => {
     const game = createGame({ seed: 7 });
     game.turn = 'ai';
     game.ai.hand.push({ id: 'pw_ty', role: 'powerup', effect: 'typo', text: 'x' });
-    // Player has just a subject; the pool can complete it into a self-own.
-    game.player.line = [findDef('s_i')!]; // "I …"
-    game.pool = [findDef('p_disgrace')!]; // "…am a national disgrace"
+    // Player has a complete, favourable line; swapping its last word makes a self-own.
+    game.player.line = [findDef('s_admin')!, findDef('p_patriot')!]; // "My administration is a true patriot"
+    game.pool = [findDef('p_disgrace')!]; // replace → "My administration is a national disgrace"
     expect(chooseMove(game).kind).toBe('power');
-    // No self-own available (statement already complete & favourable) -> don't waste it.
-    game.player.line = [findDef('s_opp')!, findDef('p_disgrace')!]; // complete attack on opponent
-    game.pool = [findDef('p_patriot')!];
+    // No replacement yields a self-own (still an attack on the opponent) -> don't waste it.
+    game.player.line = [findDef('s_opp')!, findDef('p_disgrace')!];
+    game.pool = [findDef('p_kick_pup')!]; // replace → "My opponent kicks puppies" (still good for player)
     expect(chooseMove(game).kind).not.toBe('power');
   });
 
@@ -80,6 +80,51 @@ describe('AI planner', () => {
     expect(dominantCategory(brag.ext.map((e) => e.card))).toBe('praise_self');
     const attack = plan([], a(), { styleCategory: 'attack_opp' })!;
     expect(dominantCategory(attack.ext.map((e) => e.card))).toBe('attack_opp');
+  });
+});
+
+describe('gaffes & nerves (difficulty)', () => {
+  it("plan(objective:'gaffe') deliberately flubs into a self-own where 'best' would win", () => {
+    // choice: "My opponent is a national disgrace" (good) vs "I am a national disgrace" (self-own)
+    const a = () => avail('pool', 's_opp', 's_i', 'p_disgrace');
+    const best = plan([], a(), {})!;
+    const gaffe = plan([], a(), { objective: 'gaffe' });
+    expect(best.delta).toBeGreaterThan(0); // optimal play attacks the opponent
+    expect(gaffe).not.toBeNull();
+    expect(gaffe!.delta).toBeLessThan(0); // the gaffe tanks its own statement
+  });
+
+  it("plan(objective:'gaffe') returns null when no self-own is reachable", () => {
+    // only a clean attack is possible — the opponent literally can't flub here
+    const gaffe = plan([], avail('pool', 's_opp', 'p_kick_pup'), { objective: 'gaffe' });
+    expect(gaffe).toBeNull();
+  });
+
+  it('aiTurn: an unflappable opponent never gaffes; a nervous rookie often does', () => {
+    let boss = 0;
+    let rookie = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const gb = createGame({ seed, opponentId: 'grandstand' }); // gaffeChance 0
+      gb.turn = 'ai';
+      aiTurn(gb, { maxExtend: 6 });
+      if (gb.ai.gaffing) boss++;
+      const gr = createGame({ seed, opponentId: 'pander' }); // gaffeChance 0.4
+      gr.turn = 'ai';
+      aiTurn(gr, { maxExtend: 3 });
+      if (gr.ai.gaffing) rookie++;
+    }
+    expect(boss).toBe(0);
+    expect(rookie).toBeGreaterThan(8); // ~40% of 40
+  });
+
+  it('aiTurn is deterministic for a given seed', () => {
+    const decide = () => {
+      const g = createGame({ seed: 7, opponentId: 'pander' });
+      g.turn = 'ai';
+      aiTurn(g, { maxExtend: 3 });
+      return g.ai.gaffing;
+    };
+    expect(decide()).toBe(decide());
   });
 });
 

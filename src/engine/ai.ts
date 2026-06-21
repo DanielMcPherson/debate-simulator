@@ -1,7 +1,7 @@
-import type { Card, Category, DebateStyle, GameState, Move } from './types';
+import type { Card, Category, DebateStyle, GameState, Move, NervousTrigger } from './types';
 import { canAppend, isComplete, rolesOf } from './grammar';
 import { scoreStatement, dominantCategory } from './scoring';
-import { bestTypoJam } from './game';
+import { bestTypoJam, gameRng } from './game';
 import { PERIOD } from '../data/cards';
 
 const STYLE_CATEGORY: Record<DebateStyle, Category> = {
@@ -38,6 +38,11 @@ interface PlanOptions {
   riskPenalty?: number; // per pool-sourced card; biases toward safer / earlier grabs
   topicId?: string; // the question's topic, so plans prefer staying on-topic
   styleCategory?: Category; // the opponent's style — plans of this kind get a bonus
+  // 'best' (default) maximizes score; 'gaffe' deliberately flubs — picks the
+  // WORST self-own it can muster (most-negative delta), kept short and punchy, so
+  // it's a clear, funny howler ("I secretly eat babies") rather than a mushy
+  // barely-negative muddle. Returns null if no self-own is reachable.
+  objective?: 'best' | 'gaffe';
 }
 
 /**
@@ -59,7 +64,15 @@ export function plan(line: Card[], avail: Avail[], opts: PlanOptions = {}): Plan
     return { ext: ext.slice(), value: delta - riskPenalty * poolUsed + styleBonus, delta };
   };
 
+  const gaffe = opts.objective === 'gaffe';
   const consider = (r: PlanResult) => {
+    if (gaffe) {
+      if (r.delta >= 0) return; // not a flub — a gaffe must be a net self-own
+      // SHORTEST self-own (a punchy "I secretly eat babies", and it stops there rather
+      // than piling on); tie-break the most-negative among equally short ones.
+      if (!best || r.ext.length < best.ext.length || (r.ext.length === best.ext.length && r.delta < best.delta)) best = r;
+      return;
+    }
     if (
       !best ||
       r.value > best.value ||
@@ -113,6 +126,12 @@ export interface AiOptions {
    * own combos. Default 4 (about one solid clause).
    */
   maxExtend?: number;
+  /** This statement is a flub — build toward a self-own instead of the best line.
+   * Set by `aiTurn` from the opponent's nerves; default false (optimal play). */
+  gaffing?: boolean;
+  /** Hold back the mean power-ups (Typo/Forgot/Hot Mic) — nervous rookies don't
+   * sabotage. Set by `aiTurn`; default false. */
+  restrainPower?: boolean;
 }
 
 /**
@@ -124,31 +143,44 @@ export interface AiOptions {
 export function chooseMove(state: GameState, opts: AiOptions = {}): Move {
   const line = state.ai.line;
   const avail = availFor(state);
+  const maxExtend = opts.maxExtend ?? 4;
   const styleCategory = state.opponent ? STYLE_CATEGORY[state.opponent.style] : undefined;
-  const best = plan(line, avail, { maxExtend: opts.maxExtend ?? 4, topicId: state.topic?.id, styleCategory });
+  const best = plan(line, avail, { maxExtend, topicId: state.topic?.id, styleCategory });
+
+  // GAFFE: a flustered opponent flubs its statement. Build toward the least-bad
+  // self-own (allow a touch more depth so a good setup can precede the blunder).
+  // If no self-own is reachable from here, fall through to normal play.
+  if (opts.gaffing) {
+    const flub = plan(line, avail, { maxExtend, topicId: state.topic?.id, objective: 'gaffe' });
+    if (flub) {
+      if (flub.ext.length > 0) return { kind: 'take', from: flub.ext[0].source, cardId: flub.ext[0].card.id };
+      if (isComplete(line)) return { kind: 'end' }; // gaffe is complete — commit to it
+    }
+  }
 
   // Power-ups (simple heuristics; the AI ignores Plant — it's blind to the crowd).
+  // Nervous rookies hold back the mean ones (restrainPower) and don't soundbite a gaffe.
   const power = (e: string) => state.ai.hand.find((c) => c.role === 'powerup' && c.effect === e);
   const typo = power('typo');
   // Only Typo when it can force the player into a genuine self-own (not random gibberish).
-  if (typo && !state.player.done && bestTypoJam(state, state.player.line).delta < 0) {
+  if (!opts.restrainPower && typo && !state.player.done && bestTypoJam(state, state.player.line).delta < 0) {
     return { kind: 'power', cardId: typo.id };
   }
   // Forgot My Line: knock the player's last card off to wreck a strong line
   // they're sitting on (a complete, high-scoring statement) or a long combo.
   const forgot = power('forgot');
-  if (forgot && !state.player.done && state.player.line.length > 0) {
+  if (!opts.restrainPower && forgot && !state.player.done && state.player.line.length > 0) {
     const pl = state.player.line;
     const strong = isComplete(pl) && scoreStatement(pl, { topicId: state.topic?.id }).delta >= 4;
     const bigCombo = pl.length >= 4;
     if (strong || bigCombo) return { kind: 'power', cardId: forgot.id };
   }
   const hotmic = power('hotmic');
-  if (hotmic && state.player.hand.some((c) => c.role === 'powerup')) {
+  if (!opts.restrainPower && hotmic && state.player.hand.some((c) => c.role === 'powerup')) {
     return { kind: 'power', cardId: hotmic.id }; // steal the player's power-up (auto-target)
   }
   const soundbite = power('soundbite');
-  if (soundbite && line.length === 0 && best && best.delta >= 5) {
+  if (!opts.gaffing && soundbite && line.length === 0 && best && best.delta >= 5) {
     return { kind: 'power', cardId: soundbite.id }; // arm before a strong statement
   }
   const search = power('search');
@@ -186,6 +218,43 @@ export function chooseMove(state: GameState, opts: AiOptions = {}): Move {
   // Truly nothing to do (empty line, no legal card) — shouldn't happen with a
   // stocked pool, but end defensively.
   return { kind: 'end' };
+}
+
+// --- nerves & gaffes --------------------------------------------------------
+
+const NERVOUS_STEP = 0.3; // gaffe-chance bump per active "nervous" trigger
+const NERVOUS_MIN = 12; // only a strong player statement (a cheer) rattles an opponent
+
+/**
+ * Extra gaffe chance from the player having just rattled this opponent. The
+ * opponent is flustered by its `nervousOf` triggers — but only by a *strong*
+ * statement, and only when the player has actually spoken this question. This is
+ * the opponent's hidden tell for the player to discover.
+ */
+function nervousBonus(state: GameState): number {
+  const opp = state.opponent;
+  if (!opp?.nervousOf?.length || !state.player.done) return 0;
+  if (Math.abs(state.player.lastReaction?.delta ?? 0) < NERVOUS_MIN) return 0;
+  const cat = dominantCategory(state.player.line);
+  const trig: NervousTrigger | null =
+    cat === 'attack_opp' ? 'attacked' : cat === 'pander_aud' ? 'pander' : cat === 'praise_self' ? 'self_brag' : null;
+  return trig && opp.nervousOf.includes(trig) ? NERVOUS_STEP : 0;
+}
+
+/**
+ * The RNG-aware entry point for the AI's turn (use this from the UI, not
+ * chooseMove directly). When a statement starts, it rolls — using the game's
+ * seeded RNG — whether the opponent flubs this one, based on its `gaffeChance`
+ * plus how rattled it is. Nervous rookies also hold back their mean power-ups.
+ */
+export function aiTurn(state: GameState, opts: AiOptions = {}): Move {
+  const opp = state.opponent;
+  if (opp && state.ai.line.length === 0) {
+    const chance = Math.min(0.95, (opp.gaffeChance ?? 0) + nervousBonus(state));
+    state.ai.gaffing = chance > 0 && gameRng(state)() < chance;
+  }
+  const restrainPower = (opp?.gaffeChance ?? 0) >= 0.25;
+  return chooseMove(state, { maxExtend: opts.maxExtend, gaffing: state.ai.gaffing, restrainPower });
 }
 
 /** Heuristic for the fallback branch: how promising is appending this card? */
