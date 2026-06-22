@@ -64,6 +64,11 @@ Cards are **chunks**, not single words. `Card.role`:
   but incomplete — the "waiting move" stall (scores lenient confused). The `md()` builder + `MODIFIERS`
   array live in cards.ts; they're contested **shared-pool** cards (in `buildSharedDeck`). The `rel`
   field is only the standalone hand/catalog hint; in a clause the subject's `animate` wins.
+  Two extra `md()` shapes: **sentiment 0** = a *neutral* aside — pure flavor + a waiting move, never
+  angers the crowd, never moves the score (crowd-anger is binary on `insult_aud`, so there's no
+  "mildly off-putting" middle for audience targets — author them 0 or genuinely negative). And
+  `invariant: true` bakes the full phrase incl. its own pronoun (for relative clauses that can't
+  conjugate to the subject, e.g. "which the experts are calling a triumph", "and trust me, …").
 - `intensifier` — sentence-final finisher (`factor` multiplies the whole statement).
 - `powerup` — one-shot action card (`effect`), never part of the sentence.
 

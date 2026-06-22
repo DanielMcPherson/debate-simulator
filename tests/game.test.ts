@@ -22,6 +22,22 @@ describe('resource model — chunk cards, no replenish, must-finish', () => {
     }
   });
 
+  it('guarantees a private opener: each hand always holds a sided subject', () => {
+    // The pool subject is contested (whoever speaks first can take it); a private
+    // opener means you can never be locked out of starting your statement.
+    const isSubject = (c: { role: string; side?: string }) =>
+      c.role === 'np' && !!c.side && c.side !== 'neutral';
+    for (let seed = 1; seed <= 25; seed++) {
+      const g = createGame({ seed, opponentId: 'smearwell' }); // a styled opponent deck too
+      expect(g.player.hand.some(isSubject)).toBe(true);
+      expect(g.ai.hand.some(isSubject)).toBe(true);
+      // …and it persists across questions (decks deplete over a debate).
+      nextQuestion(g);
+      expect(g.player.hand.some(isSubject)).toBe(true);
+      expect(g.ai.hand.some(isSubject)).toBe(true);
+    }
+  });
+
   it('every topic carries several moderator questions, and one is picked per round', () => {
     for (const t of TOPICS) {
       expect(t.questions.length).toBeGreaterThanOrEqual(2);

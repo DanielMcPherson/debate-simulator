@@ -39,6 +39,9 @@ export function predicateText(card: Card, person: Person, number: GramNumber): s
  * Constitution, which is a treasure" both read right.
  */
 export function modifierText(card: Card, person: Person, number: GramNumber, animate = true): string {
+  // An invariant modifier bakes its own pronoun/phrasing ("who, and I say this with love,
+  // has completely lost it") — used verbatim, no relative-pronoun prefix.
+  if (card.invariant) return card.text ?? '';
   const rel = animate ? 'who' : 'which';
   return `${rel} ${predicateText(card, person, number)}`;
 }

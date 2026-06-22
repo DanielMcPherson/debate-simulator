@@ -88,6 +88,7 @@ function dealRound(state: GameState): void {
     }
     p.hand = [];
     refill(p.deck, p.hand, state.handSize);
+    ensureHandHasOpener(p); // a private, can't-be-contested-away subject to start with
     p.line = [];
     p.heldFinisher = undefined;
     p.usedRedraw = false;
@@ -136,6 +137,26 @@ function ensurePool(state: GameState, pred: (c: Card) => boolean): void {
 function ensurePoolPlayable(state: GameState): void {
   ensurePool(state, (c) => c.role === 'np' && !!c.side && c.side !== 'neutral'); // a subject
   ensurePool(state, (c) => c.role === 'predicate' && !c.open); // a complete predicate
+}
+
+/**
+ * Guarantee a player's HAND can open a statement: at least one sided subject. The
+ * pool's guaranteed subject is CONTESTED (the speaker who goes first may take it),
+ * so a private opener in hand prevents a mid-question lockout where you can't even
+ * start and must burn a Recess. Pulls one from the draw pile (then the discard) and
+ * returns the displaced card, so hand size is unchanged.
+ */
+function ensureHandHasOpener(p: PlayerState): void {
+  const isSubject = (c: Card) => c.role === 'np' && !!c.side && c.side !== 'neutral';
+  if (p.hand.some(isSubject)) return;
+  let src = p.deck;
+  let idx = src.findIndex(isSubject);
+  if (idx === -1) { src = p.discard; idx = src.findIndex(isSubject); }
+  if (idx === -1) return; // no subject anywhere (shouldn't happen — private decks carry subjects)
+  const card = src.splice(idx, 1)[0];
+  const removed = p.hand.pop();
+  if (removed) p.deck.push(removed);
+  p.hand.unshift(card);
 }
 
 /** Guarantee at least one card relevant to the question's topic is in the pool. */

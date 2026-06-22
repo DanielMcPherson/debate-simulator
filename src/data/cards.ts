@@ -82,8 +82,11 @@ const md = (
   id: string,
   post: string,
   sentiment: number,
-  e: { lead?: string; rel?: 'who' | 'which'; topics?: string[] } = {},
-): Card => ({ id, role: 'modifier', lead: e.lead ?? 'be', post, sentiment, rel: e.rel, topics: e.topics });
+  e: { lead?: string; pre?: string; rel?: 'who' | 'which'; topics?: string[]; invariant?: boolean } = {},
+): Card =>
+  e.invariant
+    ? { id, role: 'modifier', text: post, invariant: true, sentiment, topics: e.topics } // `post` carries the full phrase incl. its pronoun
+    : { id, role: 'modifier', lead: e.lead ?? 'be', post, pre: e.pre, sentiment, rel: e.rel, topics: e.topics };
 
 // --- subjects (noun phrases with a side) ------------------------------------
 
@@ -101,6 +104,20 @@ export const SUBJECTS: Card[] = [
   NP('s_families', 'Hardworking families', 'audience', 2, { number: 'plural', topics: ['children'] }),
   NP('s_children', 'Our children', 'audience', 2, { number: 'plural', topics: ['children'] }),
   NP('s_nation', 'This great nation', 'audience', 2, { topics: ['freedom'], animate: false }),
+  // Flavor variants (score like their plain counterparts; funnier wording).
+  NP('s_admin_normal', 'My totally normal administration', 'self', 1, { animate: false }),
+  NP('s_campaign_legal', 'My beautiful and completely legal campaign', 'self', 1, { animate: false }),
+  NP('s_opp_team', "My opponent's team of untrustworthy weirdos", 'opponent', -1),
+  NP('s_people_brave', 'The brave people watching this debate', 'audience', 2, { number: 'plural', topics: ['pander'] }),
+  NP('s_people_normal', 'The deeply normal and not-at-all-angry people of this country', 'audience', 2, { number: 'plural', topics: ['pander'] }),
+  NP('s_children_screen', 'Our screen-addicted but still precious children', 'audience', 2, { number: 'plural', topics: ['children'] }),
+  NP('s_handshake', 'My famously firm handshake', 'self', 1, { animate: false }),
+  NP('s_commonsense', 'My award-winning common sense', 'self', 1, { animate: false }),
+  NP('s_opp_friends', "My opponent's mysterious offshore friends", 'opponent', -1, { number: 'plural' }),
+  NP('s_opp_list', "My opponent's entirely imaginary list of accomplishments", 'opponent', -1, { animate: false }),
+  NP('s_goodpeople', 'The good people who actually showed up tonight', 'audience', 2, { number: 'plural', topics: ['pander'] }),
+  NP('s_smalltowns', 'Our tired but unbeaten small towns', 'audience', 2, { number: 'plural', topics: ['pander'], animate: false }),
+  NP('s_country_flaws', 'This beautiful country, flaws and all', 'audience', 2, { topics: ['freedom'], animate: false }),
 ];
 
 // --- objects (noun phrases that fill an open predicate's slot) --------------
@@ -118,6 +135,14 @@ export const OBJECTS: Card[] = [
   NP('o_borders', 'our borders', 'neutral', 2, { number: 'plural', topics: ['security'], animate: false }),
   NP('o_schools', 'our public schools', 'neutral', 2, { number: 'plural', topics: ['children'], animate: false }),
   NP('o_constitution', 'the Constitution', 'neutral', 3, { topics: ['freedom'], animate: false }),
+  NP('o_paycheck', "the working man's paycheck", 'neutral', 2, { topics: ['economy'], animate: false }),
+  { ...NP('o_mainstreet', 'Main Street', 'neutral', 2, { topics: ['economy'], animate: false }), proper: true },
+  NP('o_familyfarm', 'the family farm', 'neutral', 2, { topics: ['economy'], animate: false }),
+  NP('o_commonsense', 'common sense itself', 'neutral', 2, { animate: false }),
+  NP('o_bureaucracy', 'the bloated bureaucracy', 'neutral', -2, { topics: ['economy'], animate: false }),
+  NP('o_inflation', 'runaway inflation', 'neutral', -3, { topics: ['economy'], animate: false }),
+  NP('o_interests', 'the special interests', 'neutral', -2, { number: 'plural', topics: ['economy'], animate: false }),
+  NP('o_committee', 'a do-nothing committee', 'neutral', -2, { topics: ['economy'], animate: false }),
 ];
 
 // --- predicates -------------------------------------------------------------
@@ -137,6 +162,7 @@ export const COMMON_PRAISE: Card[] = [
   pi('p_fight_for_you', 'will always fight for you', 2, { topics: ['pander'] }),
   pi('p_have_back', 'will always have your back', 2, { topics: ['pander'] }),
   pi('p_keep_safe', 'will keep this country safe', 3, { topics: ['security'] }),
+  pc('p_read_constitution', 'have', 'read every single word of the Constitution and loved all of it', 3, { topics: ['freedom'] }),
 ];
 
 // Every insult answers BOTH attack topics — Name-Calling ('jackass') and Your
@@ -158,6 +184,10 @@ export const COMMON_INSULTS: Card[] = [
   pi('p_say_anything', 'will say anything to get elected', -2),
   pi('p_destroy_country', 'will destroy this country', -3),
   pi('p_ashamed', 'should be ashamed', -2),
+  pc('p_tax_christmas', 'want', 'to tax your Christmas presents', -2, { topics: ['economy', 'children'] }),
+  pc('p_tollbooth', 'want', 'to put a toll booth on your driveway', -2, { topics: ['economy'] }),
+  pc('p_freedom_subscription', 'believe', 'that freedom should have a monthly subscription', -2, { topics: ['freedom'] }),
+  pc('p_naps', 'nap', 'through every important meeting', -2),
 ].map((c) => ({ ...c, topics: [...new Set([...(c.topics ?? []), 'jackass', 'opponent'])] }));
 
 // SIGNATURE predicates — punchy, characterful zingers found ONLY in private decks
@@ -169,6 +199,11 @@ export const SIG_BRAG: Card[] = [
   pi('p_phonecall', 'could fix the whole economy with a single phone call', 3, { topics: ['economy'] }),
   pc('p_neverwrong', 'be', 'never wrong about anything, ever', 3),
   pc('p_treasure', 'be', 'frankly a national treasure', 3),
+  pc('p_handshake_hair', 'have', 'the handshake of a champion and the hair of a statesman', 3),
+  pc('p_courage', 'have', 'the courage of ten senators and the humility of eleven', 3),
+  pi('p_battery', "will direct our nation's scientists to make the last 10% of a phone battery last longer", 3),
+  pi('p_hurricane', 'once talked a hurricane into changing course', 3),
+  pi('p_wallet', 'personally returned a lost wallet on live television', 3),
 ];
 
 export const SIG_ATTACK: Card[] = [
@@ -178,6 +213,12 @@ export const SIG_ATTACK: Card[] = [
   pc('p_crayons', 'eat', 'crayons at cabinet meetings', -3),
   pc('p_handshake', 'have', 'a secret handshake with the deep state', -3),
   pi('p_timeshare', 'will sell this country to a Florida timeshare scheme', -3),
+  pi('p_sell_constitution', 'would sell the Constitution for airline miles', -3, { topics: ['freedom'] }),
+  pc('p_dubstep_anthem', 'want', 'to replace the national anthem with screechy dubstep noises', -3),
+  pc('p_big_kale', 'take', 'marching orders from Big Kale', -3),
+  pc('p_magic_eightball', 'want', 'to replace the Supreme Court with a Magic Eight Ball', -3),
+  pc('p_ban_happiness', 'have', 'a secret plan to make happiness illegal', -3),
+  pi('p_find_economy', "couldn't find the economy with both hands and a map", -3, { topics: ['economy'] }),
 ].map((c) => ({ ...c, topics: [...new Set([...(c.topics ?? []), 'jackass', 'opponent'])] })); // smears answer Name-Calling + Your Opponent
 
 export const SIG_PANDER: Card[] = [
@@ -185,16 +226,32 @@ export const SIG_PANDER: Card[] = [
   pc('p_tuck_vets', 'tuck', 'in every veteran at night', 3, { topics: ['security'] }),
   pi('p_golden', 'will give every family a golden retriever', 3, { topics: ['pander'] }),
   pc('p_highfive', 'high-five', 'every single voter personally', 2, { topics: ['pander'] }),
+  pi('p_christmas3', 'will add three more Christmases to the national calendar', 3, { topics: ['pander'] }),
+  pi('p_birthday', 'will fight to ensure that every birthday feels special', 3, { topics: ['pander'] }),
+  pi('p_naphour', 'will establish a national nap hour for hardworking Americans', 2, { topics: ['pander'] }),
+  pc('p_wakeup', 'wake', 'up every morning thinking about you, specifically', 2, { topics: ['pander'] }),
+  pi('p_monday', 'will make Monday a second Saturday', 3, { topics: ['pander'] }),
+  pi('p_refund', 'will personally refund your last parking ticket', 2, { topics: ['pander'] }),
+  pc('p_dmv', 'promise', 'shorter lines at the DMV, forever', 2, { topics: ['pander'] }),
+  pi('p_coffeeshop', 'will put a coffee shop on every single corner', 2, { topics: ['pander'] }),
 ];
 
 // SIGNATURE noun phrases — flavorful openers/objects, private decks only.
 export const SIG_SUBJ_BRAG: Card[] = [
   NP('s_position', 'My position, which is the best position believe me,', 'self', 1, { intensity: 1.3 }),
   NP('s_genius', 'A stable genius such as myself', 'self', 1, { intensity: 1.3 }),
+  NP('s_brain', 'My beautiful brain, which many people say is the best brain', 'self', 1, { intensity: 1.3, animate: false }),
+  NP('s_campaign_transparent', 'My incredibly well-organized and financially transparent campaign', 'self', 1, { intensity: 1.3, animate: false }),
+  NP('s_plan', 'My plan, which fits neatly on a single index card', 'self', 1, { animate: false }),
+  NP('s_gut', 'My gut, which has frankly never once been wrong', 'self', 1, { intensity: 1.3, animate: false }),
 ];
 export const SIG_SUBJ_ATTACK: Card[] = [
   NP('s_idiot_opp', 'My idiot freedom-hating opponent', 'opponent', -2, { intensity: 1.3 }),
   NP('s_crook_opp', 'My crooked, do-nothing opponent', 'opponent', -2, { intensity: 1.3 }),
+  NP('s_opp_buffoons', "The malignant buffoons backing my opponent's campaign", 'opponent', -2, { number: 'plural', intensity: 1.3 }),
+  NP('s_opp_army', "My opponent's army of elitist hall monitors", 'opponent', -2, { intensity: 1.3 }),
+  NP('s_opp_speechwriters', "The lobbyists who write my opponent's speeches", 'opponent', -2, { number: 'plural', intensity: 1.3 }),
+  NP('s_opp_personality', "My opponent's heavily focus-grouped personality", 'opponent', -2, { intensity: 1.3, animate: false }),
 ];
 export const SIG_SUBJ_PANDER: Card[] = [
   NP('s_proud_nation', 'This great and proud nation', 'audience', 2, { topics: ['freedom'], intensity: 1.3, animate: false }),
@@ -219,6 +276,11 @@ export const OPEN_PREDS: Card[] = [
   po('p_funded', 'be', 'bankrolled by', 1, 0),
   po('p_blame', 'blame', 'everything on', -1, 0), // blame our veterans = bad; blame the swamp = good
   po('p_defend', 'defend', '', 1, 0, { pre: 'proudly' }), // "proudly defends ___"
+  po('p_war_on', 'have', 'declared war on', -1, 0), // war on the swamp = good; war on freedom = bad
+  po('p_oath', 'have', 'sworn a blood oath to', 1, 0), // oath to Satan = bad; oath to our veterans = good
+  po('p_photo', 'keep', 'a framed photo of', 1, 0),
+  // modal phrasing can't conjugate to the subject — invariant, object still fills the slot
+  { id: 'p_anything_for', role: 'predicate', open: true, invariant: true, text: 'would do absolutely anything for', affinity: 1, deed: 0 },
 ];
 
 export const PREDICATES: Card[] = [
@@ -243,6 +305,20 @@ export const MODIFIERS: Card[] = [
   md('m_genius', 'an absolute genius', 3, { rel: 'who' }),
   md('m_loves_country', 'this country', 2, { lead: 'love', rel: 'who' }), // "who loves this country"
   md('m_blessing', 'a blessing to us all', 3, { rel: 'which' }),
+  md('m_stupidest', 'among the stupidest humans to ever walk the Earth', -3, { rel: 'who' }),
+  md('m_smells', 'even worse than expected', -2, { lead: 'smell', pre: 'somehow', rel: 'who' }), // "who somehow smells…"
+  md('m_lostit', 'who, and I say this with love, has completely lost it', -2, { invariant: true }),
+  // good
+  md('m_better', 'frankly never looked better', 2, { lead: 'have', rel: 'who' }), // "who has frankly never looked better"
+  md('m_winning', 'winning by every available metric', 2, { rel: 'who' }),
+  md('m_triumph', 'which the experts are reportedly calling a triumph', 2, { invariant: true }),
+  // bad
+  md('m_catbox', 'like a goat vomited into an overfilled catbox', -3, { lead: 'smell', pre: 'frankly', rel: 'which' }),
+  md('m_park', 'who cannot parallel park to save their life', -2, { invariant: true }),
+  // neutral (0): pure flavor + a waiting move; never angers the crowd, never helps the score
+  md('m_tape', 'which is, between us, mostly held together with tape', 0, { invariant: true }),
+  md('m_trustme', "and trust me, what I'm about to say is absolutely true", 0, { invariant: true }),
+  md('m_notmakingup', "and I'm not making this up", 0, { invariant: true }),
 ];
 
 // --- connectors -------------------------------------------------------------
@@ -284,6 +360,15 @@ export const INTENSIFIERS: Card[] = [
   { id: 'x_everyone', role: 'intensifier', text: 'and everyone knows it', factor: 1.5 },
   { id: 'x_believe', role: 'intensifier', text: 'believe me', factor: 1.4 },
   { id: 'x_record', role: 'intensifier', text: 'and that is on the record', factor: 1.4 },
+  { id: 'x_promise', role: 'intensifier', text: "and that's a promise", factor: 1.4 },
+  { id: 'x_factcheck', role: 'intensifier', text: "and I don't care what the fact checkers say about it", factor: 1.5 },
+  { id: 'x_tired', role: 'intensifier', text: "and frankly I'm tired of saying it", factor: 1.4 },
+  { id: 'x_lookitup', role: 'intensifier', text: 'and you can look that up, folks, it’s true', factor: 1.5 },
+  { id: 'x_settled', role: 'intensifier', text: "and that's settled science", factor: 1.5 },
+  { id: 'x_endofstory', role: 'intensifier', text: 'period, end of story', factor: 1.4 },
+  { id: 'x_otherguy', role: 'intensifier', text: "and you won't hear that from the other guy", factor: 1.4 },
+  { id: 'x_history', role: 'intensifier', text: 'and history will prove me right', factor: 1.5 },
+  { id: 'x_writedown', role: 'intensifier', text: 'write that down', factor: 1.4 },
 ];
 
 // --- topics -----------------------------------------------------------------
@@ -416,6 +501,7 @@ export const REWARDS: Card[] = [
   pi('r_cured', 'personally cured a deadly disease last Tuesday', 4),
   pi('r_pony', 'will give every citizen a pony and a tax cut', 4),
   pc('r_oncegen', 'be', 'a once-in-a-generation genius', 4),
+  pc('r_never_truth', 'have', 'never once told the truth, not even by accident', -4, { topics: ['jackass', 'opponent'] }),
   NP('r_treason_opp', 'My crooked, treasonous opponent', 'opponent', -2, { intensity: 1.6 }),
   NP('r_blessed_nation', 'This blessed and chosen nation', 'audience', 2, { topics: ['freedom'], intensity: 1.6, animate: false }),
 ];
