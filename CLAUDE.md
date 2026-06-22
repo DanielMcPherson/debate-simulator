@@ -216,6 +216,18 @@ Player-only (opponent donations never shown — they can't spend). Phase: accrua
 character select. Watch the **complexity budget** — decide if donations augment or partly replace
 existing incentives.
 
+**P2 · small (rides the shop/reward epics) — PRIVATE finishers.** Today every finisher lives in the
+shared (contested) pool (`each(INTENSIFIERS)` in `buildSharedDeck`; the pool is capped at one via
+`capPoolFinishers`), so the value of a finisher is gated by the race to grab it. A finisher in a
+**private deck** is a different, stronger thing: it can't be stolen or out-raced, so it's a
+*guaranteed* ×factor cap on a statement you've built (and it still uncaps you toward ±50). That makes
+private finishers naturally **premium**: offer them as rare **`REWARDS`** picks, and/or as the
+**most expensive shop buys** once the donation economy lands (price ∝ power — a guaranteed multiplier
+is worth more than a contested one). Balance lever: a private finisher with no race risk may want a
+slightly lower factor than the shared ones, or be scarce enough that you rarely hold two. Build with
+the shop/reward work, not standalone. (Note: the end-move mechanic already supports this unchanged —
+a finisher from the hand is offered the same way, only on a complete line.)
+
 **DONE (2026-06) — Gaffe/nerves difficulty system.** Each `Opponent` has a `gaffeChance` (falls up
 the ladder: rookie 0.45 → boss 0) and `nervousOf` triggers (`attacked`/`pander`/`self_brag`) that
 raise it when the player lands a big matching statement — the opponent's hidden tell. `ai.ts`:
