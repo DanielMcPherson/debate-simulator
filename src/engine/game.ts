@@ -44,7 +44,7 @@ function logEvent(state: GameState, t: GameEvent['t'], data: Record<string, unkn
 }
 
 function newPlayer(id: PlayerId): PlayerState {
-  return { id, deck: [], hand: [], line: [], done: false };
+  return { id, deck: [], hand: [], discard: [], line: [], done: false };
 }
 
 function dealRound(state: GameState): void {
@@ -63,13 +63,28 @@ function dealRound(state: GameState): void {
   for (const p of [state.player, state.ai]) {
     // The opponent's private deck is tilted toward its debating style.
     const style = p.id === 'ai' ? state.opponent?.style : undefined;
-    // PERSISTENT deck: built once (when empty), drawn across the whole debate.
-    // It only rebuilds when too small to fill a hand — so a card you've already
-    // played (e.g. Plant in the Audience) doesn't come back next question.
-    if (p.deck.length < state.handSize) {
+    // PERSISTENT deck, built EXACTLY ONCE (the first deal, when nothing is in
+    // circulation yet). Thereafter it is self-sustaining and never rebuilt:
+    // unplayed hand cards return to the draw pile, and played cards (parked in
+    // `discard` at resolution) reshuffle back in when the pile runs low. Minting a
+    // fresh private deck each time was the duplication bug — it stacked new copies
+    // of every signature card onto the leftovers (3+ "phone call" cards in a hand).
+    // Power-ups consumed and cards lost to Forgot My Line never re-enter, so the
+    // private deck only ever shrinks (a played Plant doesn't come back).
+    if (p.deck.length === 0 && p.hand.length === 0 && p.discard.length === 0) {
       // The player's earned reward cards (fresh instances) are shuffled in too.
       const bonus = p.id === 'player' ? (state.playerBonus ?? []).flatMap((c) => instances(c, 1)) : [];
-      p.deck = shuffle([...p.deck, ...buildPrivateDeck(style), ...bonus], rng);
+      p.deck = shuffle([...buildPrivateDeck(style), ...bonus], rng).map((c) => ({ ...c, priv: true }));
+    } else {
+      // Recycle last question's unplayed PRIVATE hand cards back into the draw pile.
+      // Non-priv injections (Filibuster's bonus connectors) are one-shot — they don't
+      // become permanent deck residents.
+      p.deck.push(...p.hand.filter((c) => c.priv));
+      // …and if that still can't fill a hand, fold the discard pile back in.
+      if (p.deck.length < state.handSize && p.discard.length > 0) {
+        p.deck = shuffle([...p.deck, ...p.discard], rng);
+        p.discard = [];
+      }
     }
     p.hand = [];
     refill(p.deck, p.hand, state.handSize);
@@ -281,6 +296,10 @@ function resolveStatement(state: GameState, p: PlayerState): void {
     state.log.push(tell.replace('%n', name));
   }
   p.gaffing = false;
+  // Park the judged statement's PRIVATE cards for recycling next question. Shared-pool
+  // cards (subjects/objects/connectors/finishers) and the virtual period are rebuilt
+  // each question, so they're not collected. dealRound clears p.line afterward.
+  p.discard.push(...p.line.filter((c) => c.priv));
 }
 
 const GAFFE_TELLS = [

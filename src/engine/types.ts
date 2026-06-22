@@ -125,6 +125,11 @@ export interface Card {
   /** Set on a card a Teleprompter Typo jammed onto a line. The end-trim must NOT
    * strip a jammed card (else the sabotage gets silently undone). */
   jammed?: boolean;
+  /** Marks a card that originated from a PRIVATE deck (set at deal time). Lets the
+   * turn loop recycle played private cards through `PlayerState.discard` without
+   * minting fresh duplicates — so signature cards never multiply past their built
+   * count. Shared-pool and virtual (period) cards never carry it. */
+  priv?: boolean;
 }
 
 /** A card instance placed in a player's building line, in order. */
@@ -188,6 +193,9 @@ export interface PlayerState {
   deck: Card[];
   /** Private hand (drawn from `deck`). */
   hand: Card[];
+  /** Played private cards, parked here at resolution and reshuffled back into
+   * `deck` when the draw pile runs low — the private deck's self-sustaining loop. */
+  discard: Card[];
   /** Tokens committed to the current statement, in order. */
   line: Statement;
   /** A committed finisher (intensifier): grabbed early, auto-appended when you end. */

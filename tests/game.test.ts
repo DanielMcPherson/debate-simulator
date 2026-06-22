@@ -71,6 +71,48 @@ describe('resource model — chunk cards, no replenish, must-finish', () => {
     expect(g.crowd?.id).toBe('bloodthirsty');
   });
 
+  it('private decks recycle without minting duplicates (no card multiplies across questions)', () => {
+    // Regression: dealRound used to append a FRESH buildPrivateDeck onto the leftover
+    // draw pile every time it ran low, stacking new copies of every signature card
+    // (the "3× could fix the whole economy" Hot Mic bug). The combined count of any
+    // base card id across BOTH players can only stay flat or shrink (power-ups spent,
+    // Forgot My Line losses; Hot Mic just moves a card between players) — never grow.
+    const g = createGame({ seed: 7, opponentId: 'blowhard' });
+    const baseId = (c: { id: string }) => c.id.split('#')[0];
+    const tally = () => {
+      const counts = new Map<string, number>();
+      for (const p of [g.player, g.ai]) {
+        const zones = [...p.deck, ...p.hand, ...p.discard, ...p.line, ...(p.heldFinisher ? [p.heldFinisher] : [])];
+        // Only private-deck cards are subject to the recycle loop; Filibuster's
+        // injected connectors are transient and tracked separately.
+        for (const c of zones) if (c.priv) counts.set(baseId(c), (counts.get(baseId(c)) ?? 0) + 1);
+      }
+      return counts;
+    };
+    const initial = tally();
+    expect(initial.size).toBeGreaterThan(0);
+
+    let qGuard = 0;
+    while (!g.winner && qGuard++ < 20) {
+      let guard = 0;
+      while (!g.winner && !g.awaitingNext && guard++ < 2000) {
+        const moves = legalMoves(g);
+        applyMove(g, moves.find((m) => m.kind === 'end') ?? moves.find((m) => m.kind === 'take') ?? { kind: 'end' });
+      }
+      // No player ever holds more than the built count (SIG_BRAG => 2) of a signature card.
+      for (const p of [g.player, g.ai]) {
+        const hand = new Map<string, number>();
+        for (const c of p.hand) if (c.priv) hand.set(baseId(c), (hand.get(baseId(c)) ?? 0) + 1);
+        for (const [, n] of hand) expect(n).toBeLessThanOrEqual(2);
+      }
+      const now = tally();
+      for (const [id, n] of now) expect(n).toBeLessThanOrEqual(initial.get(id) ?? 0);
+      if (g.winner) break;
+      nextQuestion(g);
+    }
+    expect(qGuard).toBeGreaterThan(1); // actually advanced through multiple questions
+  });
+
   it('Pass holds a complete statement and waits (does not lock it in)', () => {
     const g = createGame({ seed: 1 });
     g.player.line = complete();
