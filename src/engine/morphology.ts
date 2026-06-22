@@ -92,6 +92,14 @@ export function displayWords(line: Card[]): string[] {
     if (role === 'conn' && line[i].conj === 'period') sentenceStart = true;
     else if (words[i]) sentenceStart = false;
   }
+
+  // Punctuate the finisher: a flowing "and …" tag gets a comma ("…Magic Eight Ball,
+  // and history will prove me right"); any other finisher reads as its own emphatic
+  // sentence — a period + capital ("…ever. Write that down.").
+  for (let i = 0; i < line.length; i++) {
+    if (roleAt[i] !== 'int' || !words[i]) continue;
+    words[i] = /^and\b/i.test(words[i]) ? `, ${words[i]}` : `. ${cap(words[i])}`;
+  }
   return words;
 }
 

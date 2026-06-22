@@ -158,7 +158,7 @@ function onTopic(c: Card): boolean {
   return !!game.topic && !!c.topics?.includes(game.topic.id);
 }
 
-function cardHtml(c: Card, source: 'pool' | 'hand', held: boolean): string {
+function cardHtml(c: Card, source: 'pool' | 'hand'): string {
   if (c.role === 'powerup') {
     const isTypo = c.effect === 'typo';
     // Typo needs a live opponent statement to jam; Forgot needs one with a card to drop.
@@ -174,13 +174,19 @@ function cardHtml(c: Card, source: 'pool' | 'hand', held: boolean): string {
     return `<button class="card ${source} target" data-id="${c.id}" data-from="${source}">${cardLabel(c)}</button>`;
   }
   const isIntens = c.role === 'intensifier';
-  // A finisher can be grabbed any time, but only one may be held at once.
-  const disabled = !canPlay() || (isIntens && held) ? 'disabled' : '';
+  // A finisher is an END move: playable only when your line is already a complete
+  // sentence (so appending it is grammatical). It then banks the ×bonus and ends your turn.
+  const canFinish = isIntens && canAppend(game.player.line, c);
+  const disabled = !canPlay() || (isIntens && !canFinish) ? 'disabled' : '';
   // TEMPORARY (debug aid): the on-topic glow + "on topic ✓" tag make it obvious if any
   // card's `topics` are mislabeled. REMOVE LATER — players should learn to spot on-topic
   // cards themselves (drop the `.ontopic` class + the tag below, and `onTopic`/.ontopic CSS).
   const cls = `card ${source}${isIntens ? ' intens' : ''}${onTopic(c) ? ' ontopic' : ''}`;
-  const tag = isIntens ? '<span class="role">commit finisher ✦</span>' : onTopic(c) ? '<span class="role">on topic ✓</span>' : '';
+  const tag = isIntens
+    ? `<span class="role">Finisher! ×${c.factor}</span>`
+    : onTopic(c)
+      ? '<span class="role">on topic ✓</span>'
+      : '';
   return `<button class="${cls}" data-id="${c.id}" data-from="${source}" ${disabled}>${tag}${cardLabel(c)}</button>`;
 }
 
@@ -319,7 +325,6 @@ function render(): void {
   // Zero-sum 1v1: bar (-100..+100, signed toward player) shown as audience-support % that sums to 100.
   const youSupport = Math.round((game.bar + 100) / 2);
   const complete = isComplete(game.player.line);
-  const held = !!game.player.heldFinisher;
   const endOk = canPlay() && canEnd(game);
   // The free period is offered wherever the grammar allows a new clause to open —
   // but only once per statement (you get a single period; chain conjunctions for more).
@@ -364,7 +369,6 @@ function render(): void {
       `🎙️ <b>Hot Mic:</b> click a card in ${game.opponent?.name ?? 'the opponent'}'s revealed hand below to steal it — or click the power-up again to cancel.`,
     );
   }
-  if (held) notes.push(`✦ Committed finisher: <b>${game.player.heldFinisher!.text}</b> — appended when you end.`);
   if (game.player.nextMultiplier) notes.push('👏 Soundbite armed — your next statement scores ×1.5.');
   if (game.player.knowsCrowd && game.crowd) {
     notes.push(`🕵️ Your plant reports: this crowd loves <b>${CROWD_LABEL[game.crowd.loves] ?? 'a good show'}</b>.`);
@@ -398,10 +402,10 @@ function render(): void {
     </div>
 
     <div class="zone-title">Shared Pool — contested, no refill (gold) &nbsp;·&nbsp; <span class="ontopic-key">✓ on topic</span></div>
-    <div class="cards" id="pool">${game.pool.map((c) => cardHtml(c, 'pool', held)).join('') || '<span style="color:var(--muted)">(pool empty)</span>'}</div>
+    <div class="cards" id="pool">${game.pool.map((c) => cardHtml(c, 'pool')).join('') || '<span style="color:var(--muted)">(pool empty)</span>'}</div>
 
     <div class="zone-title">Your Hand — private, no refill (blue)</div>
-    <div class="cards" id="hand">${game.player.hand.map((c) => cardHtml(c, 'hand', held)).join('') || '<span style="color:var(--muted)">(hand empty)</span>'}</div>
+    <div class="cards" id="hand">${game.player.hand.map((c) => cardHtml(c, 'hand')).join('') || '<span style="color:var(--muted)">(hand empty)</span>'}</div>
 
     ${
       (pendingHotMic || game.player.knowsOppHand) && game.ai.hand.length

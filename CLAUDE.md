@@ -69,7 +69,11 @@ Cards are **chunks**, not single words. `Card.role`:
   "mildly off-putting" middle for audience targets — author them 0 or genuinely negative). And
   `invariant: true` bakes the full phrase incl. its own pronoun (for relative clauses that can't
   conjugate to the subject, e.g. "which the experts are calling a triumph", "and trust me, …").
-- `intensifier` — sentence-final finisher (`factor` multiplies the whole statement).
+- `intensifier` — sentence-final finisher (`factor` multiplies the whole statement). It is an
+  **end-move**: only offered/legal when the line is already a complete sentence (grammar `S → INT`),
+  and playing it (a `take`) appends the flourish, resolves, and ends the turn — there is **no held
+  state** (the old `heldFinisher` is gone). A finisher is contested in the shared pool, so building a
+  bigger line before cashing it in risks the opponent grabbing it first.
 - `powerup` — one-shot action card (`effect`), never part of the sentence.
 
 Grammar: `TOP→S [INT]; S→CLAUSE | S (CCAND|CJOIN) CLAUSE; CLAUSE→NP [MODS] PREDS; MODS→MOD | MODS MOD; PRED→PC | PO NP`

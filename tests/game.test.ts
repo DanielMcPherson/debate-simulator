@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createGame, applyMove, legalMoves, canEnd, nextQuestion } from '../src/engine/game';
-import { isValidPrefix } from '../src/engine/grammar';
+import { isValidPrefix, isComplete } from '../src/engine/grammar';
 import { scoreStatement } from '../src/engine/scoring';
 import { findDef, PERIOD, TOPICS } from '../src/data/cards';
 
@@ -98,7 +98,7 @@ describe('resource model — chunk cards, no replenish, must-finish', () => {
     const tally = () => {
       const counts = new Map<string, number>();
       for (const p of [g.player, g.ai]) {
-        const zones = [...p.deck, ...p.hand, ...p.discard, ...p.line, ...(p.heldFinisher ? [p.heldFinisher] : [])];
+        const zones = [...p.deck, ...p.hand, ...p.discard, ...p.line];
         // Only private-deck cards are subject to the recycle loop; Filibuster's
         // injected connectors are transient and tracked separately.
         for (const c of zones) if (c.priv) counts.set(baseId(c), (counts.get(baseId(c)) ?? 0) + 1);
@@ -324,14 +324,43 @@ describe('resource model — chunk cards, no replenish, must-finish', () => {
     expect(legalMoves(g).some((m) => m.kind === 'end')).toBe(false);
   });
 
-  it('a finisher is grabbed and committed (held), not appended', () => {
+  it('a finisher is an end-move: only playable on a complete line, and it ends the turn', () => {
     const g = createGame({ seed: 4 });
     const intens = { id: 'x_test', role: 'intensifier' as const, text: 'believe me', factor: 1.4 };
     g.pool.push(intens);
+    const subj = g.pool.find((c) => c.role === 'np' && !!c.side && c.side !== 'neutral')!;
+    const pred = g.pool.find((c) => c.role === 'predicate' && !c.open)!;
+
+    // Mid-build (incomplete line) the finisher is NOT offered — you must finish a thought.
+    g.turn = 'player';
+    applyMove(g, { kind: 'take', from: 'pool', cardId: subj.id });
+    g.turn = 'player'; // takes alternate the turn; force it back for this unit check
+    expect(isComplete(g.player.line)).toBe(false);
+    expect(legalMoves(g).some((m) => m.kind === 'take' && m.cardId === 'x_test')).toBe(false);
+
+    // Complete the sentence with a closed predicate → now the finisher is offered.
+    applyMove(g, { kind: 'take', from: 'pool', cardId: pred.id });
+    g.turn = 'player';
+    expect(isComplete(g.player.line)).toBe(true);
     expect(legalMoves(g).some((m) => m.kind === 'take' && m.cardId === 'x_test')).toBe(true);
+
+    // Playing it appends the flourish AND ends the statement (no held state).
     applyMove(g, { kind: 'take', from: 'pool', cardId: 'x_test' });
-    expect(g.player.heldFinisher?.id).toBe('x_test');
-    expect(g.player.line.length).toBe(0);
+    expect(g.player.line[g.player.line.length - 1].id).toBe('x_test');
+    expect(g.player.done).toBe(true);
+    expect((g.player as { heldFinisher?: unknown }).heldFinisher).toBeUndefined();
+  });
+
+  it('the pool never offers more than one finisher (the race-for-it stays a real risk)', () => {
+    const finishers = (g: { pool: { role: string }[] }) => g.pool.filter((c) => c.role === 'intensifier').length;
+    for (let seed = 1; seed <= 30; seed++) {
+      const g = createGame({ seed });
+      expect(finishers(g)).toBeLessThanOrEqual(1);
+      // …and still at most one after a Recess re-deals the pool.
+      g.turn = 'player';
+      applyMove(g, { kind: 'redraw' });
+      expect(finishers(g)).toBeLessThanOrEqual(1);
+    }
   });
 
   it('always deals a pool with at least one on-topic card to address the question', () => {

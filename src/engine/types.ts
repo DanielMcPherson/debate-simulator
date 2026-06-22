@@ -211,8 +211,6 @@ export interface PlayerState {
   discard: Card[];
   /** Tokens committed to the current statement, in order. */
   line: Statement;
-  /** A committed finisher (intensifier): grabbed early, auto-appended when you end. */
-  heldFinisher?: Card;
   /** Whether this player has used their once-per-question redraw. */
   usedRedraw?: boolean;
   /** Whether this player has used their one free period this statement (caps a

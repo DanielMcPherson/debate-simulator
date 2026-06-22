@@ -110,9 +110,10 @@ export function plan(line: Card[], avail: Avail[], opts: PlanOptions = {}): Plan
 /** Build the availability list for the AI from pool + hand + the topic card. */
 function availFor(state: GameState): Avail[] {
   const a: Avail[] = [];
-  const held = !!state.ai.heldFinisher;
-  // Power-ups aren't sentence tokens; a second finisher can't be held.
-  const usable = (c: Card) => c.role !== 'powerup' && !(held && c.role === 'intensifier');
+  // Power-ups aren't sentence tokens. A finisher is only reachable when the line is a
+  // complete sentence (the grammar gates it), and playing it ends the statement — the
+  // DFS already appends it as a terminal flourish via canAppend, so no special handling.
+  const usable = (c: Card) => c.role !== 'powerup';
   for (const c of state.pool) if (usable(c)) a.push({ card: c, source: 'pool' });
   for (const c of state.ai.hand) if (usable(c)) a.push({ card: c, source: 'hand' });
   if (!state.ai.usedPeriod) a.push({ card: PERIOD, source: 'period' }); // free, one per statement

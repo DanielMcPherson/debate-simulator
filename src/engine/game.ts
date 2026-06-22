@@ -59,6 +59,7 @@ function dealRound(state: GameState): void {
   // THEN re-assert playability last so a topic swap can't evict the only subject.
   ensurePoolHasTopic(state, state.topic.id);
   ensurePoolPlayable(state);
+  capPoolFinishers(state); // at most one finisher on the board — keep the race-for-it tension
 
   for (const p of [state.player, state.ai]) {
     // The opponent's private deck is tilted toward its debating style.
@@ -90,7 +91,6 @@ function dealRound(state: GameState): void {
     refill(p.deck, p.hand, state.handSize);
     ensureHandHasOpener(p); // a private, can't-be-contested-away subject to start with
     p.line = [];
-    p.heldFinisher = undefined;
     p.usedRedraw = false;
     p.usedPeriod = false;
     p.gaffing = false;
@@ -157,6 +157,29 @@ function ensureHandHasOpener(p: PlayerState): void {
   const removed = p.hand.pop();
   if (removed) p.deck.push(removed);
   p.hand.unshift(card);
+}
+
+/**
+ * Cap the pool at a SINGLE finisher. A finisher is a contested prize whose value
+ * grows the bigger your statement (multiplicative ×factor), so the tension is the
+ * race to grab the one on the board before the opponent does. Seeing two or three
+ * removes that risk entirely — so evict the extras, swapping each for a non-finisher
+ * from the deck (and returning the evicted finisher to the deck).
+ */
+function capPoolFinishers(state: GameState): void {
+  const isFin = (c: Card) => c.role === 'intensifier';
+  const finIdxs = state.pool.map((c, i) => (isFin(c) ? i : -1)).filter((i) => i >= 0);
+  for (let k = finIdxs.length - 1; k >= 1; k--) {
+    const i = finIdxs[k]; // keep finIdxs[0]; evict the rest (replace in place — indices stay valid)
+    const evicted = state.pool[i];
+    const repl = state.sharedDeck.findIndex((c) => !isFin(c));
+    if (repl === -1) {
+      state.pool.splice(i, 1); // no non-finisher to swap in — just drop the extra
+    } else {
+      state.pool[i] = state.sharedDeck.splice(repl, 1)[0];
+    }
+    state.sharedDeck.push(evicted);
+  }
 }
 
 /** Guarantee at least one card relevant to the question's topic is in the pool. */
@@ -241,14 +264,16 @@ export function legalMoves(state: GameState): Move[] {
   // period never locks you out.
   const endable = endableLine(p.line) !== null;
   const moves: Move[] = [];
-  const offer = (c: { role: string; id: string }, from: 'pool' | 'hand') => {
+  const offer = (c: Card, from: 'pool' | 'hand') => {
     if (c.role === 'powerup') {
       moves.push({ kind: 'power', cardId: c.id }); // played, not built into the sentence
       return;
     }
-    // A finisher can be grabbed any time, but you can only hold one (you're then
-    // committed to ending with it).
-    if (c.role === 'intensifier' && p.heldFinisher) return;
+    // A finisher is an END move: it's only offered when the line is already a complete
+    // sentence (grammar S → INT), so playing it appends the flourish, banks the ×bonus,
+    // and ends your turn. Mid-clause it's not offered (it'd be ungrammatical) — finish
+    // the thought first, and the opponent may grab the contested finisher before you do.
+    if (c.role === 'intensifier' && !canAppend(p.line, c)) return;
     moves.push({ kind: 'take', from, cardId: c.id });
   };
   for (const c of state.pool) offer(c, 'pool');
@@ -279,11 +304,8 @@ function resolveStatement(state: GameState, p: PlayerState): void {
   // is complete (e.g. a bare subject), keep it as-is → lenient "confused" scoring.
   const endable = endableLine(p.line);
   if (endable) p.line = endable;
-  // A committed finisher is appended to the very end before judging.
-  if (p.heldFinisher) {
-    p.line.push(p.heldFinisher);
-    p.heldFinisher = undefined;
-  }
+  // (A finisher, if played, is already the last token of p.line — playing it both
+  // appends the flourish and ends the statement; see the intensifier branch of applyMove.)
   // The crowd's hidden taste is applied here, at resolution — the AI never sees it.
   const reaction = scoreStatement(p.line, { topicId: state.topic?.id, crowd: state.crowd });
   // A Soundbite armed this statement: amplify, then spend it.
@@ -545,6 +567,7 @@ export function applyMove(state: GameState, move: Move): GameState {
     refill(state.sharedDeck, state.pool, state.poolSize);
     if (state.topic) ensurePoolHasTopic(state, state.topic.id); // topic first…
     ensurePoolPlayable(state); // …then re-assert playability (see dealRound)
+    capPoolFinishers(state); // …and cap finishers at one (see dealRound)
     p.usedRedraw = true;
     logEvent(state, 'redraw', { by: p.id });
     advanceTurn(state); // costs your turn
@@ -569,11 +592,15 @@ export function applyMove(state: GameState, move: Move): GameState {
   const card = source[idx];
 
   if (card.role === 'intensifier') {
-    if (p.heldFinisher) return state; // already committed to one
+    // A finisher ENDS the statement: only legal on a complete line (grammar S → INT).
+    // Append the flourish, then resolve — there's no holding/committing.
+    if (!canAppend(p.line, card)) return state; // not a valid sentence-end yet
     source.splice(idx, 1);
-    p.heldFinisher = card; // committed — appended when you end, for better or worse
+    p.line.push(card);
     logEvent(state, 'take', { by: p.id, from: move.from, card: card.id, text: cardLabel(card), role: card.role, finisher: true });
+    resolveStatement(state, p);
     advanceTurn(state);
+    endRoundIfDone(state);
     return state;
   }
 

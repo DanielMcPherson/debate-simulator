@@ -97,10 +97,12 @@ A debate is a series of **questions**. Each question:
   a hero (the economy, our veterans) and **bashing a villain** ("Shady lobbyists
   are a national disgrace", "The swamp can't be trusted") both score for you;
   praising a villain or trashing a hero backfires.
-- **✦ Finisher** cards (intensifiers like "…and everyone knows it") are *grabbed
-  and committed*: take one at any time and it's appended to the end when you
-  finish, multiplying the whole statement — so commit while you're winning, or it
-  amplifies a disaster.
+- **✦ Finisher** cards (intensifiers like "…and everyone knows it") are a *flourish
+  that ends your statement*: playable only once your line is a complete sentence,
+  playing one appends it, multiplies the whole statement (×1.4–1.5), and ends your
+  turn. So it's a push-your-luck call — cash in the bonus now while you're winning,
+  or keep building a bigger line and risk the opponent grabbing the contested
+  finisher first (and it amplifies a disaster just as readily, so don't cap a self-own).
 - Each debate has a **named opponent** with a fixed style — Senator Blowhard
   (self-brag), Gov. Patty Pander (panders to the crowd), Rep. Dirk Smearwell
   (personal attacks) — and a style-tuned deck.
