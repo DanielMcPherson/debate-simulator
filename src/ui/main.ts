@@ -126,6 +126,15 @@ function reactionClass(r?: Reaction): string {
   return 'bad';
 }
 
+/** The reaction line shown under a podium: detail is "SENTENCE — reaction (+score) note".
+ * The card already shows the sentence, so strip everything up to the FIRST em-dash and
+ * keep the whole reaction (which may itself contain em-dashes in coaching notes). */
+function reactionText(r?: Reaction): string {
+  if (!r) return '';
+  const i = r.detail.indexOf('—');
+  return (i >= 0 ? r.detail.slice(i + 1) : r.detail).trim();
+}
+
 // The combo indicator lives ON the junction word now: a JUDGED statement paints
 // each combo-forming connector as a colored chip (the color conveys the move —
 // COMBO / CHAIN / PIVOT). No number, no separate callout box. (Juice it later.)
@@ -377,13 +386,13 @@ function render(): void {
       <div class="podium you">
         <div class="who">You</div>
         <div class="speech">${partialText(game.player.line) || '<span style="color:var(--muted)">…</span>'}</div>
-        <div class="reaction ${reactionClass(game.player.lastReaction)}">${game.player.lastReaction?.detail.split('—').pop()?.trim() ?? ''}</div>
+        <div class="reaction ${reactionClass(game.player.lastReaction)}">${reactionText(game.player.lastReaction)}</div>
         ${comboHtml(game.player.lastReaction)}
       </div>
       <div class="podium them${pendingTypo ? ' typo-target' : ''}">
         <div class="who">${game.opponent?.name ?? 'Opponent'}</div>
         <div class="speech">${oppSpeechHtml()}</div>
-        <div class="reaction ${reactionClass(game.ai.lastReaction)}">${game.ai.lastReaction?.detail.split('—').pop()?.trim() ?? ''}</div>
+        <div class="reaction ${reactionClass(game.ai.lastReaction)}">${reactionText(game.ai.lastReaction)}</div>
         ${comboHtml(game.ai.lastReaction)}
       </div>
     </div>

@@ -12,6 +12,7 @@ import {
   SIG_SUBJ_PANDER,
   SIG_OBJECTS,
   OPEN_PREDS,
+  MODIFIERS,
   CONNECTORS,
   INTENSIFIERS,
   POWERUPS,
@@ -65,8 +66,8 @@ const each = (cards: Card[], n = 1): Card[] => cards.flatMap((c) => instances(c,
 
 /**
  * The shared (contested) deck holds the connective tissue everyone fights over —
- * subjects, objects, connectors, finishers, open predicates — plus only the
- * COMMON ("stump speech") predicates. Signature zingers are NOT here.
+ * subjects, objects, connectors, finishers, modifiers, open predicates — plus only
+ * the COMMON ("stump speech") predicates. Signature zingers are NOT here.
  */
 export function buildSharedDeck(): Card[] {
   return [
@@ -74,6 +75,7 @@ export function buildSharedDeck(): Card[] {
     ...each(OBJECTS),
     ...each(CONNECTORS),
     ...each(INTENSIFIERS, 2), // contested finishers — worth fighting over
+    ...each(MODIFIERS), // post-nominal asides — side-agnostic, contested
     ...each(OPEN_PREDS),
     ...each(COMMON_PRAISE),
     ...each(COMMON_INSULTS),

@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "catalog": "vite-node scripts/gen-catalog.ts"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

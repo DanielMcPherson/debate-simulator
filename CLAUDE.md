@@ -48,10 +48,26 @@ Cards are **chunks**, not single words. `Card.role`:
   so a statement is at most two sentences and rambling-by-period is impossible (chain conjunctions for
   more, and a combo). The `PERIOD` card (cards.ts) is **virtual** — never drawn/consumed, NOT in
   CONNECTORS/ALL/decks; played via `Move{kind:'take', from:'period'}`.
+- `modifier` — a post-nominal aside on a subject ("who is ugly, just very ugly", "which is a
+  national treasure"). Reuses predicate fields (`lead`/`post`, conjugated via `predicateText`) but
+  rendered with a relative pronoun ("who" vs "which") chosen by the subject's `animate` flag, set off
+  by commas. Carries **no `side`** — `sentiment` is about the subject, so its effect flips with whom
+  it's played on (an attack on an opponent, a self-own on yourself). **Direction-split in
+  `contributions()`:** a GOOD-direction aside (attack_opp / praise_self / pander_aud) **folds into
+  its clause's first contribution** (intensifies + rides any combo; no decay, no ramble); a
+  BLUNDER-direction aside (self_own / insult_aud / boost_opp) is marked `aside` and scored
+  **separately at full strength** (no combo/decay) so same-clause praise can't net it away. Two
+  knock-on rules in `scoreStatement`: (1) **any audience insult** (predicate OR aside) **zeroes all
+  the statement's positive contributions** — an offended crowd won't credit later pandering; (2) a
+  **self_own aside forces the `confused` label** when net ≤0 (calling yourself ugly muddles, not
+  enrages). A subject+modifier with no predicate is a legal **prefix**
+  but incomplete — the "waiting move" stall (scores lenient confused). The `md()` builder + `MODIFIERS`
+  array live in cards.ts; they're contested **shared-pool** cards (in `buildSharedDeck`). The `rel`
+  field is only the standalone hand/catalog hint; in a clause the subject's `animate` wins.
 - `intensifier` — sentence-final finisher (`factor` multiplies the whole statement).
 - `powerup` — one-shot action card (`effect`), never part of the sentence.
 
-Grammar: `TOP→S [INT]; S→CLAUSE | S (CCAND|CJOIN) CLAUSE; CLAUSE→NP PREDS; PRED→PC | PO NP`
+Grammar: `TOP→S [INT]; S→CLAUSE | S (CCAND|CJOIN) CLAUSE; CLAUSE→NP [MODS] PREDS; MODS→MOD | MODS MOD; PRED→PC | PO NP`
 (`but`/`period` → CJOIN). Validity depends only on the **role sequence**, so `grammar.ts`
 recognizes over term-sets and memoizes (keeps the AI's deep search fast). Play is freeform (any
 card any time, no POS labels); the grammar judges the *result* — ungrammatical lines score
@@ -65,7 +81,11 @@ blunder) or **opponent** if <0 (bashing a shared villain lands like an attack; p
 backfires) — so "I support the economy" / "the swamp is a disgrace" both score and react to the
 crowd. Each predicate's polarity P × sign × weight × SCALE. Closed pred:
 baked sentiment; open pred: `deed + affinity×objectSentiment`. **Self-owns & audience-insults
-get a ×1.6 blunder multiplier.** **Combos are connector-fit** (`aggregate()` in scoring.ts):
+get a ×1.6 blunder multiplier.** A clause's **modifier** asides score by the same
+`signed(P)` path (subject side/weight + blunder mult); GOOD-direction ones **fold into the clause's
+first contribution** (intensify + ride its combo), BLUNDER-direction ones (`aside`) are added at
+full strength outside combos/decay. **An audience insult anywhere zeroes the statement's positives**
+(no pandering-your-way-back); a **self-own aside reads as `confused`** when net ≤0. **Combos are connector-fit** (`aggregate()` in scoring.ts):
 contributions joined by a *correctly-used* conjunction bind into a combo group (summed full, then
 ×mult) — `and` 1.25 / `because`/`and therefore` 1.30 / `but` 1.40 (pivot: them-bad→you-good,
 different sides). `and`/`because` need both clauses good & **distinct** (by side or predicate base

@@ -263,6 +263,7 @@ function extendScore(line: Card[], a: Avail): number {
   if (line.length === 0) return roles.includes('np') ? 10 : -10; // must open with a subject
   let s = 0;
   if (roles.includes('predicate')) s += 3 + Math.abs(a.card.sentiment ?? 0);
+  if (roles.includes('modifier')) s += 2 + Math.abs(a.card.sentiment ?? 0); // an aside on the subject
   if (roles.includes('np')) s += Math.abs(a.card.sentiment ?? 0);
   return s;
 }

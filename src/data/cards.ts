@@ -12,6 +12,8 @@ interface NpOpts {
   number?: GramNumber;
   topics?: string[];
   intensity?: number;
+  /** False for a thing/abstraction subject so a modifier says "which", not "who". */
+  animate?: boolean;
 }
 // A subject's SIDE implies its topic(s): every self subject answers "Your Record";
 // every opponent subject answers BOTH "Your Opponent" and "Name-Calling" (naming the
@@ -31,6 +33,7 @@ const NP = (id: string, text: string, side: Side, sentiment: number, o: NpOpts =
     number: o.number ?? 'sing',
     topics: topics.length ? topics : undefined,
     intensity: o.intensity,
+    animate: o.animate,
   };
 };
 
@@ -67,13 +70,28 @@ const po = (
   e: PredExtra = {},
 ): Card => ({ id, role: 'predicate', open: true, lead, post, affinity, deed, pre: e.pre, topics: e.topics });
 
+/**
+ * Post-nominal modifier aside: "who is ugly, just very ugly" / "which is a treasure".
+ * Like a mini-predicate on the subject (conjugates via `lead`/`post`), but rendered
+ * with a relative pronoun and folded into its clause for scoring. `sentiment` is
+ * about the subject's referent; `rel` is only the standalone display hint. NO `side` —
+ * the effect depends on whatever subject it's played on (an attack on an opponent, a
+ * self-own on yourself), exactly like a roaming bit of sentiment.
+ */
+const md = (
+  id: string,
+  post: string,
+  sentiment: number,
+  e: { lead?: string; rel?: 'who' | 'which'; topics?: string[] } = {},
+): Card => ({ id, role: 'modifier', lead: e.lead ?? 'be', post, sentiment, rel: e.rel, topics: e.topics });
+
 // --- subjects (noun phrases with a side) ------------------------------------
 
 export const SUBJECTS: Card[] = [
   NP('s_i', 'I', 'self', 1, { person: 1 }),
-  NP('s_admin', 'My administration', 'self', 1),
-  NP('s_record', 'My record', 'self', 1),
-  NP('s_policies', 'My policies', 'self', 1, { number: 'plural' }),
+  NP('s_admin', 'My administration', 'self', 1, { animate: false }),
+  NP('s_record', 'My record', 'self', 1, { animate: false }),
+  NP('s_policies', 'My policies', 'self', 1, { number: 'plural', animate: false }),
   NP('s_opp', 'My opponent', 'opponent', -1),
   NP('s_opp_wife', "My opponent's wife", 'opponent', -1),
   NP('s_opp_donors', "My opponent's donors", 'opponent', -1, { number: 'plural' }),
@@ -82,24 +100,24 @@ export const SUBJECTS: Card[] = [
   NP('s_people', 'The American people', 'audience', 2, { number: 'plural', topics: ['pander'] }),
   NP('s_families', 'Hardworking families', 'audience', 2, { number: 'plural', topics: ['children'] }),
   NP('s_children', 'Our children', 'audience', 2, { number: 'plural', topics: ['children'] }),
-  NP('s_nation', 'This great nation', 'audience', 2, { topics: ['freedom'] }),
+  NP('s_nation', 'This great nation', 'audience', 2, { topics: ['freedom'], animate: false }),
 ];
 
 // --- objects (noun phrases that fill an open predicate's slot) --------------
 
 export const OBJECTS: Card[] = [
   { ...NP('o_satan', 'Satan', 'neutral', -3), proper: true }, // generic evil — no topic
-  NP('o_swamp', 'the swamp', 'neutral', -2, { topics: ['economy'] }),
-  NP('o_taxes', 'higher taxes', 'neutral', -2, { number: 'plural', topics: ['economy'] }),
+  NP('o_swamp', 'the swamp', 'neutral', -2, { topics: ['economy'], animate: false }),
+  NP('o_taxes', 'higher taxes', 'neutral', -2, { number: 'plural', topics: ['economy'], animate: false }),
   NP('o_lobbyists', 'shady lobbyists', 'neutral', -2, { number: 'plural', topics: ['economy'] }),
-  NP('o_chaos', 'total chaos', 'neutral', -3, { topics: ['security'] }),
-  NP('o_freedom', 'freedom and democracy', 'neutral', 3, { topics: ['freedom'] }),
+  NP('o_chaos', 'total chaos', 'neutral', -3, { topics: ['security'], animate: false }),
+  NP('o_freedom', 'freedom and democracy', 'neutral', 3, { topics: ['freedom'], animate: false }),
   NP('o_veterans', 'our veterans', 'neutral', 3, { number: 'plural', topics: ['security'] }),
-  NP('o_smallbiz', 'small businesses', 'neutral', 2, { number: 'plural', topics: ['economy'] }),
-  NP('o_middle', 'the middle class', 'neutral', 2, { topics: ['economy'] }),
-  NP('o_borders', 'our borders', 'neutral', 2, { number: 'plural', topics: ['security'] }),
-  NP('o_schools', 'our public schools', 'neutral', 2, { number: 'plural', topics: ['children'] }),
-  NP('o_constitution', 'the Constitution', 'neutral', 3, { topics: ['freedom'] }),
+  NP('o_smallbiz', 'small businesses', 'neutral', 2, { number: 'plural', topics: ['economy'], animate: false }),
+  NP('o_middle', 'the middle class', 'neutral', 2, { topics: ['economy'], animate: false }),
+  NP('o_borders', 'our borders', 'neutral', 2, { number: 'plural', topics: ['security'], animate: false }),
+  NP('o_schools', 'our public schools', 'neutral', 2, { number: 'plural', topics: ['children'], animate: false }),
+  NP('o_constitution', 'the Constitution', 'neutral', 3, { topics: ['freedom'], animate: false }),
 ];
 
 // --- predicates -------------------------------------------------------------
@@ -179,7 +197,7 @@ export const SIG_SUBJ_ATTACK: Card[] = [
   NP('s_crook_opp', 'My crooked, do-nothing opponent', 'opponent', -2, { intensity: 1.3 }),
 ];
 export const SIG_SUBJ_PANDER: Card[] = [
-  NP('s_proud_nation', 'This great and proud nation', 'audience', 2, { topics: ['freedom'], intensity: 1.3 }),
+  NP('s_proud_nation', 'This great and proud nation', 'audience', 2, { topics: ['freedom'], intensity: 1.3, animate: false }),
   NP('s_wonderful_people', 'The wonderful, beautiful people of this country', 'audience', 2, { number: 'plural', topics: ['pander'], intensity: 1.3 }),
 ];
 export const SIG_OBJECTS: Card[] = [
@@ -210,6 +228,21 @@ export const PREDICATES: Card[] = [
   ...SIG_ATTACK,
   ...SIG_PANDER,
   ...OPEN_PREDS,
+];
+
+// --- modifiers (post-nominal asides) ----------------------------------------
+// Played between a subject and its predicate to intensify the clause and break the
+// noun-verb rhythm (also a handy waiting move). Sentiment is about the subject; the
+// effect flips with who you attach it to, so they carry no side.
+export const MODIFIERS: Card[] = [
+  md('m_ugly', 'ugly, just very ugly', -2, { rel: 'who' }),
+  md('m_crook', 'as crooked as the day is long', -2, { rel: 'who' }),
+  md('m_liar', 'constantly', -2, { lead: 'lie', rel: 'who' }), // "who lies constantly"
+  md('m_disaster', 'a total disaster', -3, { rel: 'which' }),
+  md('m_treasure', 'frankly a national treasure', 3, { rel: 'who' }),
+  md('m_genius', 'an absolute genius', 3, { rel: 'who' }),
+  md('m_loves_country', 'this country', 2, { lead: 'love', rel: 'who' }), // "who loves this country"
+  md('m_blessing', 'a blessing to us all', 3, { rel: 'which' }),
 ];
 
 // --- connectors -------------------------------------------------------------
@@ -384,7 +417,7 @@ export const REWARDS: Card[] = [
   pi('r_pony', 'will give every citizen a pony and a tax cut', 4),
   pc('r_oncegen', 'be', 'a once-in-a-generation genius', 4),
   NP('r_treason_opp', 'My crooked, treasonous opponent', 'opponent', -2, { intensity: 1.6 }),
-  NP('r_blessed_nation', 'This blessed and chosen nation', 'audience', 2, { topics: ['freedom'], intensity: 1.6 }),
+  NP('r_blessed_nation', 'This blessed and chosen nation', 'audience', 2, { topics: ['freedom'], intensity: 1.6, animate: false }),
 ];
 
 export const ALL: Card[] = [
@@ -392,6 +425,7 @@ export const ALL: Card[] = [
   ...OBJECTS,
   ...SIG_NPS,
   ...PREDICATES,
+  ...MODIFIERS,
   ...REWARDS,
   ...CONNECTORS,
   ...INTENSIFIERS,

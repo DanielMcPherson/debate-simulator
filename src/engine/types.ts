@@ -7,6 +7,7 @@
 export type Role =
   | 'np' // a noun phrase: a subject, or an object that fills a predicate's slot
   | 'predicate' // a chunky verb phrase ("kicks puppies", "is a national disgrace")
+  | 'modifier' // a post-nominal aside on a subject ("who is ugly", "which is a treasure")
   | 'connector' // "and" / "but" / "because" / "and therefore"
   | 'intensifier' // sentence-final tag that multiplies the whole statement
   | 'powerup'; // a one-shot action card (not part of the sentence)
@@ -94,8 +95,11 @@ export interface Card {
   /** Subject loadedness: multiplies the clause's impact. Default 1; e.g. "My
    * crooked, treasonous opponent" (1.6) hits harder than plain "My opponent" (1). */
   intensity?: number;
+  /** Subject animacy — picks the relative pronoun a modifier uses ("who" for people,
+   * "which" for things/abstractions). Default true (most subjects are people). */
+  animate?: boolean;
 
-  // --- predicate ---
+  // --- predicate / modifier ---
   /** Needs an object to fill its trailing slot ("is in bed with ___"). */
   open?: boolean;
   /** Leading verb lemma to conjugate ("kick", "be", "want"). */
@@ -109,6 +113,12 @@ export interface Card {
   /** For OPEN predicates: object polarity = deed + affinity × objectSentiment. */
   affinity?: number;
   deed?: number;
+
+  // --- modifier ---
+  /** Standalone-display hint for a modifier card ("who"/"which") shown in the hand
+   * and catalog. In a clause the SUBJECT's `animate` decides the pronoun, so the
+   * rendered aside always agrees with whatever it's played on. */
+  rel?: 'who' | 'which';
 
   // --- connector ---
   // 'and' coordinates (CCAND); 'because'/'and therefore' join logically; 'but'
@@ -149,6 +159,9 @@ export interface PredInstance {
 /** One parsed clause: a subject and the predicate(s) said about it. */
 export interface Clause {
   subject?: Card;
+  /** Post-nominal modifier asides attached to the subject ("who is ugly"). Their
+   * score folds into the clause's first predicate contribution. */
+  mods?: Card[];
   preds: PredInstance[];
   /** The connector that joined this clause to the previous one (undefined for
    * the first clause). Drives connector-fit combo scoring. */

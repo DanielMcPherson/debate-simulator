@@ -32,11 +32,26 @@ export function predicateText(card: Card, person: Person, number: GramNumber): s
   return [card.pre, verb, card.post].filter(Boolean).join(' ');
 }
 
+/**
+ * Render a modifier aside ("who is ugly, just very ugly") agreeing with its subject.
+ * The relative pronoun follows the subject's animacy; the verb conjugates like a
+ * predicate (reusing predicateText), so "the donors, who are shady" / "the
+ * Constitution, which is a treasure" both read right.
+ */
+export function modifierText(card: Card, person: Person, number: GramNumber, animate = true): string {
+  const rel = animate ? 'who' : 'which';
+  return `${rel} ${predicateText(card, person, number)}`;
+}
+
 /** A standalone display label for a card (predicates shown in 3rd-person singular). */
 export function cardLabel(card: Card): string {
   if (card.role === 'predicate') {
     const base = predicateText(card, 3, 'sing');
     return card.open ? `${base} …` : base;
+  }
+  if (card.role === 'modifier') {
+    // Standalone (hand/catalog): use the card's own who/which hint, 3rd-sing.
+    return modifierText(card, 3, 'sing', card.rel !== 'which');
   }
   return card.text ?? '';
 }
@@ -54,6 +69,8 @@ export function displayWords(line: Card[]): string[] {
     const subj = clause.subjectIdx !== undefined ? line[clause.subjectIdx] : undefined;
     const person: Person = subj?.person ?? 3;
     const number: GramNumber = subj?.number ?? 'sing';
+    // Modifier asides agree with the subject and are set off by commas.
+    for (const m of clause.mods) words[m] = `, ${modifierText(line[m], person, number, subj?.animate ?? true)},`;
     for (const p of clause.preds) words[p.predIdx] = predicateText(line[p.predIdx], person, number);
   }
 
@@ -79,7 +96,10 @@ export function displayWords(line: Card[]): string[] {
 export function renderSentence(line: Card[]): string {
   const words = displayWords(line).filter(Boolean);
   if (words.length === 0) return '';
-  // A period card renders as ".": attach it to the previous word (no leading space).
-  const s = words.join(' ').replace(/\s+/g, ' ').replace(/\s+\./g, '.').trim();
-  return /[.!?]$/.test(s) ? s : s + '.';
+  // Collapse runs of spaces, then pull punctuation (a period card ".", or a modifier's
+  // set-off commas) tight against the preceding word.
+  let s = words.join(' ').replace(/\s+/g, ' ').replace(/\s+([.,])/g, '$1').trim();
+  s = /[.!?]$/.test(s) ? s : s + '.';
+  // Drop a dangling comma that ended up against the closing period (a stall on a modifier).
+  return s.replace(/,(\s*[.!?])/g, '$1');
 }

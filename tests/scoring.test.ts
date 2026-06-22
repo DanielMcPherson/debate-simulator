@@ -246,6 +246,58 @@ describe('scoring — periods, conjunctions & combos', () => {
   });
 });
 
+describe('scoring — modifier asides', () => {
+  it('a correct modifier intensifies its clause', () => {
+    // "My opponent's wife, who is ugly, eats babies" > "…eats babies"
+    expect(delta('s_opp_wife', 'm_ugly', 'p_eat_babies')).toBeGreaterThan(delta('s_opp_wife', 'p_eat_babies'));
+  });
+
+  it('a misused modifier (praising your opponent) drags the clause down', () => {
+    // "My opponent, who is a treasure, is a disgrace" scores worse than the plain attack.
+    expect(delta('s_opp', 'm_treasure', 'p_disgrace')).toBeLessThan(delta('s_opp', 'p_disgrace'));
+  });
+
+  it('a self-applied insult modifier is a blunder', () => {
+    expect(delta('s_i', 'm_ugly', 'p_patriot')).toBeLessThan(delta('s_i', 'p_patriot'));
+  });
+
+  it('a modifier folds into the clause and still rides a combo', () => {
+    const withMod = scoreStatement(cards('s_opp', 'm_crook', 'p_kick_pup', 'c_and', 's_i', 'p_patriot'));
+    expect(withMod.combo?.kind).toBe('and'); // the combo still forms
+    expect(withMod.delta).toBeGreaterThan(delta('s_opp', 'p_kick_pup', 'c_and', 's_i', 'p_patriot')); // and it's bigger
+  });
+
+  it('a modifier alone forms no combo (no connector)', () => {
+    expect(combo('s_opp_wife', 'm_ugly', 'p_eat_babies')).toBeUndefined();
+  });
+
+  it('stalling on a modifier scores lenient "confused"', () => {
+    const r = scoreStatement(cards('s_opp_wife', 'm_ugly'));
+    expect(r.label).toBe('confused');
+    expect(r.grammatical).toBe(false);
+  });
+
+  it('insulting the crowd dominates pandering in the same clause (not easily forgiven)', () => {
+    // "The American people, who are ugly, love freedom" — the insult stands, pandering suppressed.
+    const mix = scoreStatement(cards('s_people', 'm_ugly', 'p_love_fd'));
+    expect(mix.delta).toBeLessThan(-8); // clearly negative, not a near-zero wash
+    expect(mix.label).not.toBe('approve');
+    // …but still less harsh than calling them ugly AND saying they kick puppies.
+    expect(mix.delta).toBeGreaterThan(delta('s_people', 'm_ugly', 'p_kick_pup'));
+  });
+
+  it('pandering later in the statement cannot buy back a crowd insult', () => {
+    // pander, THEN insult the crowd in a second clause — still a net loss.
+    expect(delta('s_people', 'p_love_fd', 'c_and', 's_people', 'm_ugly', 'p_kick_pup')).toBeLessThan(0);
+  });
+
+  it('calling YOURSELF ugly reads as confused and dulls the brag', () => {
+    const r = scoreStatement(cards('s_genius', 'm_ugly', 'p_cut_taxes'));
+    expect(r.label).toBe('confused'); // a muddled self-insult, not outrage
+    expect(r.delta).toBeLessThan(delta('s_genius', 'p_cut_taxes')); // dulled below the clean brag
+  });
+});
+
 describe('scoring — hidden crowd preference', () => {
   it('a crowd amplifies statements of the type it loves', () => {
     const line = cards('s_opp', 'p_kick_pup'); // an attack on the opponent

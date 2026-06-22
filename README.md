@@ -72,6 +72,16 @@ A debate is a series of **questions**. Each question:
   "and frankly"). `and` coordinates predicates under one subject; the others open
   a new clause. Predicates auto-conjugate to the subject ("My opponent **kicks**"
   vs "Our children **kick**", "is/are a national disgrace").
+- **Modifier** asides slot in right after a subject — "My opponent, **who is ugly,
+  just very ugly,** eats kittens" / "Our Constitution, **which is a national
+  treasure,** defends freedom." They **intensify** the clause (their score folds into
+  it and rides any combo you build), add a comedic beat, and double as a **waiting
+  move**: play subject + modifier and stall before committing to a verb. They take
+  the subject's side, so praising the wrong target (your opponent, the crowd, your
+  own record) **backfires** like any blunder. Worse, **insulting the crowd this way
+  poisons the whole statement** — no amount of pandering later wins them back — while
+  calling *yourself* ugly just leaves the audience **confused**. The pronoun
+  ("who"/"which") follows the subject automatically.
 - The **period (".") is free and unlimited** — tap it any time a clause is finished
   to end the sentence and start a new one. Stringing extra sentences together helps,
   but each one is worth progressively less, so a pile of periods only nudges your

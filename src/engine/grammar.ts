@@ -18,8 +18,8 @@ import type { Card, Clause, Role, SentenceStructure } from './types';
 // boundary: it can ONLY open a new clause, and so always needs its own subject —
 // it never strings bare predicates into fragments.
 
-type Term = 'NP' | 'PC' | 'PO' | 'CCAND' | 'CJOIN' | 'CPERIOD' | 'INT';
-const TERMS = new Set<Term>(['NP', 'PC', 'PO', 'CCAND', 'CJOIN', 'CPERIOD', 'INT']);
+type Term = 'NP' | 'MOD' | 'PC' | 'PO' | 'CCAND' | 'CJOIN' | 'CPERIOD' | 'INT';
+const TERMS = new Set<Term>(['NP', 'MOD', 'PC', 'PO', 'CCAND', 'CJOIN', 'CPERIOD', 'INT']);
 
 /** The part(s) of speech a card can play. */
 export function rolesOf(card: Card): Role[] {
@@ -30,6 +30,8 @@ function termOfRole(r: Role, card: Card): Term {
   switch (r) {
     case 'np':
       return 'NP';
+    case 'modifier':
+      return 'MOD';
     case 'predicate':
       return card.open ? 'PO' : 'PC';
     case 'connector':
@@ -50,7 +52,9 @@ const termsAt = (card: Card): Term[] => rolesOf(card).map((r) => termOfRole(r, c
 const GRAMMAR: Record<string, string[][]> = {
   TOP: [['S'], ['S', 'INT']],
   S: [['CLAUSE'], ['S', 'CCAND', 'CLAUSE'], ['S', 'CJOIN', 'CLAUSE'], ['S', 'CPERIOD', 'CLAUSE']],
-  CLAUSE: [['NP', 'PREDS']],
+  // A subject may carry one or more post-nominal modifier asides before its predicates.
+  CLAUSE: [['NP', 'PREDS'], ['NP', 'MODS', 'PREDS']],
+  MODS: [['MOD'], ['MODS', 'MOD']],
   PREDS: [['PRED'], ['PREDS', 'CCAND', 'PRED'], ['PREDS', 'CJOIN', 'PRED']],
   PRED: [['PC'], ['PO', 'NP']],
 };
@@ -134,7 +138,7 @@ export function canAppend(tokens: Card[], card: Card): boolean {
 
 // --- structural segmentation for scoring & rendering -----------------------
 
-export type TokenRole = 'subject' | 'object' | 'pred' | 'conn' | 'int';
+export type TokenRole = 'subject' | 'object' | 'mod' | 'pred' | 'conn' | 'int';
 
 type Conj = NonNullable<Card['conj']>;
 
@@ -150,6 +154,8 @@ interface SegPred {
 
 interface Seg {
   subjectIdx?: number;
+  /** Token indices of post-nominal modifier asides on this clause's subject. */
+  mods: number[];
   preds: SegPred[];
   /** The clause-joining connector that opened this clause (undefined for the first). */
   joinedBy?: Conj;
@@ -160,7 +166,7 @@ interface Seg {
 export function segmentDetailed(tokens: Card[]): { clauses: Seg[]; roleAt: TokenRole[] } {
   const clauses: Seg[] = [];
   const roleAt: TokenRole[] = [];
-  let cur: Seg = { preds: [] };
+  let cur: Seg = { mods: [], preds: [] };
   let started = false;
   let open: SegPred | null = null; // predicate awaiting an object
   let pendingConn: Conj | undefined; // a connector awaiting the predicate it coordinates
@@ -193,6 +199,14 @@ export function segmentDetailed(tokens: Card[]): { clauses: Seg[]; roleAt: Token
           }
         }
         break;
+      case 'modifier':
+        // A post-nominal aside on the current clause's subject. It takes no object
+        // and never coordinates predicates, so it just attaches to the clause.
+        roleAt[i] = 'mod';
+        open = null;
+        cur.mods.push(i);
+        started = true;
+        break;
       case 'predicate': {
         const p: SegPred = { predIdx: i };
         // A predicate after the clause's first one is coordinated by the pending
@@ -219,7 +233,7 @@ export function segmentDetailed(tokens: Card[]): { clauses: Seg[]; roleAt: Token
         // coordinates the next predicate under the shared subject.
         if (conj === 'period' || (next && next.role === 'np')) {
           push();
-          cur = { preds: [], joinedBy: conj, connIdx: i };
+          cur = { mods: [], preds: [], joinedBy: conj, connIdx: i };
           started = false;
           pendingConn = undefined;
           pendingConnIdx = undefined;
@@ -242,6 +256,7 @@ export function segmentDetailed(tokens: Card[]): { clauses: Seg[]; roleAt: Token
 export function parse(tokens: Card[]): SentenceStructure {
   const clauses: Clause[] = segmentDetailed(tokens).clauses.map((s) => ({
     subject: s.subjectIdx !== undefined ? tokens[s.subjectIdx] : undefined,
+    mods: s.mods.length ? s.mods.map((i) => tokens[i]) : undefined,
     joinedByPrev: s.joinedBy,
     connIdx: s.connIdx,
     preds: s.preds.map((p) => ({

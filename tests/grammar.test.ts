@@ -121,3 +121,54 @@ describe('morphology — predicate conjugation & casing', () => {
     );
   });
 });
+
+describe('grammar — modifier asides', () => {
+  it('accepts subject + modifier + predicate', () => {
+    expect(isComplete(cards('s_opp_wife', 'm_ugly', 'p_eat_babies'))).toBe(true);
+  });
+
+  it('subject + modifier (no predicate yet) is a valid prefix but incomplete — the stall', () => {
+    expect(isValidPrefix(cards('s_opp_wife', 'm_ugly'))).toBe(true);
+    expect(isComplete(cards('s_opp_wife', 'm_ugly'))).toBe(false);
+  });
+
+  it('stacks multiple modifiers before the predicate', () => {
+    const line = cards('s_opp_wife', 'm_ugly', 'm_crook', 'p_eat_babies');
+    expect(isComplete(line)).toBe(true);
+    expect(parse(line).clauses[0].mods).toHaveLength(2);
+    expect(parse(line).clauses[0].preds).toHaveLength(1);
+  });
+
+  it('a modifier cannot lead a statement (needs a subject first)', () => {
+    expect(isValidPrefix(cards('m_ugly'))).toBe(false);
+  });
+
+  it('attaches the modifier to its clause subject in the parse', () => {
+    const clause = parse(cards('s_opp_wife', 'm_ugly', 'p_eat_babies')).clauses[0];
+    expect(clause.mods?.[0].id).toBe('m_ugly');
+  });
+});
+
+describe('morphology — modifier rendering', () => {
+  it('uses "who" for an animate subject and agrees in number', () => {
+    expect(renderSentence(cards('s_opp_wife', 'm_ugly', 'p_eat_babies'))).toBe(
+      "My opponent's wife, who is ugly, just very ugly, secretly eats babies.",
+    );
+    // plural antecedent + a conjugated (non-copular) modifier verb
+    expect(renderSentence(cards('s_opp_donors', 'm_liar', 'p_cant_trust'))).toBe(
+      "My opponent's donors, who lie constantly, can't be trusted.",
+    );
+  });
+
+  it('uses "which" for an inanimate subject', () => {
+    expect(renderSentence(cards('o_constitution', 'm_treasure', 'p_defend_liberty'))).toBe(
+      'The Constitution, which is frankly a national treasure, will defend our liberty.',
+    );
+  });
+
+  it('renders a clean stall (modifier with no predicate)', () => {
+    expect(renderSentence(cards('s_opp_wife', 'm_ugly'))).toBe(
+      "My opponent's wife, who is ugly, just very ugly.",
+    );
+  });
+});

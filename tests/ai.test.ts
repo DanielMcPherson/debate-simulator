@@ -47,6 +47,9 @@ describe('AI planner', () => {
   it('plays Teleprompter Typo only when replacing the last word forces a self-own', () => {
     const game = createGame({ seed: 7 });
     game.turn = 'ai';
+    // Isolate the Typo decision: make it the AI's only power-up so an incidental
+    // Soundbite/Forgot from the seeded deal can't confound the assertion.
+    game.ai.hand = game.ai.hand.filter((c) => c.role !== 'powerup');
     game.ai.hand.push({ id: 'pw_ty', role: 'powerup', effect: 'typo', text: 'x' });
     // Player has a complete, favourable line; swapping its last word makes a self-own.
     game.player.line = [findDef('s_admin')!, findDef('p_patriot')!]; // "My administration is a true patriot"

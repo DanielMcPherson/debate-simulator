@@ -88,6 +88,10 @@ interface Contrib {
   joinedByPrev?: NonNullable<Card['conj']>;
   /** Token index of that connector — marks the junction word for an inline chip. */
   connIdx?: number;
+  /** A blunder-direction modifier aside (self-own / audience-insult / opponent-boost):
+   * scored at full strength OUTSIDE the combo/decay machinery so same-clause praise
+   * can't quietly net it away. (Good-direction modifiers fold into the clause instead.) */
+  aside?: boolean;
 }
 
 function contributions(structure: SentenceStructure): Contrib[] {
@@ -95,19 +99,53 @@ function contributions(structure: SentenceStructure): Contrib[] {
   structure.clauses.forEach((clause) => {
     const side: Side = effectiveSide(clause.subject);
     const t = targetFor(clause.subject);
-    clause.preds.forEach((p, pi) => {
-      const P = predP(p);
+    // Signed delta + category for a polarity P on this clause's subject — shared by
+    // predicates and modifier asides, so misuse blunders the same way for both.
+    const signed = (P: number): { delta: number; category: Category } => {
       const category = predCategory(side, P);
       let delta = t.sign * P * t.weight * SCALE;
       // Blunders sting extra: owning yourself or insulting the audience.
       if (category === 'self_own' || category === 'insult_aud') delta *= BLUNDER_MULT;
+      return { delta, category };
+    };
+
+    // Split the clause's modifier asides by direction:
+    //  - GOOD ones (help the clause: attack an opponent, praise yourself/the crowd) FOLD
+    //    into the clause's first contribution — they intensify it and ride any combo.
+    //  - BLUNDER ones (self-own / audience-insult / opponent-boost) are scored SEPARATELY
+    //    at full strength (`aside`), so same-clause praise can't quietly net them away —
+    //    calling the crowd ugly should sting even if you pander in the same breath.
+    let goodModDelta = 0;
+    const asides: Contrib[] = [];
+    let goodModCat: Category = 'neutral';
+    for (const m of clause.mods ?? []) {
+      const { delta, category } = signed(m.sentiment ?? 0);
+      if (delta > 0) {
+        goodModDelta += delta;
+        goodModCat = category;
+      } else {
+        asides.push({ delta, category, side, predBase: m.id.split('#')[0], aside: true });
+      }
+    }
+
+    const clauseContribs: Contrib[] = clause.preds.map((p, pi) => {
+      const { delta, category } = signed(predP(p));
       // The connector before this contribution: within a clause it's the
       // predicate's coordinating connector; for a clause's first predicate it's
       // the clause-join from the previous clause.
       const joinedByPrev = pi > 0 ? p.joinedBy : clause.joinedByPrev;
       const connIdx = pi > 0 ? p.connIdx : clause.connIdx;
-      out.push({ delta, category, side, predBase: p.card.id.split('#')[0], joinedByPrev, connIdx });
+      return { delta, category, side, predBase: p.card.id.split('#')[0], joinedByPrev, connIdx };
     });
+
+    if (clauseContribs.length > 0) {
+      clauseContribs[0].delta += goodModDelta; // fold good asides into the clause's first contribution
+    } else if (goodModDelta !== 0) {
+      // A subject + good modifier with no predicate (a stall): keep the partial intent so
+      // the lenient "confused" path still reads it.
+      out.push({ delta: goodModDelta, category: goodModCat, side, predBase: 'mod', joinedByPrev: clause.joinedByPrev, connIdx: clause.connIdx });
+    }
+    out.push(...clauseContribs, ...asides);
   });
   return out;
 }
@@ -300,8 +338,18 @@ export function scoreStatement(line: Card[], opts: ScoreOptions = {}): Reaction 
     }
   }
 
-  const agg = aggregate(contribs);
-  let total = agg.total;
+  const audienceInsulted = contribs.some((c) => c.category === 'insult_aud');
+  const selfOwnAside = contribs.some((c) => c.aside && c.category === 'self_own');
+  // Insulting the crowd poisons the whole statement: an offended audience won't credit
+  // any of your positive plays — pandering or compliments later in the line can't buy it
+  // back. So zero the positives and let the insult stand.
+  const scored = audienceInsulted ? contribs.map((c) => (c.delta > 0 ? { ...c, delta: 0 } : c)) : contribs;
+
+  // Combos/decay run over the clause contributions; blunder-direction asides are added at
+  // full strength on top (no combo, no diminishing returns).
+  const agg = aggregate(scored.filter((c) => !c.aside));
+  const asideDelta = scored.filter((c) => c.aside).reduce((s, c) => s + c.delta, 0);
+  let total = agg.total + asideDelta;
   // Rambling: too many simple sentences with no combos — each extra one hurts.
   const rambling = agg.residualCount > RAMBLE_LIMIT;
   if (rambling) total -= RAMBLE_STEP * (agg.residualCount - RAMBLE_LIMIT);
@@ -317,10 +365,13 @@ export function scoreStatement(line: Card[], opts: ScoreOptions = {}): Reaction 
 
   total = Math.max(-INTENSIFIED_CAP, Math.min(INTENSIFIED_CAP, total));
   total = Math.round(total * 10) / 10;
-  // A 'but' that deflected a self-own reads as confusion, not outrage.
-  const label = agg.mitigated && total < 0 ? 'confused' : labelFor(total);
+  // A 'but' that deflected a self-own reads as confusion, not outrage — and so does
+  // calling YOURSELF ugly: a muddled self-insult confuses the crowd rather than enraging it.
+  let label = agg.mitigated && total < 0 ? 'confused' : labelFor(total);
+  if (selfOwnAside && total <= 0) label = 'confused';
 
   let note = dodged ? ' (and dodged the question!)' : '';
+  if (audienceInsulted && total < 0) note += ' You insulted the crowd — no amount of pandering wins them back.';
   if (rambling) note += ' The crowd starts to nod off — be concise, or chain combos with connectors.';
   // Subtle tell: a big reaction the crowd specially loved hints at their taste.
   if (crowdPleased && total >= 12) note += ' This crowd is especially fired up by that.';
