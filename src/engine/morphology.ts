@@ -77,6 +77,12 @@ export function displayWords(line: Card[]): string[] {
     for (const p of clause.preds) words[p.predIdx] = predicateText(line[p.predIdx], person, number);
   }
 
+  // A dual-role parenthetical used as a clause connector ("…, and I'm not making this up, …")
+  // is set off by commas like an aside (it's not in any clause's `mods`).
+  for (let i = 0; i < line.length; i++) {
+    if (roleAt[i] === 'conn' && line[i].role === 'modifier' && words[i]) words[i] = `, ${words[i]},`;
+  }
+
   // Capitalize the first word of each sentence (start, and after every period);
   // lower-case mid-sentence noun-phrase articles ("My"/"The"), but never "I".
   const cap = (w: string) => w.charAt(0).toUpperCase() + w.slice(1);

@@ -48,8 +48,10 @@ Cards are **chunks**, not single words. `Card.role`:
   so a statement is at most two sentences and rambling-by-period is impossible (chain conjunctions for
   more, and a combo). The `PERIOD` card (cards.ts) is **virtual** — never drawn/consumed, NOT in
   CONNECTORS/ALL/decks; played via `Move{kind:'take', from:'period'}`.
-  **Period currently DISABLED (experiment, 2026-06):** `PERIOD_ENABLED = false` (cards.ts) gates the two
-  move-generation sites (UI button + `availFor`), so a statement is **one sentence (or connectors chained
+  **Period currently DISABLED (experiment, 2026-06):** `PERIOD_ENABLED = false` (cards.ts) gates the THREE
+  move-generation sites (UI button in main.ts + the player's `availFor` in game.ts + **the AI's own
+  `availFor` in ai.ts** — the AI builds its own avail and was still playing periods until that was gated),
+  so a statement is **one sentence (or connectors chained
   into one compound sentence)**; jamming two complete thoughts with no connector reads as a **run-on**
   (`looksRunOn` → confused, `reaction.runOn` drives a `RUN-ON!` badge + coaching). All the period plumbing
   (grammar `CPERIOD`, scoring residual/decay, `endableLine` trim, applyMove handler) is left intact and
@@ -61,7 +63,9 @@ Cards are **chunks**, not single words. `Card.role`:
   by commas. Carries **no `side`** — `sentiment` is about the subject, so its effect flips with whom
   it's played on (an attack on an opponent, a self-own on yourself). **Direction-split in
   `contributions()`:** a GOOD-direction aside (attack_opp / praise_self / pander_aud) **folds into
-  its clause's first contribution** (intensifies + rides any combo; no decay, no ramble); a
+  its clause's first contribution ONLY when that contribution is itself positive** (intensifies a
+  good clause + rides any combo; no decay, no ramble) — it will **not rescue a blunder predicate**
+  (bragging "who is winning" can't flip "I secretly eat babies" positive; the gaffe stands); a
   BLUNDER-direction aside (self_own / insult_aud / boost_opp) is marked `aside` and scored
   **separately at full strength** (no combo/decay) so same-clause praise can't net it away. Two
   knock-on rules in `scoreStatement`: (1) **any audience insult** (predicate OR aside) **zeroes all
@@ -76,6 +80,8 @@ Cards are **chunks**, not single words. `Card.role`:
   "mildly off-putting" middle for audience targets — author them 0 or genuinely negative). And
   `invariant: true` bakes the full phrase incl. its own pronoun (for relative clauses that can't
   conjugate to the subject, e.g. "which the experts are calling a triumph", "and trust me, …").
+  A **`conj` on a modifier** makes it **dual-role** — a subject aside OR a clause-joining coordinating
+  conjunction mid-line (see the "Dual-role parenthetical asides" DONE note); `m_trustme`/`m_notmakingup`.
 - `intensifier` — sentence-final finisher (`factor` multiplies the whole statement). It is an
   **end-move**: only offered/legal when the line is already a complete sentence (grammar `S → INT`),
   and playing it (a `take`) appends the flourish, resolves, and ends the turn — there is **no held
@@ -309,17 +315,19 @@ state + targeted-attack moves + AI target selection.
 pre-formed statements into your deck ("…and that's why I despise my voters"), clogging your hand.
 Remove in the shop, or play deliberately to attempt a Heel Turn.
 
-**P2 · medium — Dual-role intensifier/connector cards (parenthetical asides).** Some finishers read
-naturally as *parenthetical conjunctions* too. Ex: "and I am totally not making this up" is authored
-as a sentence-final `intensifier` (current intended use, as a flourish), but the same phrase also
-wants to drop into the *middle* of a line as an interjecting aside: "My opponent wants to cancel
-Christmas, **and I am totally not making this up,** eats kittens." That mid-line use is a coordinating
-break (≈ CCAND / a comma-set aside) rather than an end-move. Decide whether to let one card serve both
-roles — grammar would need an aside/parenthetical production that doesn't consume the end-move slot,
-and scoring would treat the mid-line use as a (neutral?) connector/aside vs the end-move ×factor. Risk:
-the end-move mechanic is currently clean (INT only legal on a complete line, no held state); a
-dual-role card reintroduces "where can this go" ambiguity. Could also just be authored as *two
-separate cards* (an INT and a `modifier`/connector) sharing flavor text — cheaper, no grammar change.
+**DONE (2026-06) — Dual-role parenthetical asides (modifier ⇄ connector).** A coordinating aside like
+"and I'm not making this up" now works BOTH as a post-nominal subject aside ("My opponent, and I'm not
+making this up, naps…") AND as a clause-joining conjunction mid-line ("…fight a bear, and I'm not making
+this up, my opponent naps…") — a playtester immediately tried the latter and it scored "confused". Done
+**without** touching the end-move/finisher mechanic (these are `modifier` cards, not `intensifier`s):
+author the aside with a `conj` (`md(..., { invariant: true, conj: 'and' })` — currently `m_trustme` &
+`m_notmakingup`). The grammar already recognizes over **term-SETS**, so `termsAt` returns `[MOD, CCAND]`
+for a `conj` modifier (`connTerm` helper, grammar.ts) and the Earley chart tries both; `segmentDetailed`
+disambiguates by **position** — a `conj` modifier with `cur.preds.length > 0` (past the subject-aside
+slot) is segmented as a connector, else as a normal aside. It combos like "and" (CCAND, reinforce) and
+renders comma-set (morphology.ts). Tests in scoring.test.ts ("dual-role parenthetical"). To add more,
+just give an invariant coordinating aside a `conj`. (The roadmap's "author as two separate cards"
+alternative was avoided — one card serves both, which is what the player expects.)
 
 **P2 · medium — "Setup" predicate-prefix cards that demand a completion (e.g. "is a corrupt jackass
 who ___").** A new shape that's intensifier-like in that it **requires another card to finish** the
@@ -419,6 +427,39 @@ CSS under "resolution juice" in style.css. `crowdFavorite` is NOT surfaced (woul
 NOT done: live preview while drafting (deliberately — keep the no-mid-statement-scoring rule); a
 `displayBar` needle-lag so the needle rides *with* the count-up (today it rides immediately on render);
 animating the opponent "thinking" stage; the broader per-tier reaction-phrasing pool (P3 below).
+
+**DONE (2026-06) — first-question onboarding hints.** The very first question of the first debate
+(`run.rung === 0` → `createGame({tutorial:true})` → `GameState.tutorial`, gated to `round === 1`)
+teaches the core loop with animated glows, paired with the resolution juice:
+- **Engine:** `dealRound` curates the Q1 **shared pool** (`buildTutorialPool` in game.ts) into a
+  randomized "me-good AND opponent-bad (+ finisher)" toolkit — 2 self subjects, 2 opponent subjects,
+  2 closed positive ("brag") verbs, 2 closed negative ("attack") verbs, an `and`, and one finisher
+  (verbs/subjects vary each game for replay variety; the connector & finisher are safe because the Q1
+  opponent never plays them, and 2-of-each avoids a dead-end if the AI grabs one). The hand is NOT
+  replaced — the player builds from the POOL (teaches pool use, not a private gift) — but **power-ups
+  are stripped from the Q1 hand** (backfilled with normal cards) to keep the first hand simple. Q1 topic
+  is forced to **`jackass`** so the attack clause is on-topic (no OFF-TOPIC badge). `aiTurn`/`chooseMove`
+  get a `tutorialSimple` mode (Q1 only): **no gaffe**, play the best **single clause** (subject–verb,
+  no connectors/modifiers/finisher) then END immediately — so the player's combo clearly out-scores
+  it (verified ~+30 vs ~+10 across seeds, combo every seed). Covered in tests/ai.test.ts.
+- **UI (ui/main.ts):** the first turn opens with a one-time **welcome modal** ("Tap a subject card…",
+  dismissed by "Got it!" → `tutorialIntroSeen`); after that the `.tutorial-banner` takes over.
+  `tutorialStep()` walks subject → verb → connector → subject → verb → finisher → End based on the live
+  line state; `currentHint` (set each render) drives a glowing `.hint` class + a wiggling **👉
+  `.hint-hand`** icon on the matching pool/hand cards (and the End button) plus the banner. The banner
+  **pops** (`.pop` added via rAF when `currentHint.text` changes vs `lastHintText` — rAF so it survives
+  the double render() in a tick) to call attention each time the step advances. The finisher step reads "Play a Finisher to end strong — or tap End
+  Statement" (the finisher IS an end-move; no "End after", no score-math language). Shown ONLY while
+  building on Q1 of debate 1; the player can ignore it. CSS under "onboarding hints".
+  Note Q1 is player-first (`round % 2 === 1`), and play **alternates card-by-card** (`advanceTurn`
+  on every `take`) until a speaker ends — the hints reflect the player's line on each of their turns.
+
+**DONE (2026-06) — next-question card.** Each new question opens with a modal (`questionCardHtml`,
+`pendingQuestionCard` in ui/main.ts) so the question gets its own un-ignorable moment in the busy UI:
+the **question front-and-center** + the two caricature portraits with **in-character banter**
+(`questionCommentary`, varied by who's ahead, deterministic per question), dismissed by "Let's debate ▶"
+(`#questionGo` → clears the flag → `driveAI`). Triggered by **Next Question** (`#next`, defers driveAI)
+and **Begin** at the start of each debate — EXCEPT the tutorial's Q1, which keeps its own welcome modal.
 
 **DONE (2026-06) — visual skin.** Live-TV-debate broadcast theme: engraved title, audience needle,
 two-podium stage with text **teleprompters**, **parchment cards** (generated frame texture +

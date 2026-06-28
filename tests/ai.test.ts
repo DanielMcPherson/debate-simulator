@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { plan, chooseMove, aiTurn } from '../src/engine/ai';
 import { dominantCategory } from '../src/engine/scoring';
-import { isComplete } from '../src/engine/grammar';
+import { isComplete, canAppend } from '../src/engine/grammar';
 import { createGame, applyMove, legalMoves, nextQuestion } from '../src/engine/game';
-import { findDef } from '../src/data/cards';
+import { findDef, PERIOD_ENABLED } from '../src/data/cards';
 import type { Card, GameState, Move } from '../src/engine/types';
 
 function avail(source: 'pool' | 'hand', ...ids: string[]) {
@@ -169,5 +169,84 @@ describe('full game loop', () => {
       if (game.winner === 'ai') aiWins++;
     }
     expect(aiWins).toBeGreaterThanOrEqual(seeds.length * 0.6);
+  });
+
+  it.runIf(!PERIOD_ENABLED)('never plays a period while the period experiment is disabled', () => {
+    for (const seed of [1, 2, 3, 4, 5, 6]) {
+      const game = createGame({ seed, maxRounds: 4 });
+      let guard = 0;
+      while (!game.winner && guard++ < 4000) {
+        if (game.awaitingNext) {
+          for (const p of [game.player, game.ai]) {
+            expect(p.line.some((c) => c.role === 'connector' && c.conj === 'period')).toBe(false);
+          }
+          nextQuestion(game);
+          continue;
+        }
+        applyMove(game, game.turn === 'ai' ? chooseMove(game) : dumbPlayerMove(game));
+      }
+    }
+  });
+
+  describe('onboarding (tutorial) Q1', () => {
+    it('the Q1 pool is a randomized combo toolkit (nouns, verbs, a connector, one finisher)', () => {
+      const g = createGame({ seed: 3, tutorial: true });
+      const pool = g.pool;
+      expect(pool.some((c) => c.role === 'np' && c.side === 'self')).toBe(true); // brag subject
+      expect(pool.some((c) => c.role === 'np' && c.side === 'opponent')).toBe(true); // attack subject
+      expect(pool.some((c) => c.role === 'predicate' && !c.open && (c.sentiment ?? 0) > 0)).toBe(true);
+      expect(pool.some((c) => c.role === 'predicate' && !c.open && (c.sentiment ?? 0) < 0)).toBe(true);
+      expect(pool.some((c) => c.role === 'connector' && c.conj === 'and')).toBe(true);
+      expect(pool.filter((c) => c.role === 'intensifier').length).toBe(1); // exactly one finisher
+      expect(g.topic?.id).toBe('jackass'); // forced so the attack combo is on-topic
+      expect(g.player.hand.some((c) => c.role === 'powerup')).toBe(false); // no action cards in the first hand
+      // Variety: a different seed yields a different toolkit (no fixed hand every game).
+      const g2 = createGame({ seed: 9, tutorial: true });
+      expect(g2.pool.map((c) => c.id.split('#')[0]).sort().join()).not.toBe(
+        pool.map((c) => c.id.split('#')[0]).sort().join(),
+      );
+    });
+
+    it('player can build a combo from the pool and out-scores a simple, gaffe-free opponent', () => {
+      const match = (want: string, c: Card): boolean => {
+        if (want === 'selfSubj') return c.role === 'np' && c.side === 'self';
+        if (want === 'oppSubj') return c.role === 'np' && c.side === 'opponent';
+        if (want === 'bragV') return c.role === 'predicate' && !c.open && (c.sentiment ?? 0) > 0;
+        if (want === 'attackV') return c.role === 'predicate' && !c.open && (c.sentiment ?? 0) < 0;
+        if (want === 'and') return c.role === 'connector' && c.conj === 'and';
+        return c.role === 'intensifier'; // 'fin'
+      };
+      const WANTS = ['selfSubj', 'bragV', 'and', 'oppSubj', 'attackV', 'fin'];
+      for (const seed of [1, 2, 3, 4, 5]) {
+        const g = createGame({ seed, tutorial: true });
+        let wi = 0;
+        let guard = 0;
+        while (!g.awaitingNext && guard++ < 80) {
+          if (g.turn === 'player' && !g.player.done) {
+            let played = false;
+            while (wi < WANTS.length && !played) {
+              const cand = [
+                ...g.pool.map((c) => ['pool', c] as const),
+                ...g.player.hand.map((c) => ['hand', c] as const),
+              ].find(([, c]) => match(WANTS[wi], c) && canAppend(g.player.line, c));
+              if (cand) {
+                applyMove(g, { kind: 'take', from: cand[0], cardId: cand[1].id });
+                played = true;
+                wi++;
+              } else wi++;
+            }
+            if (!played) applyMove(g, { kind: 'end' });
+          } else applyMove(g, aiTurn(g, { maxExtend: 4 }));
+        }
+        const pr = g.player.lastReaction!;
+        const ai = g.ai.lastReaction!;
+        expect(pr.combo?.kind).toBe('and'); // hints lead to a real combo
+        expect(pr.offTopic).toBeUndefined(); // forced topic keeps it on-topic
+        expect(ai.grammatical).toBe(true);
+        expect(ai.delta).toBeGreaterThanOrEqual(0); // never a gaffe/blunder on Q1
+        expect(ai.combo).toBeUndefined(); // simple single clause
+        expect(pr.delta).toBeGreaterThan(ai.delta); // the combo wins
+      }
+    });
   });
 });

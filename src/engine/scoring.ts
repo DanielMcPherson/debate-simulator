@@ -161,7 +161,11 @@ function contributions(structure: SentenceStructure): Contrib[] {
     });
 
     if (clauseContribs.length > 0) {
-      clauseContribs[0].delta += goodModDelta; // fold good asides into the clause's first contribution
+      // Fold good-direction asides into the clause's first contribution to INTENSIFY it — but
+      // ONLY when that contribution is itself good. A good aside must not rescue a blunder:
+      // bragging "who is winning by every metric" doesn't undo "I secretly eat babies" — a
+      // self-own stays a self-own (else the gaffe scores positive; see scoring.test.ts).
+      if (clauseContribs[0].delta > 0) clauseContribs[0].delta += goodModDelta;
     } else if (goodModDelta !== 0) {
       // A subject + good modifier with no predicate (a stall): keep the partial intent so
       // the lenient "confused" path still reads it.

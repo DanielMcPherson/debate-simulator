@@ -261,6 +261,14 @@ describe('scoring — modifier asides', () => {
     expect(delta('s_i', 'm_ugly', 'p_patriot')).toBeLessThan(delta('s_i', 'p_patriot'));
   });
 
+  it('good asides do NOT rescue a self-own predicate (a gaffe stays a gaffe)', () => {
+    // "I, who am winning, which is a triumph, secretly eat babies" must stay clearly negative —
+    // bragging modifiers can't flip a self-own positive.
+    const r = scoreStatement(cards('s_i', 'm_winning', 'm_triumph', 'p_eat_babies'));
+    expect(r.delta).toBeLessThan(-4);
+    expect(r.delta).toBeLessThanOrEqual(delta('s_i', 'p_eat_babies')); // no better than the bare self-own
+  });
+
   it('a modifier folds into the clause and still rides a combo', () => {
     const withMod = scoreStatement(cards('s_opp', 'm_crook', 'p_kick_pup', 'c_and', 's_i', 'p_patriot'));
     expect(withMod.combo?.kind).toBe('and'); // the combo still forms
@@ -311,6 +319,24 @@ describe('scoring — hidden crowd preference', () => {
     expect(scoreStatement(line, { crowd: { id: 'f', loves: 'praise_self', boost: 1.5 } }).delta).toBe(
       scoreStatement(line).delta,
     );
+  });
+});
+
+describe('scoring — dual-role parenthetical ("…and I\'m not making this up…")', () => {
+  it('joins two clauses as a coordinating conjunction (grammatical + combos)', () => {
+    // "My opponent kicks puppies, and I'm not making this up, the people love freedom"
+    const line = cards('s_opp', 'p_kick_pup', 'm_notmakingup', 's_people', 'p_love_fd');
+    const r = scoreStatement(line);
+    expect(r.grammatical).toBe(true);
+    expect(r.combo?.kind).toBe('and');
+    expect(r.delta).toBeGreaterThan(delta('s_opp', 'p_kick_pup')); // beats the lone clause
+  });
+
+  it('still works as a post-nominal subject aside', () => {
+    // "My opponent, and I'm not making this up, kicks puppies"
+    const r = scoreStatement(cards('s_opp', 'm_notmakingup', 'p_kick_pup'));
+    expect(r.grammatical).toBe(true);
+    expect(r.combo).toBeUndefined(); // a single clause with an aside, not a combo
   });
 });
 

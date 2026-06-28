@@ -12,6 +12,7 @@ const AI_DELAY = 650;
 let aiThinking = false;
 let resolving = false; // a statement's resolution animation is playing — lock input
 let fxHoldSummary = false; // hold the round-summary panel until the resolving FX finishes
+let pendingQuestionCard = false; // show the "next question" card modal before the player acts
 let fxSkip = false; // the player clicked to fast-forward the current resolution FX
 const FX_STEP = 150; // ms between each phrase/chip reveal
 let pendingTypo: string | null = null; // a Teleprompter Typo awaiting its target card
@@ -49,6 +50,7 @@ function startDebate(): GameState {
     maxRounds: 8,
     opponentId: rung.opponentId,
     playerBonus: run.bonus,
+    tutorial: run.rung === 0, // first debate: guaranteed combo-friendly Q1 hand + simple opponent
   });
 }
 
@@ -56,6 +58,9 @@ let game = startDebate();
 
 function newRun(): void {
   run = { rung: 0, bonus: [], character: null };
+  tutorialIntroSeen = false; // show the welcome modal again on a fresh run
+  lastHintText = null;
+  pendingQuestionCard = false;
   game = startDebate();
   runScreen = 'tutorial'; // tutorial → choose candidate → campaign map → debate 1
   render();
@@ -167,6 +172,49 @@ const MOOD_LABEL: Record<Mood, string> = {
   nervous: 'Getting rattled',
   embarrassed: 'Mortified — just gaffed',
 };
+
+/** Portrait image URL for a side (player = chosen candidate, confident; opponent = current mood). */
+function portraitUrl(side: 'you' | 'them'): string | undefined {
+  if (side === 'you') {
+    const ch = PLAYER_CHARACTERS.find((c) => c.id === run.character);
+    return ch ? PORTRAITS[`./art/portraits/player-${ch.id}-confident.webp`] : undefined;
+  }
+  return game.opponent ? PORTRAITS[`./art/portraits/${game.opponent.id}-${oppMood()}.webp`] : undefined;
+}
+
+/** In-character one-liners for the question card, varied by who's ahead (deterministic per question). */
+function questionCommentary(): { you: string; opp: string } {
+  const bar = game.bar; // + = player ahead
+  const nick = (game.opponent?.name ?? 'Opponent').split(' ').pop();
+  const youAhead = ['I’ve got the room — keep the momentum.', 'The crowd’s with me. Don’t let up now.', 'Pulling ahead. Stay sharp.'];
+  const youEven = ['Neck and neck — this one counts.', 'Anyone’s game. Let’s win this room.', 'Dead heat. Time to land a big one.'];
+  const youBehind = ['He’s slightly ahead, but I can make a comeback.', 'Down, not out — time to turn it around.', 'Okay. Claw it back, one zinger at a time.'];
+  const oppCocky = [`You’ve got this, ${nick}! Keep telling them what they want to hear!`, 'Too easy. This amateur doesn’t stand a chance.', 'Keep flailing, kid. The crowd loves ME.'];
+  const oppEven = ['Game on. May the biggest liar win.', `Turn on the charm, ${nick}. Don’t blow it.`, 'Time to say absolutely nothing, beautifully.'];
+  const oppWorried = ['I’m slipping — time to play dirty.', `How is this clown winning? Dig deep, ${nick}.`, 'Pull it together. The polls are tightening.'];
+  const you = bar > 8 ? youAhead : bar < -8 ? youBehind : youEven;
+  const opp = bar < -8 ? oppCocky : bar > 8 ? oppWorried : oppEven; // player behind ⇒ opponent is cocky
+  const i = Math.abs(Math.round(bar) + game.round * 3); // stable per question, varies across the debate
+  return { you: you[i % you.length], opp: opp[i % opp.length] };
+}
+
+/** The between-questions card: the new question front-and-center + a bit of caricature banter. */
+function questionCardHtml(): string {
+  const c = questionCommentary();
+  const face = (side: 'you' | 'them', fallback: string) => {
+    const url = portraitUrl(side);
+    return url ? `<img class="qm-face" src="${url}" alt="">` : `<div class="qm-face placeholder">${fallback}</div>`;
+  };
+  return `<div class="modal-backdrop"><div class="modal question-modal">
+    <div class="qm-meta">Question ${game.round} of ${game.maxRounds} &nbsp;·&nbsp; ${game.topic?.label ?? ''}</div>
+    <div class="qm-question">“${game.question ?? ''}”</div>
+    <div class="qm-banter">
+      <div class="qm-side"><div class="qm-bubble you">${c.you}</div>${face('you', '🇺🇸')}<div class="qm-name you">You</div></div>
+      <div class="qm-side"><div class="qm-bubble them">${c.opp}</div>${face('them', '🎙️')}<div class="qm-name them">${game.opponent?.name ?? 'Opponent'}</div></div>
+    </div>
+    <button class="action" id="questionGo">Let’s debate ▶</button>
+  </div></div>`;
+}
 
 /** A podium header: a portrait (or placeholder) + role label, name, and mood. */
 function portraitHeader(side: 'you' | 'them'): string {
@@ -380,6 +428,30 @@ function onTopic(c: Card): boolean {
   return !!game.topic && !!c.topics?.includes(game.topic.id);
 }
 
+type TutorialStep = { roles: Card['role'][]; text: string; end?: boolean };
+let currentHint: TutorialStep | null = null; // set each render; drives the first-question hints
+let tutorialIntroSeen = false; // the "Tap a subject…" welcome modal has been dismissed
+let lastHintText: string | null = null; // last shown hint text — to pop the banner only when it changes
+
+/** The onboarding hint for the FIRST question of the first debate only: walks the player
+ * through subject → verb → connector → subject → verb → finisher → End. Returns the card
+ * role(s) to glow + the instruction (and whether to glow the End button). Null = no hint. */
+function tutorialStep(): TutorialStep | null {
+  if (run.rung !== 0 || game.round !== 1) return null; // first question of the first debate only
+  if (game.winner || game.awaitingNext || resolving) return null;
+  if (game.turn !== 'player' || game.player.done) return null; // only while you're building
+  const line = game.player.line;
+  if (line.length === 0) return { roles: ['np'], text: 'Tap a subject card to start your statement.' };
+  const last = line[line.length - 1];
+  if (last.role === 'connector') return { roles: ['np'], text: 'Now tap a subject to begin your next point.' };
+  if (!isComplete(line)) return { roles: ['predicate'], text: 'Tap a verb to say something about them.' };
+  const hasConn = line.some((c) => c.role === 'connector' && c.conj !== 'period');
+  if (!hasConn) return { roles: ['connector'], text: 'Tap “and” to chain a second point — combos score big!' };
+  const finisher = [...game.pool, ...game.player.hand].some((c) => c.role === 'intensifier' && canAppend(line, c));
+  if (finisher) return { roles: ['intensifier'], text: 'Play a Finisher to end strong — or tap End Statement.', end: true };
+  return { roles: [], text: 'Tap End Statement to lock in your combo!', end: true };
+}
+
 // Player-facing grammatical-function labels (the real engine roles, no invented words).
 // "Noun" (not "Subject") because an np plays as subject OR object.
 const ROLE_LABEL: Record<Card['role'], string> = {
@@ -394,9 +466,11 @@ const ROLE_LABEL: Record<Card['role'], string> = {
 // Re-enable by loading the page with ?debug.
 const DEBUG = new URLSearchParams(location.search).has('debug');
 
-/** A card's face: the phrase + a grammatical-role banner. No scoring numbers on cards. */
-function cardFace(c: Card): string {
-  return `<span class="ctext">${cardLabel(c)}</span><span class="banner">${ROLE_LABEL[c.role]}</span>`;
+/** A card's face: the phrase + a grammatical-role banner. No scoring numbers on cards.
+ * `hint` puts a pointing-hand on the role banner during the first-question tutorial. */
+function cardFace(c: Card, hint = false): string {
+  const hand = hint ? '<span class="hint-hand">👉</span>' : '';
+  return `<span class="ctext">${cardLabel(c)}</span><span class="banner">${hand}${ROLE_LABEL[c.role]}</span>`;
 }
 
 function cardHtml(c: Card, source: 'pool' | 'hand'): string {
@@ -419,8 +493,9 @@ function cardHtml(c: Card, source: 'pool' | 'hand'): string {
   // sentence (so appending it is grammatical). It then banks the bonus and ends your turn.
   const canFinish = isIntens && canAppend(game.player.line, c);
   const disabled = !canPlay() || (isIntens && !canFinish) ? 'disabled' : '';
-  const cls = `card ${source} role-${c.role}${DEBUG && onTopic(c) ? ' ontopic' : ''}`;
-  return `<button class="${cls}" data-id="${c.id}" data-from="${source}" ${disabled}>${cardFace(c)}</button>`;
+  const hinted = !!currentHint && currentHint.roles.includes(c.role);
+  const cls = `card ${source} role-${c.role}${DEBUG && onTopic(c) ? ' ontopic' : ''}${hinted ? ' hint' : ''}`;
+  return `<button class="${cls}" data-id="${c.id}" data-from="${source}" ${disabled}>${cardFace(c, hinted)}</button>`;
 }
 
 /** Render an opponent's-hand card: a steal target during a Hot Mic, else read-only intel. */
@@ -563,6 +638,9 @@ function bannerHtml(): string {
 }
 
 function render(): void {
+  currentHint = tutorialStep(); // first-question onboarding hints (glow + banner)
+  // A one-time welcome modal kicks off the very first turn; the banner takes over after "Got it!".
+  const showTutorialIntro = !!currentHint && !tutorialIntroSeen && !runScreen;
   const needle = ((100 - game.bar) / 200) * 100; // 0..100 left%; You favored → left (matches podiums)
   // Zero-sum 1v1: bar (-100..+100, signed toward player) shown as audience-support % that sums to 100.
   const youSupport = Math.round((game.bar + 100) / 2);
@@ -640,6 +718,7 @@ function render(): void {
     </div>
 
     <div class="question-pill"><span class="q-num">Question ${game.round}/${game.maxRounds}</span><span class="q-topic">${game.topic?.label ?? '—'}</span> — “${game.question ?? ''}”</div>
+    ${currentHint && tutorialIntroSeen ? `<div class="tutorial-banner">👉 ${currentHint.text}</div>` : ''}
 
     ${
       runScreen === 'result'
@@ -679,6 +758,18 @@ function render(): void {
     ${finisherNote}
 
     ${
+      showTutorialIntro
+        ? `<div class="modal-backdrop"><div class="modal tutorial-modal">
+            <div class="modal-title">👋 Your turn to speak!</div>
+            <p>Tap a <b>subject</b> card to start your statement.</p>
+            <button class="action" id="tutorialGotIt">Got it!</button>
+          </div></div>`
+        : pendingQuestionCard && !game.winner && !runScreen
+        ? questionCardHtml()
+        : ''
+    }
+
+    ${
       pendingHotMic
         ? `<div class="modal-backdrop"><div class="modal hotmic-modal">
             <div class="modal-title" style="color:#ff7ad6">🎙️ Hot Mic — Steal a Card</div>
@@ -693,7 +784,7 @@ function render(): void {
       showPanel
         ? ''
         : `<div class="controls">
-      <button class="action" id="end" ${endOk ? '' : 'disabled'}>End Statement</button>
+      <button class="action${currentHint?.end ? ' hint' : ''}" id="end" ${endOk ? '' : 'disabled'}>${currentHint?.end ? '👉 ' : ''}End Statement</button>
       ${PERIOD_ENABLED ? `<button class="ghost" id="period" ${periodOk ? '' : 'disabled'} title="${game.player.usedPeriod ? 'Already used your one period this statement — chain a connector to keep going.' : 'Free, once per statement — finish this sentence and start a new one. No combo bonus; use a connector for that.'}">Add “.” (new sentence)${game.player.usedPeriod ? ' — used' : ''}</button>` : ''}
       <button class="ghost" id="pass" ${canPlay() && (complete || game.player.line.length === 0) ? '' : 'disabled'}>Pass (wait)</button>
       <button class="ghost" id="regroup" ${canPlay() && !game.player.usedRedraw ? '' : 'disabled'}>↻ Call a Recess (fresh talking points, costs your turn)</button>
@@ -739,6 +830,16 @@ function render(): void {
 
     ${runModalHtml()}
   `;
+
+  // Pop the hint banner to grab attention whenever its text changes (i.e. the player just
+  // played a card and the next step updated). rAF runs after the synchronous render chain,
+  // so it lands on the final banner element even when render() is called twice in a tick.
+  if (currentHint && tutorialIntroSeen && currentHint.text !== lastHintText) {
+    lastHintText = currentHint.text;
+    requestAnimationFrame(() => app.querySelector('.tutorial-banner')?.classList.add('pop'));
+  } else if (!currentHint) {
+    lastHintText = null; // reset so the banner pops fresh next time it appears
+  }
 
   app.querySelectorAll<HTMLButtonElement>('.card').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -830,8 +931,18 @@ function render(): void {
     pendingTypo = null;
     pendingHotMic = null;
     nextQuestion(game);
+    pendingQuestionCard = true; // show the next-question card before play resumes
     render();
-    driveAI(); // even questions start on the AI's turn — let it speak first
+    // driveAI deferred until the card is dismissed (even questions open on the AI's turn)
+  });
+  app.querySelector<HTMLButtonElement>('#questionGo')?.addEventListener('click', () => {
+    pendingQuestionCard = false; // dismiss the question card and start the round
+    render();
+    driveAI();
+  });
+  app.querySelector<HTMLButtonElement>('#tutorialGotIt')?.addEventListener('click', () => {
+    tutorialIntroSeen = true; // dismiss the welcome modal; the hint banner takes over
+    render();
   });
   app.querySelector<HTMLButtonElement>('#cancelHotMic')?.addEventListener('click', () => {
     pendingHotMic = null; // dismiss the steal dialog without taking a card
@@ -857,8 +968,10 @@ function render(): void {
   });
   app.querySelector<HTMLButtonElement>('#beginDebate')?.addEventListener('click', () => {
     runScreen = null; // dismiss the map and step onto the debate stage
+    // Open with the question card — except the tutorial's Q1, which has its own welcome modal.
+    pendingQuestionCard = !(run.rung === 0 && game.round === 1);
     render();
-    driveAI(); // (debate 1 opens player-first, but stay robust if that changes)
+    if (!pendingQuestionCard) driveAI(); // (debate 1 opens player-first, but stay robust if that changes)
   });
 }
 

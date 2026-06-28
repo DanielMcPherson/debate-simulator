@@ -286,6 +286,9 @@ export interface GameState {
   crowd?: Crowd;
   /** Reward cards carried in from the run, shuffled into the player's private deck. */
   playerBonus?: Card[];
+  /** First-debate onboarding: guarantees a combo-friendly first hand and a simple,
+   * non-gaffe opponent on question 1 (drives the UI's first-question hints). */
+  tutorial?: boolean;
   /** Shared public deck and the face-up contested pool drawn from it. */
   sharedDeck: Card[];
   pool: Card[];

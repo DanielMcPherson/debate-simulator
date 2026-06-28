@@ -2,7 +2,7 @@ import type { Card, Category, DebateStyle, GameState, Move, NervousTrigger } fro
 import { canAppend, isComplete, rolesOf } from './grammar';
 import { scoreStatement, dominantCategory } from './scoring';
 import { bestTypoJam, gameRng } from './game';
-import { PERIOD } from '../data/cards';
+import { PERIOD, PERIOD_ENABLED } from '../data/cards';
 
 const STYLE_CATEGORY: Record<DebateStyle, Category> = {
   brag: 'praise_self',
@@ -116,7 +116,7 @@ function availFor(state: GameState): Avail[] {
   const usable = (c: Card) => c.role !== 'powerup';
   for (const c of state.pool) if (usable(c)) a.push({ card: c, source: 'pool' });
   for (const c of state.ai.hand) if (usable(c)) a.push({ card: c, source: 'hand' });
-  if (!state.ai.usedPeriod) a.push({ card: PERIOD, source: 'period' }); // free, one per statement
+  if (PERIOD_ENABLED && !state.ai.usedPeriod) a.push({ card: PERIOD, source: 'period' }); // free, one per statement (gated off with the period experiment)
   return a;
 }
 
@@ -133,6 +133,9 @@ export interface AiOptions {
   /** Hold back the mean power-ups (Typo/Forgot/Hot Mic) — nervous rookies don't
    * sabotage. Set by `aiTurn`; default false. */
   restrainPower?: boolean;
+  /** Onboarding (Q1 of the first debate): play a clean single subject–verb, no combo,
+   * no finisher, no gaffe/blunder — so the player's hint-driven combo clearly wins. */
+  tutorialSimple?: boolean;
 }
 
 /**
@@ -147,6 +150,23 @@ export function chooseMove(state: GameState, opts: AiOptions = {}): Move {
   const maxExtend = opts.maxExtend ?? 4;
   const styleCategory = state.opponent ? STYLE_CATEGORY[state.opponent.style] : undefined;
   const best = plan(line, avail, { maxExtend, topicId: state.topic?.id, styleCategory });
+
+  // ONBOARDING (Q1): play a clean single subject–verb — no connectors, no finisher, no
+  // sabotage — so the player's hint-driven combo clearly out-scores it. The plan maximizes
+  // delta, so it naturally picks a positive attack/brag (never a self-own/audience insult).
+  if (opts.tutorialSimple) {
+    // As soon as the line is a complete clause, STOP — keep it a short subject–verb (the AI
+    // re-plans every turn, so without this it would greedily pile on modifiers forever).
+    if (isComplete(line)) return { kind: 'end' };
+    // Build toward the best single clause: no connectors, no modifier asides, no finisher.
+    const simpleAvail = avail.filter(
+      (a) => a.card.role !== 'connector' && a.card.role !== 'intensifier' && a.card.role !== 'modifier',
+    );
+    const p = plan(line, simpleAvail, { maxExtend: Math.min(2, maxExtend), topicId: state.topic?.id, styleCategory });
+    if (p && p.ext.length > 0) return { kind: 'take', from: p.ext[0].source, cardId: p.ext[0].card.id };
+    if (best && best.ext.length > 0) return { kind: 'take', from: best.ext[0].source, cardId: best.ext[0].card.id };
+    return { kind: 'end' };
+  }
 
   // GAFFE: a flustered opponent flubs its statement. Build toward the least-bad
   // self-own (allow a touch more depth so a good setup can precede the blunder).
@@ -250,12 +270,13 @@ function nervousBonus(state: GameState): number {
  */
 export function aiTurn(state: GameState, opts: AiOptions = {}): Move {
   const opp = state.opponent;
+  const simple = !!state.tutorial && state.round === 1; // onboarding: never gaffe on Q1
   if (opp && state.ai.line.length === 0) {
     const chance = Math.min(0.95, (opp.gaffeChance ?? 0) + nervousBonus(state));
-    state.ai.gaffing = chance > 0 && gameRng(state)() < chance;
+    state.ai.gaffing = !simple && chance > 0 && gameRng(state)() < chance;
   }
   const restrainPower = (opp?.gaffeChance ?? 0) >= 0.25;
-  return chooseMove(state, { maxExtend: opts.maxExtend, gaffing: state.ai.gaffing, restrainPower });
+  return chooseMove(state, { maxExtend: opts.maxExtend, gaffing: state.ai.gaffing, restrainPower, tutorialSimple: simple });
 }
 
 /** Heuristic for the fallback branch: how promising is appending this card? */

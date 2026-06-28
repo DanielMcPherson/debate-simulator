@@ -82,11 +82,11 @@ const md = (
   id: string,
   post: string,
   sentiment: number,
-  e: { lead?: string; pre?: string; rel?: 'who' | 'which'; topics?: string[]; invariant?: boolean } = {},
+  e: { lead?: string; pre?: string; rel?: 'who' | 'which'; topics?: string[]; invariant?: boolean; conj?: Card['conj'] } = {},
 ): Card =>
   e.invariant
-    ? { id, role: 'modifier', text: post, invariant: true, sentiment, topics: e.topics } // `post` carries the full phrase incl. its pronoun
-    : { id, role: 'modifier', lead: e.lead ?? 'be', post, pre: e.pre, sentiment, rel: e.rel, topics: e.topics };
+    ? { id, role: 'modifier', text: post, invariant: true, sentiment, topics: e.topics, conj: e.conj } // `post` carries the full phrase incl. its pronoun
+    : { id, role: 'modifier', lead: e.lead ?? 'be', post, pre: e.pre, sentiment, rel: e.rel, topics: e.topics, conj: e.conj };
 
 // --- subjects (noun phrases with a side) ------------------------------------
 
@@ -317,8 +317,12 @@ export const MODIFIERS: Card[] = [
   md('m_park', 'who cannot parallel park to save their life', -2, { invariant: true }),
   // neutral (0): pure flavor + a waiting move; never angers the crowd, never helps the score
   md('m_tape', 'which is, between us, mostly held together with tape', 0, { invariant: true }),
-  md('m_trustme', "and trust me, what I'm about to say is absolutely true", 0, { invariant: true }),
-  md('m_notmakingup', "and I'm not making this up", 0, { invariant: true }),
+  // Dual-role coordinating parentheticals: a subject aside ("My opponent, and I'm not making
+  // this up, naps…") that can ALSO drop between clauses as a coordinating conjunction
+  // ("…fight a bear, and I'm not making this up, my opponent naps…"). `conj: 'and'` gives them
+  // the connector reading too (see grammar termsAt / segmentDetailed).
+  md('m_trustme', "and trust me, what I'm about to say is absolutely true", 0, { invariant: true, conj: 'and' }),
+  md('m_notmakingup', "and I'm not making this up", 0, { invariant: true, conj: 'and' }),
 ];
 
 // --- connectors -------------------------------------------------------------

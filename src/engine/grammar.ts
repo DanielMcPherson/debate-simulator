@@ -47,7 +47,22 @@ function termOfRole(r: Role, card: Card): Term {
       return 'INT'; // never placed in the line; value is irrelevant
   }
 }
-const termsAt = (card: Card): Term[] => rolesOf(card).map((r) => termOfRole(r, card));
+/** Connector term implied by a card's `conj` (shared by real connectors & dual-role asides). */
+function connTerm(conj: NonNullable<Card['conj']>): Term {
+  return conj === 'and' ? 'CCAND' : conj === 'period' ? 'CPERIOD' : 'CJOIN';
+}
+
+function termsAt(card: Card): Term[] {
+  const terms = rolesOf(card).map((r) => termOfRole(r, card));
+  // A dual-role parenthetical (a modifier authored with a `conj`) can ALSO act as a
+  // coordinating conjunction mid-line: "…fight a bear, and I'm not making this up, my
+  // opponent naps…". The Earley chart tries both readings; the segmenter picks by position.
+  if (card.conj && card.role !== 'connector') {
+    const t = connTerm(card.conj);
+    if (!terms.includes(t)) terms.push(t);
+  }
+  return terms;
+}
 
 const GRAMMAR: Record<string, string[][]> = {
   TOP: [['S'], ['S', 'INT']],
@@ -200,12 +215,30 @@ export function segmentDetailed(tokens: Card[]): { clauses: Seg[]; roleAt: Token
         }
         break;
       case 'modifier':
-        // A post-nominal aside on the current clause's subject. It takes no object
-        // and never coordinates predicates, so it just attaches to the clause.
-        roleAt[i] = 'mod';
-        open = null;
-        cur.mods.push(i);
-        started = true;
+        // A dual-role parenthetical (a `conj` modifier) used PAST the subject-aside slot
+        // (the clause already has predicates) acts as a coordinating conjunction — exactly
+        // like the 'connector' case below. Otherwise it's a normal post-nominal subject aside.
+        if (t.conj && cur.preds.length > 0) {
+          roleAt[i] = 'conn';
+          open = null;
+          const conj = t.conj;
+          const next = tokens[i + 1];
+          if (next && next.role === 'np') {
+            push();
+            cur = { mods: [], preds: [], joinedBy: conj, connIdx: i };
+            started = false;
+            pendingConn = undefined;
+            pendingConnIdx = undefined;
+          } else {
+            pendingConn = conj;
+            pendingConnIdx = i;
+          }
+        } else {
+          roleAt[i] = 'mod';
+          open = null;
+          cur.mods.push(i);
+          started = true;
+        }
         break;
       case 'predicate': {
         const p: SegPred = { predIdx: i };

@@ -192,6 +192,63 @@ h1 {
 .stage.fx-boo::after   { box-shadow:inset 0 0 44px 10px rgba(220,80,80,.5);  animation:fxFlash .6s ease; }
 @keyframes fxFlash { 0%{opacity:0} 30%{opacity:1} 100%{opacity:0} }
 
+/* --- onboarding hints (first question only) --- */
+.tutorial-banner {
+  text-align:center; margin:8px 0 4px; padding:9px 16px; border-radius:10px;
+  background:rgba(232,192,105,.12); border:1px solid var(--gold-deep); color:var(--gold);
+  font-family:var(--label); letter-spacing:.5px; font-size:15px; font-weight:600;
+  animation:hintBanner 1.7s ease-in-out infinite;
+}
+@keyframes hintBanner { 50% { background:rgba(232,192,105,.22); } }
+/* attention pop whenever the hint text changes (player just played a card) */
+.tutorial-banner.pop { animation:bannerPop .55s cubic-bezier(.2,1.5,.4,1), hintBanner 1.7s ease-in-out infinite; }
+@keyframes bannerPop {
+  0%   { transform:scale(.92); background:rgba(232,192,105,.45); }
+  45%  { transform:scale(1.07); background:rgba(232,192,105,.45); }
+  100% { transform:scale(1); }
+}
+/* the welcome modal wears the friendly gold tutorial theme, not the red opponent theme */
+.modal.tutorial-modal { border-color:var(--gold-deep); text-align:center; }
+.tutorial-modal .modal-title { color:var(--gold); }
+
+/* between-questions card: the question front-and-center + a bit of caricature banter */
+.modal.question-modal { border-color:var(--gold-deep); max-width:600px; text-align:center; }
+.qm-meta { font-family:var(--label); text-transform:uppercase; letter-spacing:1.5px; font-size:12px; color:var(--gold); }
+.qm-question { font-family:var(--display); font-size:23px; color:var(--ink); line-height:1.3; margin:10px 0 18px; }
+.qm-banter { display:flex; gap:16px; justify-content:center; align-items:flex-end; }
+.qm-side { flex:1 1 0; display:flex; flex-direction:column; align-items:center; gap:7px; max-width:48%; }
+.qm-face { width:74px; height:74px; border-radius:50%; object-fit:cover; border:2px solid var(--gold-deep); box-shadow:0 3px 10px rgba(0,0,0,.5); }
+.qm-face.placeholder { display:flex; align-items:center; justify-content:center; font-size:34px; background:#0e1424; }
+.qm-bubble {
+  font-size:15.5px; line-height:1.45; font-weight:500; background:#101a30; border:1px solid var(--line);
+  border-radius:10px; padding:10px 13px; min-height:48px; display:flex; align-items:center;
+}
+.qm-bubble.you  { color:#e3ecff; border-color:#3a4f8a; }
+.qm-bubble.them { color:#ffdede; border-color:#8a3a3a; }
+.qm-name { font-family:var(--label); text-transform:uppercase; letter-spacing:1px; font-size:11px; }
+.qm-name.you  { color:var(--you); }
+.qm-name.them { color:var(--them); }
+.card.hint { position:relative; z-index:2; animation:hintGlow 1s ease-in-out infinite; }
+@keyframes hintGlow {
+  0%,100% { box-shadow:0 0 0 2px rgba(232,192,105,.55), 0 0 14px 3px rgba(232,192,105,.45); transform:translateY(0); }
+  50%     { box-shadow:0 0 0 4px var(--gold), 0 0 30px 10px rgba(232,192,105,.85); transform:translateY(-6px); }
+}
+/* the pointing hand sits on the role banner (left of NOUN/VERB/…) so it never clips */
+.hint-hand {
+  display:inline-block; margin-right:6px; font-size:1.7em; line-height:0; vertical-align:-0.28em;
+  pointer-events:none; filter:drop-shadow(0 2px 3px rgba(0,0,0,.7));
+  animation:hintWiggle .55s ease-in-out infinite;
+}
+@keyframes hintWiggle {
+  0%,100% { transform:translateX(0) scale(1); }
+  50%     { transform:translateX(-6px) scale(1.25); }
+}
+.action.hint { animation:hintGlowBtn 1s ease-in-out infinite; }
+@keyframes hintGlowBtn {
+  0%,100% { box-shadow:0 0 0 2px rgba(232,192,105,.6), 0 0 14px 3px rgba(232,192,105,.5); }
+  50%     { box-shadow:0 0 0 4px var(--gold), 0 0 30px 9px rgba(232,192,105,.85); }
+}
+
 /* --- zone titles --- */
 .zone-title {
   font-family:var(--label); text-transform:uppercase; letter-spacing:2px; font-size:11px;
@@ -332,7 +389,7 @@ button.action:disabled, button.ghost:disabled { opacity:.4; cursor:not-allowed; 
 .modal-title { font-family:var(--display); color:var(--them); font-size:22px; font-weight:700; margin-bottom:10px; }
 .modal p { font-size:15px; line-height:1.55; margin:8px 0; }
 .modal-quote {
-  font-style:italic; color:var(--ink); background:#070b14; padding:10px 12px;
+  font-size:16px; line-height:1.5; color:var(--ink); background:#0c1322; padding:11px 14px;
   border-radius:6px; border-left:3px solid var(--them);
 }
 /* full-width applies to ACTION buttons only — never to reward cards (they're <button>s too) */

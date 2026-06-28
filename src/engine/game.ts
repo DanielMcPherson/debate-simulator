@@ -2,7 +2,7 @@ import type { Card, GameEvent, GameState, Move, PlayerId, PlayerState } from './
 import { isComplete, canAppend } from './grammar';
 import { scoreStatement } from './scoring';
 import { renderSentence, cardLabel } from './morphology';
-import { TOPICS, OPPONENTS, CROWDS, findDef, PERIOD, PERIOD_ENABLED } from '../data/cards';
+import { TOPICS, OPPONENTS, CROWDS, ALL, findDef, PERIOD, PERIOD_ENABLED } from '../data/cards';
 import {
   buildPrivateDeck,
   buildSharedDeck,
@@ -23,6 +23,35 @@ export interface GameOptions {
   crowdId?: string;
   /** Reward cards (base defs) carried from the run, added to the player's deck. */
   playerBonus?: Card[];
+  /** First-debate onboarding (guaranteed first hand + simple opponent on Q1). */
+  tutorial?: boolean;
+}
+
+/** Pick `n` distinct random items from `arr` using the seeded rng. */
+function pickDistinct<T>(arr: T[], n: number, rng: () => number): T[] {
+  const copy = arr.slice();
+  const out: T[] = [];
+  while (out.length < n && copy.length) out.push(copy.splice(Math.floor(rng() * copy.length), 1)[0]);
+  return out;
+}
+
+/** The onboarding pool for the FIRST question: a generous, randomized toolkit so the player
+ * can build a "me-good AND opponent-bad (+ finisher)" combo straight from the SHARED POOL —
+ * subjects + brag/attack verbs vary each game; the connector & finisher are safe because the
+ * Q1 opponent (tutorialSimple) never plays them. Two of each contested type avoids a dead-end
+ * if the AI grabs one. Played on the forced 'jackass' topic so the attack clause is on-topic. */
+function buildTutorialPool(rng: () => number): Card[] {
+  const closedPred = (sign: number) =>
+    ALL.filter((c) => c.role === 'predicate' && !c.open && Math.sign(c.sentiment ?? 0) === sign);
+  const blocks: Card[] = [
+    ...pickDistinct(ALL.filter((c) => c.role === 'np' && c.side === 'self'), 2, rng), // brag subjects
+    ...pickDistinct(ALL.filter((c) => c.role === 'np' && c.side === 'opponent'), 2, rng), // attack subjects
+    ...pickDistinct(closedPred(1), 2, rng), // "me good" verbs
+    ...pickDistinct(closedPred(-1), 2, rng), // "opponent bad" verbs
+    findDef('c_and')!, // the connector to chain a combo (AI won't contest it on Q1)
+    ...pickDistinct(ALL.filter((c) => c.role === 'intensifier'), 1, rng), // one finisher
+  ];
+  return shuffle(blocks, rng).flatMap((c) => instances(c, 1));
 }
 
 // The RNG lives alongside the state so a save/restore could persist it; for the
@@ -51,7 +80,10 @@ function dealRound(state: GameState): void {
   const rng = rngFor.get(state)!;
   // Each question gets ONE deal that does not replenish — scarcity is the source
   // of pressure (you may be forced to finish with a bad card).
-  state.topic = TOPICS[Math.floor(rng() * TOPICS.length)];
+  const tutorialQ1 = !!state.tutorial && state.round === 1;
+  // Onboarding Q1: force a name-calling question so the attack clause of the taught combo is
+  // on-topic (no confusing OFF-TOPIC badge), and pairs naturally ("why is your opponent…?").
+  state.topic = tutorialQ1 ? TOPICS.find((t) => t.id === 'jackass') ?? TOPICS[0] : TOPICS[Math.floor(rng() * TOPICS.length)];
   state.sharedDeck = shuffle(buildSharedDeck(), rng);
   state.pool = [];
   refill(state.sharedDeck, state.pool, state.poolSize);
@@ -60,6 +92,8 @@ function dealRound(state: GameState): void {
   ensurePoolHasTopic(state, state.topic.id);
   ensurePoolPlayable(state);
   capPoolFinishers(state); // at most one finisher on the board — keep the race-for-it tension
+  // Onboarding Q1: replace the pool with the randomized combo toolkit (see buildTutorialPool).
+  if (tutorialQ1) state.pool = buildTutorialPool(rng);
 
   for (const p of [state.player, state.ai]) {
     // The opponent's private deck is tilted toward its debating style.
@@ -90,6 +124,14 @@ function dealRound(state: GameState): void {
     p.hand = [];
     refill(p.deck, p.hand, state.handSize);
     ensureHandHasOpener(p); // a private, can't-be-contested-away subject to start with
+    // Onboarding: keep the player's FIRST hand simple — no special action cards (power-ups).
+    if (tutorialQ1 && p.id === 'player' && p.hand.some((c) => c.role === 'powerup')) {
+      p.deck.push(...p.hand.filter((c) => c.role === 'powerup'));
+      p.hand = p.hand.filter((c) => c.role !== 'powerup');
+      for (let i = p.deck.length - 1; i >= 0 && p.hand.length < state.handSize; i--) {
+        if (p.deck[i].role !== 'powerup') p.hand.push(p.deck.splice(i, 1)[0]); // backfill with normal cards
+      }
+    }
     p.line = [];
     p.usedRedraw = false;
     p.usedPeriod = false;
@@ -215,6 +257,7 @@ export function createGame(opts: GameOptions = {}): GameState {
     OPPONENTS.find((o) => o.id === opts.opponentId) ?? OPPONENTS[Math.floor(rng() * OPPONENTS.length)];
   state.crowd = CROWDS.find((c) => c.id === opts.crowdId) ?? CROWDS[Math.floor(rng() * CROWDS.length)];
   state.playerBonus = opts.playerBonus ?? [];
+  state.tutorial = opts.tutorial ?? false;
   dealRound(state);
   return state;
 }
