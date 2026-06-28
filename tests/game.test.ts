@@ -287,6 +287,18 @@ describe('resource model — chunk cards, no replenish, must-finish', () => {
     expect(g.player.hand.some((c) => c.id === 'pw_fg2')).toBe(false); // still consumed
   });
 
+  it('Forgot My Line skips a trailing connector and drops the last CONTENT card', () => {
+    // Bug repro: opponent's line ended with a dangling period; Forgot popped the period (text "."),
+    // removing nothing visible. It must skip the connector and drop the last real card.
+    const g = createGame({ seed: 1 });
+    g.turn = 'player';
+    g.ai.line = [findDef('s_opp')!, findDef('p_disgrace')!, { ...PERIOD }]; // "…disgrace." (trailing period)
+    g.player.hand.push({ id: 'pw_fg3', role: 'powerup', effect: 'forgot', text: 'x' });
+    applyMove(g, { kind: 'power', cardId: 'pw_fg3' });
+    expect(g.ai.line.map((c) => c.id.split('#')[0])).toEqual(['s_opp']); // content card + period both gone
+    expect(g.lastSabotage?.text).not.toBe('.'); // the forgotten card reported is the content, not the period
+  });
+
   it('Teleprompter Typo replaces the victim\'s last word with the CHOSEN card when targeted', () => {
     const g = createGame({ seed: 1 });
     g.ai.line = [{ ...findDef('s_opp')! }, { ...findDef('p_patriot')! }]; // victim mid-statement

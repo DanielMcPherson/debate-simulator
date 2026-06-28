@@ -16,7 +16,7 @@ let ackedSabotage: GameState['lastSabotage'] = undefined; // sabotage the player
 
 // --- campaign run (Slay-the-Spire-style ladder) ---
 let run = { rung: 0, bonus: [] as Card[], character: null as string | null }; // rung + earned cards + chosen candidate
-let runScreen: 'tutorial' | 'select' | 'map' | 'reward' | 'defeat' | 'victory' | null = null;
+let runScreen: 'tutorial' | 'select' | 'map' | 'result' | 'reward' | 'defeat' | 'victory' | null = null;
 
 // The player's selectable candidates (cosmetic for now — portrait + name; art in src/ui/art/portraits).
 const PLAYER_CHARACTERS = [
@@ -25,6 +25,9 @@ const PLAYER_CHARACTERS = [
   { id: 'veteran', name: 'The Veteran', tagline: 'A trusted old hand with a steady reputation.' },
 ];
 let rewardChoices: Card[] = [];
+// What the reward dialog's top line says — set by whatever TRIGGERED the reward (debate win
+// for now; later: big combos, heel turns, etc., each with their own headline + emoji).
+let rewardPrompt: { title: string; body: string } = { title: '🏆 A Reward!', body: 'Choose a card.' };
 let aiMaxExtend = LADDER[0].maxExtend;
 
 function startDebate(): GameState {
@@ -86,14 +89,25 @@ function pickRewards(n: number): Card[] {
   return out;
 }
 
+/** The reward headline for a debate win — flavored by how decisive it was. */
+function debateWinPrompt(): { title: string; body: string } {
+  const youSupport = Math.round((game.bar + 100) / 2);
+  const name = game.opponent?.name ?? 'your opponent';
+  if (youSupport >= 72) return { title: '🏆 Great Debate Performance!', body: `You wiped the floor with ${name}. Choose a card.` };
+  if (youSupport >= 60) return { title: '🏆 Debate Winner!', body: `You came out clearly ahead of ${name}. Choose a card.` };
+  return { title: '🏆 Debate Winner!', body: `You barely squeaked by, but you defeated ${name}. Choose a card.` };
+}
+
 /** When a debate ends, set up the reward / victory / defeat screen (once). */
 function checkDebateEnd(): void {
   if (!game.winner || runScreen) return;
   if (game.winner === 'player') {
     if (run.rung >= LADDER.length - 1) runScreen = 'victory';
     else {
-      runScreen = 'reward';
+      // First announce the win in the board's summary area; the reward draft comes after.
+      runScreen = 'result';
       rewardChoices = pickRewards(3);
+      rewardPrompt = debateWinPrompt();
     }
   } else {
     runScreen = 'defeat'; // a loss or tie ends the run
@@ -152,6 +166,10 @@ const MOOD_LABEL: Record<Mood, string> = {
 
 /** A podium header: a portrait (or placeholder) + role label, name, and mood. */
 function portraitHeader(side: 'you' | 'them'): string {
+  // Audience support % lives here now (near the portrait/mood), not in a separate line.
+  const youSupport = Math.round((game.bar + 100) / 2);
+  const support = side === 'you' ? youSupport : 100 - youSupport;
+  const supportHtml = `<div class="support ${side}">${support}% approval</div>`;
   if (side === 'you') {
     // Player shows ONE flattering portrait, no mood-switching: the comical opponent faces stay
     // consistent across moods, but the flattering player faces don't, so we keep just "confident".
@@ -162,7 +180,7 @@ function portraitHeader(side: 'you' | 'them'): string {
       ? `<img class="portrait" src="${url}" alt="${ch?.name ?? 'You'}">`
       : '<div class="portrait placeholder">🇺🇸</div>';
     return `<div class="pheader">${pic}
-      <div class="pmeta"><div class="who">You</div>${ch ? `<div class="name">${ch.name}</div>` : ''}</div></div>`;
+      <div class="pmeta"><div class="who">You</div>${ch ? `<div class="name">${ch.name}</div>` : ''}${supportHtml}</div></div>`;
   }
   const id = game.opponent?.id;
   const mood = oppMood();
@@ -175,6 +193,7 @@ function portraitHeader(side: 'you' | 'them'): string {
       <div class="who">Opponent</div>
       <div class="name">${game.opponent?.name ?? 'Opponent'}</div>
       <div class="mood them">${url ? MOOD_LABEL[mood] : game.opponent?.blurb ?? ''}</div>
+      ${supportHtml}
     </div></div>`;
 }
 
@@ -377,8 +396,8 @@ function runModalHtml(): string {
       .map((c) => `<button class="card reward role-${c.role}" data-reward="${c.id}">${cardFace(c)}</button>`)
       .join('');
     return `<div class="modal-backdrop"><div class="modal reward-modal">
-      <div class="modal-title" style="color:var(--gold)">🏆 You beat ${game.opponent?.name ?? 'your opponent'}!</div>
-      <p>Add a card to your deck — it stays with you up the ladder:</p>
+      <div class="modal-title" style="color:var(--gold)">${rewardPrompt.title}</div>
+      <p>${rewardPrompt.body}</p>
       <div class="cards" style="margin-top:8px">${choices}</div>
     </div></div>`;
   }
@@ -411,6 +430,8 @@ function render(): void {
   const needle = ((100 - game.bar) / 200) * 100; // 0..100 left%; You favored → left (matches podiums)
   // Zero-sum 1v1: bar (-100..+100, signed toward player) shown as audience-support % that sums to 100.
   const youSupport = Math.round((game.bar + 100) / 2);
+  // The card area shows a centered panel (not cards) between questions and at a debate win.
+  const showPanel = game.awaitingNext || runScreen === 'result';
   const complete = isComplete(game.player.line);
   const endOk = canPlay() && canEnd(game);
   // The free period is offered wherever the grammar allows a new clause to open —
@@ -451,11 +472,7 @@ function render(): void {
     : '';
 
   const notes: string[] = [];
-  if (pendingHotMic) {
-    notes.push(
-      `🎙️ <b>Hot Mic:</b> click a card in ${game.opponent?.name ?? 'the opponent'}'s revealed hand below to steal it — or click the power-up again to cancel.`,
-    );
-  }
+  // (Hot Mic steal is now a modal dialog — see below — so no inline note needed.)
   if (game.player.nextMultiplier) notes.push('👏 Soundbite armed — your next statement scores ×1.5.');
   if (game.player.knowsCrowd && game.crowd) {
     notes.push(`🕵️ Your plant reports: this crowd loves <b>${CROWD_LABEL[game.crowd.loves] ?? 'a good show'}</b>.`);
@@ -465,12 +482,10 @@ function render(): void {
   app.innerHTML = `
     <h1>⚖️ DEBATE SIMULATOR</h1>
     <div class="run-pill">🏛️ Campaign — Debate ${run.rung + 1} / ${LADDER.length} &nbsp;·&nbsp; vs <b>${game.opponent?.name ?? '—'}</b> &nbsp;·&nbsp; Earned cards: ${run.bonus.length}</div>
-    ${bannerHtml()}
+    ${runScreen === 'result' ? '' : bannerHtml()}
     <div class="scorebar-wrap">
       <div class="scorebar-labels"><span class="you">◀ You</span><span class="them">Opponent ▶</span></div>
       <div class="scorebar"><div class="needle" style="left:${needle}%"></div></div>
-      <div class="round-pill">Question ${game.round} / ${game.maxRounds} &nbsp;·&nbsp; Audience support — You ${youSupport}% · Opponent ${100 - youSupport}%</div>
-      <div class="question-pill"><span class="q-topic">${game.topic?.label ?? '—'}</span> — “${game.question ?? ''}”</div>
     </div>
 
     <div class="stage">
@@ -488,25 +503,54 @@ function render(): void {
       </div>
     </div>
 
-    <div class="zone-title">Shared Pool — contested, no refill${DEBUG ? ' &nbsp;·&nbsp; <span class="ontopic-key">✓ on topic</span>' : ''}</div>
-    <div class="cards" id="pool">${game.pool.map((c) => cardHtml(c, 'pool')).join('') || '<span style="color:var(--muted)">(pool empty)</span>'}</div>
-
-    <div class="zone-title">Your Hand — private, no refill</div>
-    <div class="cards" id="hand">${game.player.hand.map((c) => cardHtml(c, 'hand')).join('') || '<span style="color:var(--muted)">(hand empty)</span>'}</div>
+    <div class="question-pill"><span class="q-num">Question ${game.round}/${game.maxRounds}</span><span class="q-topic">${game.topic?.label ?? '—'}</span> — “${game.question ?? ''}”</div>
 
     ${
-      (pendingHotMic || game.player.knowsOppHand) && game.ai.hand.length
-        ? `<div class="zone-title">👂 ${game.opponent?.name ?? 'Opponent'}'s hand ${pendingHotMic ? '— click a card to STEAL it' : '(revealed by your Hot Mic)'}</div>
-           <div class="cards" id="opphand">${game.ai.hand.map(oppCardHtml).join('')}</div>`
-        : ''
+      runScreen === 'result'
+        ? `<div class="round-summary">
+            <div class="rs-title">🏆 You beat ${game.opponent?.name ?? 'your opponent'}!</div>
+            <div class="rs-standing"><span class="you">You ${youSupport}%</span> &nbsp;·&nbsp; <span class="them">${100 - youSupport}% ${game.opponent?.name ?? 'Opponent'}</span></div>
+            <div class="rs-progress">Debate ${run.rung + 1} of ${LADDER.length} won</div>
+            <button class="action" id="toReward">Choose your reward ▶</button>
+          </div>`
+        : game.awaitingNext
+        ? `<div class="round-summary">
+            <div class="rs-title">📊 The crowd has reacted</div>
+            <div class="rs-standing"><span class="you">You ${youSupport}%</span> &nbsp;·&nbsp; <span class="them">${100 - youSupport}% ${game.opponent?.name ?? 'Opponent'}</span></div>
+            <div class="rs-progress">${game.round >= game.maxRounds ? 'Final question complete — tallying the debate…' : `Question ${game.round} of ${game.maxRounds} complete`}</div>
+            <button class="action" id="next">Next Question ▶</button>
+          </div>`
+        : `<div class="zone-title">Shared Pool — contested, no refill${DEBUG ? ' &nbsp;·&nbsp; <span class="ontopic-key">✓ on topic</span>' : ''}</div>
+          <div class="cards" id="pool">${game.pool.map((c) => cardHtml(c, 'pool')).join('') || '<span style="color:var(--muted)">(pool empty)</span>'}</div>
+          <div class="zone-title">Your Hand — private, no refill</div>
+          <div class="cards" id="hand">${game.player.hand.map((c) => cardHtml(c, 'hand')).join('') || '<span style="color:var(--muted)">(hand empty)</span>'}</div>
+          ${
+            game.player.knowsOppHand && !pendingHotMic && game.ai.hand.length
+              ? `<div class="zone-title">👂 ${game.opponent?.name ?? 'Opponent'}'s hand (revealed by your Hot Mic)</div>
+                 <div class="cards" id="opphand">${game.ai.hand.map(oppCardHtml).join('')}</div>`
+              : ''
+          }`
     }
 
     ${typoBanner}
     ${sabotage}
     ${finisherNote}
 
-    <div class="controls">
-      ${game.awaitingNext ? '<button class="action" id="next">Next Question ▶</button>' : ''}
+    ${
+      pendingHotMic
+        ? `<div class="modal-backdrop"><div class="modal hotmic-modal">
+            <div class="modal-title" style="color:#ff7ad6">🎙️ Hot Mic — Steal a Card</div>
+            <p>Grab a card from ${game.opponent?.name ?? 'the opponent'}'s hand and add it to your own:</p>
+            <div class="cards steal-grid">${game.ai.hand.map(oppCardHtml).join('') || '<span style="color:var(--muted)">(their hand is empty)</span>'}</div>
+            <button class="ghost" id="cancelHotMic">Cancel</button>
+          </div></div>`
+        : ''
+    }
+
+    ${
+      showPanel
+        ? ''
+        : `<div class="controls">
       <button class="action" id="end" ${endOk ? '' : 'disabled'}>End Statement</button>
       <button class="ghost" id="period" ${periodOk ? '' : 'disabled'} title="${game.player.usedPeriod ? 'Already used your one period this statement — chain a connector to keep going.' : 'Free, once per statement — finish this sentence and start a new one. No combo bonus; use a connector for that.'}">Add “.” (new sentence)${game.player.usedPeriod ? ' — used' : ''}</button>
       <button class="ghost" id="pass" ${canPlay() && (complete || game.player.line.length === 0) ? '' : 'disabled'}>Pass (wait)</button>
@@ -514,7 +558,8 @@ function render(): void {
       <button class="ghost" id="restart">Abandon Run</button>
       <button class="ghost" id="dumplog" title="Download a JSON event log of this debate for bug analysis">🐞 Debug log</button>
       <span class="turn-hint">${hint}</span>
-    </div>
+    </div>`
+    }
 
     <div class="zone-title">📡 Live Transcript</div>
     <div class="log">${game.log.slice(-8).reverse().map((l) => `<div>${l}</div>`).join('') || '<div>The stage is set…</div>'}</div>
@@ -645,6 +690,14 @@ function render(): void {
     nextQuestion(game);
     render();
     driveAI(); // even questions start on the AI's turn — let it speak first
+  });
+  app.querySelector<HTMLButtonElement>('#cancelHotMic')?.addEventListener('click', () => {
+    pendingHotMic = null; // dismiss the steal dialog without taking a card
+    render();
+  });
+  app.querySelector<HTMLButtonElement>('#toReward')?.addEventListener('click', () => {
+    runScreen = 'reward'; // win acknowledged — now show the card draft
+    render();
   });
   app.querySelector<HTMLButtonElement>('#restart')?.addEventListener('click', newRun);
   app.querySelector<HTMLButtonElement>('#dumplog')?.addEventListener('click', downloadDebugLog);

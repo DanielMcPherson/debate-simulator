@@ -205,7 +205,10 @@ global bar-pace change we deliberately avoided.)
 (track per-run), and crucially **self-own / heel-turn (insult-audience) / compliment-opponent as a
 risk-reward gamble** ("own-goal for a card!"). This gives the now-lenient self-own a *positive reason
 to exist*. Hidden (discovered, not documented). Opponent never gets awards. New cards shuffle into the
-player's persistent private deck. Seed the RNG.
+player's persistent private deck. Seed the RNG. **Hook already in place:** the reward modal renders a
+`rewardPrompt {title, body}` (ui/main.ts) set by whatever triggered it — the debate-win path sets a
+margin-flavored one via `debateWinPrompt()`; a mid-debate trigger just sets `rewardPrompt` (its own
+headline/emoji, e.g. "😈 Massive Heel Turn!") + `rewardChoices` and shows the modal.
 
 **P2 · large epic — Campaign donation economy + shop** (the long-deferred roguelike meta; needs its
 own design pass + phasing). Donations trickle in per-statement by type, scaled by your **chosen
@@ -301,7 +304,11 @@ confident/nervous/embarrassed, driven by `oppMood()` off score+gaffes; filename-
 `${oppId}-${mood}.webp` via `import.meta.glob`). Art is generated offline by `scripts/genart.mjs`
 (`npm run genart`, gpt-image-2, key in gitignored `.env`, auto PNG→WebP) and committed under
 `src/ui/art/`. Card/hand/pool rows are single-row with horizontal scroll (no vertical scroll on desktop).
-**Player character-select** is live (tutorial → choose candidate → ladder): 3 candidates
+**Layout (top→bottom):** title/run-pill, audience needle, two-podium stage (each podium shows portrait +
+name + mood + **approval %**), then the **question** (`Question N/M` + topic, moved BELOW the stage, just
+above the cards), then pool + hand. Between questions (`awaitingNext`) the card area is replaced by a
+compact **round-summary** panel (standing + the Next Question button) — no scrolling. **Hot Mic steal** is
+a **modal dialog** (`hotmic-modal`), not an inline list. **Player character-select** is live (tutorial → choose candidate → ladder): 3 candidates
 (maverick/stateswoman/veteran), shown in the YOU podium as a single **confident** portrait —
 **no mood-switching for the player** (only opponents react by mood). Rationale: the opponents'
 "confident" is already a caricature so their moods stay on-model, but the flattering player faces

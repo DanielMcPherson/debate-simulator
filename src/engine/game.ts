@@ -472,11 +472,15 @@ function applyPowerup(state: GameState, p: PlayerState, move: { cardId: string; 
       break;
     }
     case 'forgot': {
-      // Knock the last card off the opponent's in-progress statement (it's
-      // discarded, not returned to play). Wasted if they have nothing to drop.
+      // Knock the opponent's last CONTENT card off their in-progress statement (discarded,
+      // not returned). Skip any trailing connector (a dangling period/"and"/"but") — popping
+      // that alone would remove nothing visible and waste the power-up. Drop the content card
+      // plus any connectors that trailed it.
       const opp = state[other(p.id)];
-      if (!opp.done && opp.line.length > 0) {
-        const dropped = opp.line.pop()!;
+      const idx = lastContentIndex(opp.line); // skip a trailing period/"and"/"but" (same as Typo)
+      if (!opp.done && idx >= 0) {
+        const dropped = opp.line[idx];
+        opp.line.splice(idx); // remove the content card + any trailing dangling connectors
         state.lastSabotage = { victim: opp.id, by: p.id, text: cardLabel(dropped), kind: 'forgot' };
         logEvent(state, 'sabotage', { by: p.id, victim: opp.id, kind: 'forgot', text: cardLabel(dropped) });
         const who = p.id === 'player' ? 'You' : state.opponent?.name ?? 'Opponent';

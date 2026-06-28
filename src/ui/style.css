@@ -69,16 +69,21 @@ h1 {
 }
 .needle { position:absolute; top:-3px; bottom:-3px; width:3px; background:#fff;
   box-shadow:0 0 8px #fff, 0 0 2px #fff; transform:translateX(-1px); transition:left .5s cubic-bezier(.3,1.4,.5,1); }
-.round-pill { text-align:center; font-size:12px; color:var(--muted); margin-top:6px; font-style:italic; }
+/* question moved BELOW the stage (just above the cards); number leads the text */
 .question-pill {
-  margin-top:6px; display:flex; align-items:center; gap:12px;
+  margin:4px 0 6px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;
   background:linear-gradient(180deg,#16203a,#0f1729); border:1px solid var(--line);
   border-radius:10px; padding:8px 14px;
   font-family:var(--display); font-size:16px; color:#f3ecd8;
 }
+.q-num {
+  font-family:var(--label); text-transform:uppercase; letter-spacing:1px; font-size:11px;
+  color:var(--ink); background:rgba(232,192,105,.14); border:1px solid var(--gold-deep);
+  border-radius:12px; padding:3px 10px; white-space:nowrap;
+}
 .q-topic {
   font-family:var(--label); text-transform:uppercase; letter-spacing:1.5px; font-size:11px;
-  color:var(--gold); border-right:1px solid var(--line); padding-right:12px; white-space:nowrap;
+  color:var(--gold); border-right:1px solid var(--line); padding-right:10px; white-space:nowrap;
 }
 
 /* --- two-podium debate stage --- */
@@ -106,6 +111,9 @@ h1 {
 .pmeta .mood { font-style:italic; font-size:13px; }
 .pmeta .mood.you  { color:var(--you); }
 .pmeta .mood.them { color:var(--them); }
+.pmeta .support { font-family:var(--label); text-transform:uppercase; letter-spacing:.5px; font-size:12px; font-weight:600; margin-top:3px; }
+.pmeta .support.you  { color:var(--you); }
+.pmeta .support.them { color:var(--them); }
 /* the teleprompter: speaker's conjugated statement-so-far (text, not cards) */
 .podium .speech {
   background:#070b14; border:1px solid #1d2740; border-radius:8px;
@@ -292,6 +300,22 @@ button.action:disabled, button.ghost:disabled { opacity:.4; cursor:not-allowed; 
 }
 .char-name { font-family:var(--display); font-size:18px; color:var(--ink); margin-top:9px; }
 .char-tag { font-size:12px; color:var(--muted); font-style:italic; margin-top:4px; line-height:1.35; }
+
+/* --- between-questions round summary (replaces the card area while awaiting Next) --- */
+.round-summary {
+  text-align:center; margin:10px 0; padding:22px;
+  background:linear-gradient(180deg,#16203a,#0e1525); border:1px solid var(--gold-deep); border-radius:12px;
+}
+.rs-title { font-family:var(--display); font-size:20px; color:var(--gold); }
+.rs-standing { font-size:19px; margin-top:10px; }
+.rs-standing .you  { color:var(--you); font-weight:600; }
+.rs-standing .them { color:var(--them); font-weight:600; }
+.rs-progress { font-size:13px; color:var(--muted); font-style:italic; margin-top:5px; }
+.round-summary .action { margin-top:16px; }
+
+/* --- Hot Mic steal dialog --- */
+.hotmic-modal { width:560px; max-width:calc(100vw - 32px); border-color:#ff7ad6; }
+.hotmic-modal .steal-grid { display:flex; flex-wrap:wrap; gap:9px; justify-content:center; overflow:visible; margin:10px 0; }
 
 /* --- campaign map (Slay-the-Spire-style ladder) --- */
 .map-modal { border-color:var(--gold); max-width:520px; max-height:90vh; overflow-y:auto; }
