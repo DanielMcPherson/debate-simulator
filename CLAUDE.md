@@ -303,6 +303,43 @@ completion, riding the combo). Grammar: likely a CLAUSE-internal production like
 just a `modifier` variant with `requiresPredicate:true`, or its own role? Decide against the modifier
 direction-split rules (GOOD-direction asides fold into the clause's first contribution today).
 
+**P2 · medium — Achievements that grant BONUS reward picks (hidden; player-only).** New idea: on a
+debate win, certain **achievements** award **extra** card rewards, presented as a **series of reward
+dialogs** rather than the single one today. The reward modal currently shows exactly one draft:
+`checkDebateEnd` (ui/main.ts) sets one `rewardChoices = pickRewards(3)` + `rewardPrompt`, and the
+pick handler pushes ONE card to `run.bonus` then immediately `run.rung += 1` → `startDebate()` →
+`'map'`. So chaining needs a small **queue** (e.g. `rewardQueue: {choices, prompt}[]`), reusing
+`pickRewards(n)` + the `'reward'` runScreen render, and crucially **don't advance the rung / start the
+next debate until the queue drains**. Achievements to seed: **"Mr. Nice Guy"** — win **without playing
+any attack on the opponent** (an attack is `category:'attack_opp'` in scoring.ts `contributions`; the
+`resolve` event logs `{cards,delta,label,combo}` but NOT per-contribution categories, so either extend
+the `resolve` event or set a per-debate "played an attack" flag in main.ts at resolution). **"Used every
+card on the board"** — play **every** dealt pool+hand card (very rare, maybe near-impossible — untested;
+track `take`+`power` events vs cards dealt, but the persistent private deck + consumed power-ups make an
+exact count fiddly). Opponent never earns achievements (mirrors the reward rule). Hidden/discovered —
+**pairs with the in-debate card-award events note above** (same reward-modal hook: `rewardPrompt` +
+`rewardChoices`).
+
+**P2 · small/medium (rides the reward/shop epics) — New ACTION cards (power-ups) to offer as awards.**
+`REWARDS` (cards.ts) is predicate/noun only today — no power-ups. A drafted power-up just needs a
+`powerup` entry in `REWARDS`; it rides `run.bonus` → shuffled into the persistent private deck → drawn to
+hand → plays like any pool/hand power-up (`applyPowerup` reads `p.hand`). **Each new effect = 4 spots:**
+the `PowerEffect` union (types.ts), a def in `POWERUPS` (cards.ts), a `case` in `applyPowerup()`'s switch
+(game.ts), and — only for *targeting* effects — a UI targeting mode (main.ts). Cards to add:
+- **"Back to the Drawing Board"** — discard your private hand and **re-deal** it (like `search` but
+  *replace*, not add). Low effort, non-targeting. NB the existing per-question `redraw` reshuffles pool+hand
+  and costs the turn; this is hand-only and a *drafted* power-up. Decide free vs turn-cost.
+- **"Hack Their Teleprompter"** (named to distinguish from **Teleprompter Typo**) — a super-buffed Typo
+  that **replaces the opponent's ENTIRE in-progress statement** with one of yours. A **distinct** new effect
+  (e.g. `typo_full`), NOT a Typo tweak — Typo (`bestTypoJam`, `jammed`, `lastSabotage`) only swaps the last
+  word and leaves a recovery path; a full wipe has none, so balance it rare/expensive. Targeting ⇒ medium
+  (reuse Typo's UI targeting + the `lastSabotage` modal plumbing).
+- **"Winning Smile"** — sway the audience with a practiced smile: **not part of the statement**, raises your
+  statement value by a **percentage**. Low effort — mirror `soundbite`'s `nextMultiplier` (game.ts); pick a
+  factor and decide whether it stacks with Soundbite.
+These are the first **power-up rewards**; good fit for the deferred **shop** (price ∝ power) alongside the
+PRIVATE-finishers note above.
+
 **P3 · trivial — Remove the on-topic card hint.** The green glow + "on topic ✓" tag (`cardHtml` in
 ui/main.ts) is a **temporary debug aid** for catching mislabeled `topics`; once the data is trusted,
 remove it so players learn to spot on-topic cards themselves.
