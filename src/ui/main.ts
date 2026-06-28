@@ -204,13 +204,52 @@ function reactionClass(r?: Reaction): string {
   return 'bad';
 }
 
-/** The reaction line shown under a podium: detail is "SENTENCE — reaction (+score) note".
- * The card already shows the sentence, so strip everything up to the FIRST em-dash and
- * keep the whole reaction (which may itself contain em-dashes in coaching notes). */
-function reactionText(r?: Reaction): string {
+/** A flowing, candidate-attributed reaction blurb for the round-summary panel.
+ * `you` picks 2nd person ("You") vs the opponent's name + "They". The dodge/insult/
+ * ramble flags are read from the engine's reaction detail (stable marker strings in
+ * scoring.ts), so the panel can re-narrate them without 2nd-person POV bleeding onto
+ * the opponent. */
+function panelReaction(r: Reaction | undefined, you: boolean, name: string, pronoun = 'they'): string {
   if (!r) return '';
-  const i = r.detail.indexOf('—');
-  return (i >= 0 ? r.detail.slice(i + 1) : r.detail).trim();
+  const Who = you ? 'You' : name; // sentence-start subject (named, so never ambiguous)
+  const Sm = you ? 'You' : pronoun.charAt(0).toUpperCase() + pronoun.slice(1); // follow-on subject (She/He/They)
+  const who = you ? 'you' : name; // object of "for / on / against / by"
+  const mag = Math.abs(r.delta).toFixed(1);
+  const cls = reactionClass(r); // 'good' | 'bad' | ''
+  const dodged = r.detail.includes('dodged the question');
+  const insulted = r.detail.includes('no amount of pandering');
+  const rambled = r.detail.includes('nod off');
+  // Target-named cores (who the crowd is reacting to) so each line is self-explanatory.
+  const cored: Record<Reaction['label'], string> = {
+    cheers: `the crowd roars in approval for ${who}`,
+    approve: `the audience nods along with ${who}`,
+    neutral: `the crowd gives ${who} only a polite, muted reaction`,
+    disapprove: `the room turns against ${who}`,
+    boos: `boos rain down on ${who}`,
+    confused: `the crowd is left confused by ${who}`,
+  };
+  // Target-less version, used when the candidate is already named as the sentence subject.
+  const bare: Record<Reaction['label'], string> = {
+    cheers: 'the crowd roars in approval',
+    approve: 'the audience nods along',
+    neutral: 'the crowd gives only a polite, muted reaction',
+    disapprove: 'the room turns sour',
+    boos: 'boos rain down',
+    confused: 'the crowd is left confused',
+  };
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  const out: string[] = [];
+  if (dodged && cls === 'good') {
+    // "You dodged the question, but the crowd roars in approval." — named subject up front.
+    out.push(`${Who} dodged the question, but ${bare[r.label]}.`);
+  } else {
+    out.push(cap(cored[r.label]) + '.');
+    if (insulted) out.push(`${Sm} insulted the crowd — no amount of pandering wins them back.`);
+    if (dodged) out.push(`${Sm} ${insulted ? 'also ' : ''}dodged the question.`);
+  }
+  if (rambled) out.push('The crowd starts to nod off.');
+  out.push(cls === 'good' ? `+${mag}.` : cls === 'bad' ? `${mag} lost.` : `${r.delta >= 0 ? '+' : ''}${r.delta}.`);
+  return out.join(' ');
 }
 
 // The combo indicator lives ON the junction word now: a JUDGED statement paints
@@ -330,29 +369,21 @@ const TUTORIAL_BODY = `
   <div class="howto">
     <div class="howto-title">How to win a debate</div>
     <ul>
-      <li><b>Build a sentence</b> one card at a time: a <b>subject</b> (who you're talking about),
-        then a <b>predicate</b> (what they do). <b>Praise</b> yourself and the audience,
-        <b>attack</b> your opponent — never praise a villain or trash yourself (the crowd boos a self-own).</li>
-      <li><b>You get one free period per statement.</b> Tap <b>“.”</b> to end a sentence and start
-        a second one — <i>“My opponent eats babies. I love this country.”</i> Run two thoughts together
-        with no connector and the crowd is just baffled, so punctuate (or chain a connector below).</li>
-      <li><b>Conjunctions score combos — when used correctly.</b> Chain <i>different</i> points that
-        both help you with <b>and</b> / <b>because</b>: <i>“…is corrupt and kicks puppies”</i> beats
-        two flat sentences. Repeating the same point doesn't combo.</li>
-      <li><b>“But” is the strongest combo</b>, on a them-bad → you-good pivot:
-        <i>“My opponent is bad but I am great.”</i> Misusing a connector just fizzles (no penalty),
-        and a well-placed <b>but</b> can even soften a self-own from outrage into a confused shrug.</li>
-      <li><b>Answer the question.</b> Each round has a topic — cards that address it glow
-        <span style="color:#6fcf97">green ✓</span>. Ignore the question and your score shrinks, so
-        weave the topic into your best line. <b>Don't ramble:</b> past ~3 plain sentences the crowd
-        nods off — tighten up or combo instead.</li>
-      <li>Play <b>power-ups</b> (steal cards, sabotage their line, read the crowd), and watch the
-        meter — most audience favor after 8 questions wins, or pin the meter to one side for an
-      instant landslide. You can <b>End</b> anytime, but an
-        unfinished sentence just leaves the crowd confused — so finish your thought.</li>
+      <li>Form a political statement one card at a time.</li>
+      <li><b>Brag</b> on yourself, <b>pander</b> to the audience, and <b>tear down</b> your
+        opponent:</li>
     </ul>
-    <div class="howto-foot">Win a debate to draft a powerful card and climb the ladder. Lose
-      and the run resets. Good luck out there. 🇺🇸</div>
+    <div class="howto-examples">
+      <p>“My freedom-hating opponent kicks puppies and secretly eats babies.”</p>
+      <p>“My plan, which many say is the best plan ever, will fix absolutely everything.”</p>
+      <p>“The great and proud people of this great nation should be proud of how great and proud they are.”</p>
+    </div>
+    <ul>
+      <li>Hit <b>End Statement</b> when you like your line. The audience meter shows who's
+        winning over the crowd.</li>
+    </ul>
+    <div class="howto-foot">Win debates! Build your deck of sound bites, wild promises, and
+      attack lines! Try to debate your way to the top! 🇺🇸</div>
   </div>`;
 
 function runModalHtml(): string {
@@ -492,13 +523,11 @@ function render(): void {
       <div class="podium you">
         ${portraitHeader('you')}
         <div class="speech">${partialText(game.player.line) || '<span style="color:var(--muted)">…</span>'}</div>
-        <div class="reaction ${reactionClass(game.player.lastReaction)}">${reactionText(game.player.lastReaction)}</div>
         ${comboHtml(game.player.lastReaction)}
       </div>
       <div class="podium them${pendingTypo ? ' typo-target' : ''}">
         ${portraitHeader('them')}
         <div class="speech">${oppSpeechHtml()}</div>
-        <div class="reaction ${reactionClass(game.ai.lastReaction)}">${reactionText(game.ai.lastReaction)}</div>
         ${comboHtml(game.ai.lastReaction)}
       </div>
     </div>
@@ -516,8 +545,12 @@ function render(): void {
         : game.awaitingNext
         ? `<div class="round-summary">
             <div class="rs-title">📊 The crowd has reacted</div>
+            <div class="rs-reactions">
+              ${game.player.lastReaction ? `<p class="${reactionClass(game.player.lastReaction)}">${panelReaction(game.player.lastReaction, true, 'You')}</p>` : ''}
+              ${game.ai.lastReaction ? `<p class="${reactionClass(game.ai.lastReaction)}">${panelReaction(game.ai.lastReaction, false, game.opponent?.name ?? 'Your opponent', game.opponent?.pronoun)}</p>` : ''}
+            </div>
             <div class="rs-standing"><span class="you">You ${youSupport}%</span> &nbsp;·&nbsp; <span class="them">${100 - youSupport}% ${game.opponent?.name ?? 'Opponent'}</span></div>
-            <div class="rs-progress">${game.round >= game.maxRounds ? 'Final question complete — tallying the debate…' : `Question ${game.round} of ${game.maxRounds} complete`}</div>
+            ${game.round >= game.maxRounds ? '<div class="rs-progress">Final question complete — tallying the debate…</div>' : ''}
             <button class="action" id="next">Next Question ▶</button>
           </div>`
         : `<div class="zone-title">Shared Pool — contested, no refill${DEBUG ? ' &nbsp;·&nbsp; <span class="ontopic-key">✓ on topic</span>' : ''}</div>

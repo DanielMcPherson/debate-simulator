@@ -277,6 +277,32 @@ state + targeted-attack moves + AI target selection.
 pre-formed statements into your deck ("…and that's why I despise my voters"), clogging your hand.
 Remove in the shop, or play deliberately to attempt a Heel Turn.
 
+**P2 · medium — Dual-role intensifier/connector cards (parenthetical asides).** Some finishers read
+naturally as *parenthetical conjunctions* too. Ex: "and I am totally not making this up" is authored
+as a sentence-final `intensifier` (current intended use, as a flourish), but the same phrase also
+wants to drop into the *middle* of a line as an interjecting aside: "My opponent wants to cancel
+Christmas, **and I am totally not making this up,** eats kittens." That mid-line use is a coordinating
+break (≈ CCAND / a comma-set aside) rather than an end-move. Decide whether to let one card serve both
+roles — grammar would need an aside/parenthetical production that doesn't consume the end-move slot,
+and scoring would treat the mid-line use as a (neutral?) connector/aside vs the end-move ×factor. Risk:
+the end-move mechanic is currently clean (INT only legal on a complete line, no held state); a
+dual-role card reintroduces "where can this go" ambiguity. Could also just be authored as *two
+separate cards* (an INT and a `modifier`/connector) sharing flavor text — cheaper, no grammar change.
+
+**P2 · medium — "Setup" predicate-prefix cards that demand a completion (e.g. "is a corrupt jackass
+who ___").** A new shape that's intensifier-like in that it **requires another card to finish** the
+phrase — "My opponent **is a corrupt jackass who** wants to cancel Christmas" — but unlike a finisher
+it ADDS attack score (it's a loaded relative-clause subject-extender, not just a ×multiplier). The
+same logic generalizes to **bragging** ("am the only one with the guts to ___") and **pandering**
+("stand with the hardworking folks who ___") sides. Mechanically this is close to the existing
+**modifier** (post-nominal aside reusing predicate fields) but it (a) is *not* set off as an optional
+aside — it's a mandatory connective that leaves the line incomplete until a predicate follows, and (b)
+bakes its own sentiment that STACKS with the completing predicate (so the score is setup-sentiment +
+completion, riding the combo). Grammar: likely a CLAUSE-internal production like `NP SETUP PRED`
+(SETUP carries "is a … who"/relative-pronoun text + a baked side/sentiment). Open question: is this
+just a `modifier` variant with `requiresPredicate:true`, or its own role? Decide against the modifier
+direction-split rules (GOOD-direction asides fold into the clause's first contribution today).
+
 **P3 · trivial — Remove the on-topic card hint.** The green glow + "on topic ✓" tag (`cardHtml` in
 ui/main.ts) is a **temporary debug aid** for catching mislabeled `topics`; once the data is trusted,
 remove it so players learn to spot on-topic cards themselves.

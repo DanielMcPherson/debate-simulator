@@ -40,6 +40,8 @@ export type NervousTrigger = 'attacked' | 'pander' | 'self_brag';
 export interface Opponent {
   id: string;
   name: string;
+  /** Subject pronoun for UI narration (the round-summary crowd reaction). */
+  pronoun: 'she' | 'he' | 'they';
   style: DebateStyle;
   /** One-line character read shown in the UI (e.g. "Nervous. Prone to gaffes."). */
   blurb: string;

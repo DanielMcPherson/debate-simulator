@@ -307,7 +307,11 @@ button.action:disabled, button.ghost:disabled { opacity:.4; cursor:not-allowed; 
   background:linear-gradient(180deg,#16203a,#0e1525); border:1px solid var(--gold-deep); border-radius:12px;
 }
 .rs-title { font-family:var(--display); font-size:20px; color:var(--gold); }
-.rs-standing { font-size:19px; margin-top:10px; }
+.rs-reactions { max-width:640px; margin:14px auto 4px; }
+.rs-reactions p { font-size:16px; line-height:1.55; margin:8px 0; color:var(--gold); }
+.rs-reactions p.good { color:#6fcf97; }
+.rs-reactions p.bad  { color:#ff8a8a; }
+.rs-standing { font-size:19px; margin-top:12px; }
 .rs-standing .you  { color:var(--you); font-weight:600; }
 .rs-standing .them { color:var(--them); font-weight:600; }
 .rs-progress { font-size:13px; color:var(--muted); font-style:italic; margin-top:5px; }
@@ -337,8 +341,10 @@ button.action:disabled, button.ghost:disabled { opacity:.4; cursor:not-allowed; 
 .rung.locked { opacity:.45; }
 
 /* --- onboarding / how-to-play --- */
-.howto { margin-top:16px; padding:12px 14px; border:1px solid var(--line); border-radius:8px; background:var(--panel-2); }
-.howto-title { font-family:var(--display); color:var(--gold); margin-bottom:6px; font-size:16px; }
-.howto ul { margin:6px 0; padding-left:18px; }
-.howto li { font-size:14px; line-height:1.55; margin:6px 0; }
-.howto-foot { margin-top:8px; font-size:14px; color:var(--muted); }
+.howto { margin-top:16px; padding:16px 18px; border:1px solid var(--line); border-radius:8px; background:var(--panel-2); }
+.howto-title { font-family:var(--display); color:var(--gold); margin-bottom:10px; font-size:22px; }
+.howto ul { margin:8px 0; padding-left:20px; }
+.howto li { font-size:17px; line-height:1.6; margin:8px 0; }
+.howto-examples { margin:10px 0; padding-left:6px; }
+.howto-examples p { font-family:var(--card); font-size:17px; line-height:1.5; color:var(--gold); margin:7px 0; }
+.howto-foot { margin-top:14px; font-size:20px; line-height:1.5; font-weight:600; color:var(--ink); }

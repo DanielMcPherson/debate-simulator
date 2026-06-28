@@ -453,12 +453,12 @@ export const TOPICS: Topic[] = [
 // cracks under any pressure; the boss is unflappable and plays optimally. nervousOf
 // is the opponent's *tell* — what fluster them — for the player to discover.
 export const OPPONENTS: Opponent[] = [
-  { id: 'pander', name: 'Gov. Patty Pander', style: 'pander', blurb: 'Nervous. Prone to gaffes.', gaffeChance: 0.45, nervousOf: ['attacked', 'pander', 'self_brag'] },
-  { id: 'blowhard', name: 'Senator Blowhard', style: 'brag', blurb: 'Big ego — rattled when shown up.', gaffeChance: 0.25, nervousOf: ['self_brag'] },
-  { id: 'passer', name: 'Mayor Buck Passer', style: 'pander', blurb: 'Slick, but cracks under a hot crowd.', gaffeChance: 0.12, nervousOf: ['pander'] },
-  { id: 'smearwell', name: 'Rep. Dirk Smearwell', style: 'attack', blurb: 'Sharp-tongued. Hates being attacked.', gaffeChance: 0.05, nervousOf: ['attacked'] },
-  { id: 'slander', name: 'Justice Vera Slander', style: 'attack', blurb: 'Polished. Rarely slips.', gaffeChance: 0.02 },
-  { id: 'grandstand', name: 'Maximilian Q. Grandstand III', style: 'brag', blurb: 'Unflappable. Never makes a mistake.', gaffeChance: 0 },
+  { id: 'pander', name: 'Gov. Patty Pander', pronoun: 'she', style: 'pander', blurb: 'Nervous. Prone to gaffes.', gaffeChance: 0.45, nervousOf: ['attacked', 'pander', 'self_brag'] },
+  { id: 'blowhard', name: 'Senator Blowhard', pronoun: 'he', style: 'brag', blurb: 'Big ego — rattled when shown up.', gaffeChance: 0.25, nervousOf: ['self_brag'] },
+  { id: 'passer', name: 'Mayor Buck Passer', pronoun: 'he', style: 'pander', blurb: 'Slick, but cracks under a hot crowd.', gaffeChance: 0.12, nervousOf: ['pander'] },
+  { id: 'smearwell', name: 'Rep. Dirk Smearwell', pronoun: 'he', style: 'attack', blurb: 'Sharp-tongued. Hates being attacked.', gaffeChance: 0.05, nervousOf: ['attacked'] },
+  { id: 'slander', name: 'Justice Vera Slander', pronoun: 'she', style: 'attack', blurb: 'Polished. Rarely slips.', gaffeChance: 0.02 },
+  { id: 'grandstand', name: 'Maximilian Q. Grandstand III', pronoun: 'he', style: 'brag', blurb: 'Unflappable. Never makes a mistake.', gaffeChance: 0 },
 ];
 
 /**
