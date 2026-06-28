@@ -48,6 +48,13 @@ Cards are **chunks**, not single words. `Card.role`:
   so a statement is at most two sentences and rambling-by-period is impossible (chain conjunctions for
   more, and a combo). The `PERIOD` card (cards.ts) is **virtual** — never drawn/consumed, NOT in
   CONNECTORS/ALL/decks; played via `Move{kind:'take', from:'period'}`.
+  **Period currently DISABLED (experiment, 2026-06):** `PERIOD_ENABLED = false` (cards.ts) gates the two
+  move-generation sites (UI button + `availFor`), so a statement is **one sentence (or connectors chained
+  into one compound sentence)**; jamming two complete thoughts with no connector reads as a **run-on**
+  (`looksRunOn` → confused, `reaction.runOn` drives a `RUN-ON!` badge + coaching). All the period plumbing
+  (grammar `CPERIOD`, scoring residual/decay, `endableLine` trim, applyMove handler) is left intact and
+  harmless — flip `PERIOD_ENABLED` back to fully restore it (the offering-dependent tests are
+  `it.runIf(PERIOD_ENABLED)`).
 - `modifier` — a post-nominal aside on a subject ("who is ugly, just very ugly", "which is a
   national treasure"). Reuses predicate fields (`lead`/`post`, conjugated via `predicateText`) but
   rendered with a relative pronoun ("who" vs "which") chosen by the subject's `animate` flag, set off
@@ -111,7 +118,32 @@ mult}` is the single strongest group (kept for the analytics log); `reaction.com
 kind}]` lists **every** connector token that formed a combo, each tagged with its OWN tier — the UI
 paints these as inline **combo chips** on the junction words of the JUDGED statement (no multiplier
 number, no separate callout). The connector token index is threaded `segmentDetailed → parse →
-contributions → aggregate` (Clause/PredInstance/Contrib all carry `connIdx`). Then intensifier
+contributions → aggregate` (Clause/PredInstance/Contrib all carry `connIdx`). **Resolution juice (2026-06):**
+`scoreStatement` also returns a per-phrase **`breakdown: PhraseHit[]`** (`{category, delta, tokenIdx, span,
+aside, crowdFavorite}` — `delta` only buckets animation intensity, **never shown as a number**) plus
+statement-level booleans **`offTopic`/`rambling`/`audienceInsulted`/`crowdFavorite`/`mitigated`/`runOn`**
+(the UI used to fragile-parse these out of `detail` — now real fields). Token indices for the spans are
+threaded the same way (`Clause.subjectIdx`/`modIdxs`, `PredInstance.predIdx`/`objIdx`, `spanOf` in
+scoring.ts). The UI (`judgedSpeechHtml` + `fxStripHtml` + `playResolutionFx` in ui/main.ts) renders the
+judged line word-by-word. Word markup is **TRANSIENT** — only while the FX plays (`.fx-show` on `.speech`):
+as each badge lands, its word(s) briefly bold/highlight (`.lit`), then on FX-end `.fx-show` is removed and
+the statement **returns to a single color + font** (clean to screenshot/share — markup persisting was the
+complaint; an even earlier float-above-the-word version also overlapped wrapping lines). The lasting
+"what landed & why" lives in the **readout strip BELOW** the statement (`.fx-strip`): a chip per phrase
+(ATTACK/BRAG/PANDER/GAFFE/INSULT/BLUNDER — GAFFE = self_own, BLUNDER = boost_opp), the combo (⚡COMBO/CHAIN/PIVOT), a ⭐FINISHER
+chip (no number — the badge alone teaches finishers are good), and any OFF-TOPIC/RAMBLING/Run-on flag —
+popped in sequence (each chip flashes its word(s)). Then a **count-up** of the **only on-screen number**
+(the final delta) + a magnitude-scaled screen shake/flash; click anywhere to fast-forward — **the skip arms
+only after a 500ms grace period** so the click that ended the turn (or a reflexive click toward Next when
+you finish second) can't instakill the animation (that was the "player FX sometimes didn't play" bug).
+`resolving` locks input + defers the AI turn. Each statement animates **when its own
+speaker finishes** (so on AI-first questions the opponent's plays before the player has spoken — intended).
+The **round-summary panel is deferred** (`fxHoldSummary`): while the second speaker's FX plays the card
+area shows a "📊 The votes are coming in…" placeholder, and the full summary (headline + reactions +
+Next) only appears once BOTH statements have animated.
+**`crowdFavorite` is deliberately NOT surfaced in the UI** — it would leak the hidden crowd taste (engine
+flag stays for future use). The round-summary headline is **varied** (`roundHeadline`, deterministic per
+round by both deltas: swing-to-you / mixed / restless / electrified…). Then intensifier
 `factor`, **off-topic** is *multiplicative*
 (positive totals ×`OFF_TOPIC_MULT` 0.75 — a big statement can't cheaply ignore the question), clamp
 ±35 (±50 with intensifier).
@@ -350,14 +382,43 @@ resolutions read identically across a debate. Give each tier a pool of phrasings
 confused/combo notes too), picked with the game RNG (deterministic). Pattern mirrors `Topic.questions`
 (35 phrasings across 7 topics, picked per question — done). Cosmetic; pairs well with the juice pass.
 
+**P2 · small — Sound (backlog).** Highest juice-per-effort thing left for a *debate* game and not yet
+started: applause / groans / boos / a gavel on resolution, deterministic by reaction tier. Self-hosted
+clips (static app — no external hosts). Pairs directly with the resolution-juice FX (`playResolutionFx`).
+
+**P2 · medium — Shareability (backlog).** The absurd generated statements are inherently screenshot-bait
+— a "share this line" / clean screenshot of a resolved statement is plausibly the whole growth engine and
+doubles as playtest recruitment. Premature until the core loop + deck-building are proven, but cheap to
+add later (render the judged line + reaction to a canvas/image).
+
+**Platform — deferred (notes only).** Keep building the **github.io web demo**; revisit after the core
+loop + deck-building are proven by playtest. Pro/con: **Web (current)** — zero-friction to play, instant
+deploy, easy tester recruiting; weakest monetization, mobile real-estate limits. **Steam (buy+download)**
+— clearest monetization + "real game" credibility + bigger screen; highest tester friction, only worth it
+if people will pay. **itch.io (buy/PWYW)** — low-expectation way to ship and accept money; small audience.
+**Phone app** — card games suit touch (the horizontal-scroll carousel is already touch-friendly); screen
+real-estate is the hard problem (biggest layout rework). (Would've used Godot from scratch, but web's
+deploy/playtest ease wins for now.)
+
 **P2 · large — Graphics, animation & juice.** The UI is a functional prototype. Make it *feel* good:
 character art / reaction faces (an opponent that looks embarrassed on a self-own), animated card
-plays, **screen shake + combo flourishes when a statement resolves/scores**, donation/score
-tickers, audience reactions. Tied to this: properly **stage the opponent's turn** — show the pool,
-"opponent's turn", the AI "thinking", then it picks a card (currently just an `AI_DELAY` pause with
-"Your opponent is speaking…"). The inline **combo chips** (`renderSentenceWithChips`/`.combo-chip`)
-and reaction text are already structured as placeholders to swap for juiced versions (animate the
-chip popping in on the connector when the statement resolves).
+plays, donation/score tickers, audience reactions. Tied to this: properly **stage the opponent's
+turn** — show the pool, "opponent's turn", the AI "thinking", then it picks a card (currently just an
+`AI_DELAY` pause with "Your opponent is speaking…").
+
+**DONE (2026-06) — resolution juice.** When a finished statement scores, its words **transiently**
+bold/highlight as an **animated readout strip below** pops a chip per phrase (ATTACK/BRAG/PANDER/GAFFE/
+INSULT/BLUNDER), the **combo** (⚡COMBO/CHAIN/PIVOT), a ⭐FINISHER (no number), and any OFF-TOPIC/RAMBLING/
+Run-on flag — in sequence, then a **count-up** of the final delta (the only number — no per-card numbers, no
+mid-statement scoring) + a magnitude-scaled **screen shake + cheer/boo flash**; click to fast-forward (skip
+arms after a 500ms grace so an early click can't instakill the player's own animation).
+**The statement reverts to plain single-color text after** (clean to share); the strip badges persist.
+The round-summary headline is **varied** (`roundHeadline`). Driven by `reaction.breakdown`/flags (see
+Scoring §); UI is `judgedSpeechHtml` + `fxStripHtml` + `roundHeadline` + `playResolutionFx` (ui/main.ts),
+CSS under "resolution juice" in style.css. `crowdFavorite` is NOT surfaced (would leak hidden crowd taste).
+NOT done: live preview while drafting (deliberately — keep the no-mid-statement-scoring rule); a
+`displayBar` needle-lag so the needle rides *with* the count-up (today it rides immediately on render);
+animating the opponent "thinking" stage; the broader per-tier reaction-phrasing pool (P3 below).
 
 **DONE (2026-06) — visual skin.** Live-TV-debate broadcast theme: engraved title, audience needle,
 two-podium stage with text **teleprompters**, **parchment cards** (generated frame texture +

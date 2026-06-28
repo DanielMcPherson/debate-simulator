@@ -150,7 +150,11 @@ export type Statement = Card[];
 /** A predicate together with the object filling its slot (if any). */
 export interface PredInstance {
   card: Card;
+  /** Token index of this predicate in the line (for highlighting the phrase). */
+  predIdx?: number;
   object?: Card;
+  /** Token index of the object NP, if any (extends the highlight span). */
+  objIdx?: number;
   /** The connector coordinating this predicate with the prior one in its clause
    * (e.g. "and", or an elided "and therefore"); undefined for a clause's first. */
   joinedBy?: NonNullable<Card['conj']>;
@@ -161,9 +165,13 @@ export interface PredInstance {
 /** One parsed clause: a subject and the predicate(s) said about it. */
 export interface Clause {
   subject?: Card;
+  /** Token index of the subject NP (for highlighting the phrase). */
+  subjectIdx?: number;
   /** Post-nominal modifier asides attached to the subject ("who is ugly"). Their
    * score folds into the clause's first predicate contribution. */
   mods?: Card[];
+  /** Token indices of those modifier asides, parallel to `mods`. */
+  modIdxs?: number[];
   preds: PredInstance[];
   /** The connector that joined this clause to the previous one (undefined for
    * the first clause). Drives connector-fit combo scoring. */
@@ -184,6 +192,23 @@ export type ReactionLabel =
   | 'boos'
   | 'confused';
 
+/** One scored phrase, for the resolution animation ("what landed and why"). */
+export interface PhraseHit {
+  category: Category;
+  /** Signed delta toward the speaker. Carried ONLY so the UI can bucket the
+   * animation's intensity — it is never printed as a number. */
+  delta: number;
+  /** Anchor word index for the tag (the predicate, or the modifier for an aside). */
+  tokenIdx: number;
+  /** Inclusive word-index range [start, end] to highlight this clause/aside. Indexes
+   * into `displayWords(line)`, which is 1:1 with the card line. */
+  span?: [number, number];
+  /** A blunder-direction modifier aside (self-own / audience-insult / opponent-boost). */
+  aside?: boolean;
+  /** The single contribution the hidden crowd loved (got the ×boost). */
+  crowdFavorite?: boolean;
+}
+
 export interface Reaction {
   /** Signed approval delta toward the speaker, in scorebar units. */
   delta: number;
@@ -198,6 +223,18 @@ export interface Reaction {
    * inline combo chips painted onto the junction words of the JUDGED statement.
    * `tokenIdx` indexes the scored line. */
   comboChips?: { tokenIdx: number; kind: 'and' | 'logic' | 'but' }[];
+  /** Per-phrase qualitative breakdown for the resolution animation (complete lines). */
+  breakdown?: PhraseHit[];
+  /** Statement-level flags (the UI used to fragile-parse these out of `detail`). */
+  offTopic?: boolean;
+  rambling?: boolean;
+  audienceInsulted?: boolean;
+  /** The crowd specially loved one of the contributions (hidden-taste boost fired). */
+  crowdFavorite?: boolean;
+  /** A 'but' deflected a self-own → read as confusion, not outrage. */
+  mitigated?: boolean;
+  /** Confused because two complete thoughts were jammed together with no connector. */
+  runOn?: boolean;
 }
 
 export type PlayerId = 'player' | 'ai';

@@ -1,15 +1,19 @@
 import './style.css';
-import type { Card, GameState, Move, Reaction } from '../engine/types';
+import type { Card, Category, GameState, Move, Reaction } from '../engine/types';
 import { createGame, applyMove, canEnd, nextQuestion } from '../engine/game';
 import { aiTurn } from '../engine/ai';
 import { displayWords, cardLabel } from '../engine/morphology';
 import { isComplete, canAppend } from '../engine/grammar';
-import { LADDER, REWARDS, OPPONENTS, PERIOD } from '../data/cards';
+import { LADDER, REWARDS, OPPONENTS, PERIOD, PERIOD_ENABLED } from '../data/cards';
 
 const app = document.getElementById('app')!;
 const AI_DELAY = 650;
 
 let aiThinking = false;
+let resolving = false; // a statement's resolution animation is playing — lock input
+let fxHoldSummary = false; // hold the round-summary panel until the resolving FX finishes
+let fxSkip = false; // the player clicked to fast-forward the current resolution FX
+const FX_STEP = 150; // ms between each phrase/chip reveal
 let pendingTypo: string | null = null; // a Teleprompter Typo awaiting its target card
 let pendingHotMic: string | null = null; // a Hot Mic awaiting the card to steal
 let ackedSabotage: GameState['lastSabotage'] = undefined; // sabotage the player has dismissed
@@ -211,14 +215,20 @@ function reactionClass(r?: Reaction): string {
  * the opponent. */
 function panelReaction(r: Reaction | undefined, you: boolean, name: string, pronoun = 'they'): string {
   if (!r) return '';
+  // Run-on: two complete thoughts crammed together with no connector — its own coaching line.
+  if (r.runOn) {
+    const subj = you ? 'your' : `${name}’s`;
+    return `The crowd is confused by ${subj} rambling statement — make one clear point, or use “and” to chain multiple thoughts.`;
+  }
   const Who = you ? 'You' : name; // sentence-start subject (named, so never ambiguous)
   const Sm = you ? 'You' : pronoun.charAt(0).toUpperCase() + pronoun.slice(1); // follow-on subject (She/He/They)
   const who = you ? 'you' : name; // object of "for / on / against / by"
   const mag = Math.abs(r.delta).toFixed(1);
   const cls = reactionClass(r); // 'good' | 'bad' | ''
-  const dodged = r.detail.includes('dodged the question');
-  const insulted = r.detail.includes('no amount of pandering');
-  const rambled = r.detail.includes('nod off');
+  // Statement-level flags now come straight off the reaction (no fragile detail-string parsing).
+  const dodged = !!r.offTopic;
+  const insulted = !!r.audienceInsulted;
+  const rambled = !!r.rambling;
   // Target-named cores (who the crowd is reacting to) so each line is self-explanatory.
   const cored: Record<Reaction['label'], string> = {
     cheers: `the crowd roars in approval for ${who}`,
@@ -252,18 +262,113 @@ function panelReaction(r: Reaction | undefined, you: boolean, name: string, pron
   return out.join(' ');
 }
 
-// The combo indicator lives ON the junction word now: a JUDGED statement paints
-// each combo-forming connector as a colored chip (the color conveys the move —
-// COMBO / CHAIN / PIVOT). No number, no separate callout box. (Juice it later.)
-// A punchy combo badge under a resolved statement (placeholder for real juice later).
-// `kind` names the move (COMBO/CHAIN/PIVOT, colored by tier); the ×N counts how many
-// connectors comboed — magnitude without the (confusing) raw multiplier.
+/** A round-level crowd headline for the summary panel — varies by how BOTH statements
+ * landed, so the panel doesn't read "The crowd has reacted" every single time. Deterministic
+ * per round (derived from the deltas + question number) so it's stable across re-renders. */
+function roundHeadline(p?: Reaction, o?: Reaction): string {
+  const pd = p?.delta ?? 0; // toward you
+  const od = o?.delta ?? 0; // toward the opponent
+  const opp = game.opponent?.name ?? 'your opponent';
+  let bucket: string[];
+  if (pd >= 8 && od >= 8)
+    bucket = ['Both land big — the crowd is electrified!', 'A barn-burner — the audience is on its feet.', 'The crowd roars for both of you.'];
+  else if (pd >= 4 && pd - od >= 6)
+    bucket = ['The crowd swings toward you.', 'You’re winning over the room.', 'The momentum is yours.'];
+  else if (od >= 4 && od - pd >= 6)
+    bucket = [`The crowd swings toward ${opp}.`, `${opp} is winning over the room.`, `The momentum shifts to ${opp}.`];
+  else if (pd <= 2 && od <= 2)
+    bucket = ['The crowd is becoming restless.', 'The audience grows impatient.', 'A bored murmur ripples through the hall.'];
+  else bucket = ['Audience reaction is mixed.', 'The crowd is split.', 'A muddled round — the room can’t decide.'];
+  const seed = Math.abs(Math.round(pd * 10) * 31 + Math.round(od * 10) * 17 + (game.round ?? 0) * 7);
+  return `📊 ${bucket[seed % bucket.length]}`;
+}
+
+// Qualitative per-phrase labels for the resolution readout — what the play WAS, no numbers.
+const CAT_TAG: Record<Category, { label: string; kind: string } | null> = {
+  attack_opp: { label: 'ATTACK', kind: 'attack' },
+  praise_self: { label: 'BRAG', kind: 'brag' },
+  pander_aud: { label: 'PANDER', kind: 'pander' },
+  self_own: { label: 'GAFFE', kind: 'blunder' },
+  insult_aud: { label: 'INSULT', kind: 'blunder' },
+  boost_opp: { label: 'BLUNDER', kind: 'blunder' },
+  neutral: null,
+};
 const COMBO_BLURB: Record<'and' | 'logic' | 'but', string> = { and: 'COMBO!', logic: 'CHAIN!', but: 'PIVOT!' };
-function comboHtml(r?: Reaction): string {
-  if (!r?.combo) return '';
-  const n = r.comboChips?.length ?? 1;
-  const count = n > 1 ? ` ×${n}` : '';
-  return `<div class="combo-callout badge-${r.combo.kind}">⚡ ${COMBO_BLURB[r.combo.kind]}${count}</div>`;
+
+/** A JUDGED line rendered word-by-word: each landed phrase glows by category (no
+ * layout-shifting overlays), combo connectors become colored chips, and a finisher is
+ * gold. The animated *labels* live in the strip below (fxStripHtml), never over the text. */
+function judgedSpeechHtml(line: Card[], r: Reaction): string {
+  const words = displayWords(line);
+  const n = words.length;
+  const cat: (string | undefined)[] = new Array(n); // per-word phrase kind (for the glow)
+  const hitOf: (number | undefined)[] = new Array(n); // breakdown index — syncs the word pulse to its chip
+  (r.breakdown ?? []).forEach((h, hi) => {
+    const meta = CAT_TAG[h.category];
+    if (!meta) return;
+    const [s, e] = h.span ?? [h.tokenIdx, h.tokenIdx];
+    for (let i = Math.max(0, s); i <= Math.min(n - 1, e); i++) {
+      cat[i] = meta.kind;
+      hitOf[i] = hi;
+    }
+  });
+  const chipKind: (string | undefined)[] = new Array(n);
+  for (const c of r.comboChips ?? []) chipKind[c.tokenIdx] = c.kind;
+
+  let html = '';
+  for (let i = 0; i < n; i++) {
+    const w = words[i];
+    if (!w) continue;
+    const classes = ['w'];
+    if (cat[i]) classes.push('hit', `cat-${cat[i]}`);
+    if (chipKind[i]) classes.push('wchip', `kind-${chipKind[i]}`);
+    if (line[i]?.role === 'intensifier') classes.push('finisher'); // teach: finishers stand out (they multiply)
+    const data = hitOf[i] !== undefined ? ` data-hit="${hitOf[i]}"` : '';
+    const startsPunct = /^[.,]/.test(w);
+    html += (html && !startsPunct ? ' ' : '') + `<span class="${classes.join(' ')}"${data}>${w}</span>`;
+  }
+  // Ensure a closing period the way renderSentence does.
+  return /[.!?]\s*$/.test(words.filter(Boolean).join('')) ? html : html + '.';
+}
+
+/** The animated readout strip BELOW the statement: a chip per landed phrase, the combo,
+ * the finisher, and any flags — popped in sequence by playResolutionFx. Never overlaps text. */
+function fxStripHtml(r: Reaction | undefined, line: Card[]): string {
+  if (!r) return '';
+  const chips: string[] = [];
+  if (r.grammatical) {
+    (r.breakdown ?? []).forEach((h, hi) => {
+      const meta = CAT_TAG[h.category];
+      if (meta) chips.push(`<span class="fx-chip cat-${meta.kind}" data-hit="${hi}">${meta.label}</span>`);
+    });
+    if (r.combo) {
+      const cnt = (r.comboChips?.length ?? 1) > 1 ? ` ×${r.comboChips!.length}` : '';
+      chips.push(`<span class="fx-chip combo kind-${r.combo.kind}">⚡ ${COMBO_BLURB[r.combo.kind]}${cnt}</span>`);
+    }
+    if (line.some((c) => c.role === 'intensifier')) chips.push(`<span class="fx-chip finisher">⭐ FINISHER</span>`);
+    if (r.offTopic) chips.push(`<span class="fx-chip flag offtopic">⌖ OFF TOPIC</span>`);
+    if (r.rambling) chips.push(`<span class="fx-chip flag ramble">💤 RAMBLING</span>`);
+  }
+  if (r.runOn) chips.push(`<span class="fx-chip flag runon">⚠ Run-on sentence</span>`);
+  return chips.length ? `<div class="fx-strip">${chips.join('')}</div>` : '';
+}
+
+/** The animated count-up score for a resolved statement (the ONE number shown). */
+function tallyHtml(r?: Reaction): string {
+  if (!r || !r.grammatical) return '';
+  const cls = r.delta > 0 ? 'pos' : r.delta < 0 ? 'neg' : 'zero';
+  return `<div class="fx-tally ${cls}" data-delta="${r.delta}">${fmtDelta(r.delta)}</div>`;
+}
+function fmtDelta(d: number): string {
+  return `${d > 0 ? '+' : ''}${d.toFixed(1)}`;
+}
+
+/** A done speaker shows their JUDGED line (animatable); otherwise the in-progress text. */
+function speechHtml(side: 'you' | 'them'): string {
+  const p = side === 'you' ? game.player : game.ai;
+  if (p.done && p.lastReaction?.grammatical) return judgedSpeechHtml(p.line, p.lastReaction);
+  if (side === 'them') return oppSpeechHtml();
+  return partialText(game.player.line) || '<span style="color:var(--muted)">…</span>';
 }
 
 function canPlay(): boolean {
@@ -467,7 +572,7 @@ function render(): void {
   const endOk = canPlay() && canEnd(game);
   // The free period is offered wherever the grammar allows a new clause to open —
   // but only once per statement (you get a single period; chain conjunctions for more).
-  const periodOk = canPlay() && !pendingTypo && !pendingHotMic && !game.player.usedPeriod && canAppend(game.player.line, PERIOD);
+  const periodOk = PERIOD_ENABLED && canPlay() && !pendingTypo && !pendingHotMic && !game.player.usedPeriod && canAppend(game.player.line, PERIOD);
 
   const hint = game.winner
     ? 'Debate over.'
@@ -522,13 +627,15 @@ function render(): void {
     <div class="stage">
       <div class="podium you">
         ${portraitHeader('you')}
-        <div class="speech">${partialText(game.player.line) || '<span style="color:var(--muted)">…</span>'}</div>
-        ${comboHtml(game.player.lastReaction)}
+        <div class="speech">${speechHtml('you')}</div>
+        ${fxStripHtml(game.player.lastReaction, game.player.line)}
+        ${tallyHtml(game.player.lastReaction)}
       </div>
       <div class="podium them${pendingTypo ? ' typo-target' : ''}">
         ${portraitHeader('them')}
-        <div class="speech">${oppSpeechHtml()}</div>
-        ${comboHtml(game.ai.lastReaction)}
+        <div class="speech">${speechHtml('them')}</div>
+        ${fxStripHtml(game.ai.lastReaction, game.ai.line)}
+        ${tallyHtml(game.ai.lastReaction)}
       </div>
     </div>
 
@@ -542,9 +649,11 @@ function render(): void {
             <div class="rs-progress">Debate ${run.rung + 1} of ${LADDER.length} won</div>
             <button class="action" id="toReward">Choose your reward ▶</button>
           </div>`
+        : game.awaitingNext && fxHoldSummary
+        ? `<div class="round-summary holding"><div class="rs-title">📊 The votes are coming in…</div></div>`
         : game.awaitingNext
         ? `<div class="round-summary">
-            <div class="rs-title">📊 The crowd has reacted</div>
+            <div class="rs-title">${roundHeadline(game.player.lastReaction, game.ai.lastReaction)}</div>
             <div class="rs-reactions">
               ${game.player.lastReaction ? `<p class="${reactionClass(game.player.lastReaction)}">${panelReaction(game.player.lastReaction, true, 'You')}</p>` : ''}
               ${game.ai.lastReaction ? `<p class="${reactionClass(game.ai.lastReaction)}">${panelReaction(game.ai.lastReaction, false, game.opponent?.name ?? 'Your opponent', game.opponent?.pronoun)}</p>` : ''}
@@ -585,7 +694,7 @@ function render(): void {
         ? ''
         : `<div class="controls">
       <button class="action" id="end" ${endOk ? '' : 'disabled'}>End Statement</button>
-      <button class="ghost" id="period" ${periodOk ? '' : 'disabled'} title="${game.player.usedPeriod ? 'Already used your one period this statement — chain a connector to keep going.' : 'Free, once per statement — finish this sentence and start a new one. No combo bonus; use a connector for that.'}">Add “.” (new sentence)${game.player.usedPeriod ? ' — used' : ''}</button>
+      ${PERIOD_ENABLED ? `<button class="ghost" id="period" ${periodOk ? '' : 'disabled'} title="${game.player.usedPeriod ? 'Already used your one period this statement — chain a connector to keep going.' : 'Free, once per statement — finish this sentence and start a new one. No combo bonus; use a connector for that.'}">Add “.” (new sentence)${game.player.usedPeriod ? ' — used' : ''}</button>` : ''}
       <button class="ghost" id="pass" ${canPlay() && (complete || game.player.line.length === 0) ? '' : 'disabled'}>Pass (wait)</button>
       <button class="ghost" id="regroup" ${canPlay() && !game.player.usedRedraw ? '' : 'disabled'}>↻ Call a Recess (fresh talking points, costs your turn)</button>
       <button class="ghost" id="restart">Abandon Run</button>
@@ -717,7 +826,7 @@ function render(): void {
     playerMove({ kind: 'redraw' });
   });
   app.querySelector<HTMLButtonElement>('#next')?.addEventListener('click', () => {
-    if (!game.awaitingNext) return;
+    if (!game.awaitingNext || resolving) return; // let the resolution FX finish first
     pendingTypo = null;
     pendingHotMic = null;
     nextQuestion(game);
@@ -753,27 +862,124 @@ function render(): void {
   });
 }
 
-function playerMove(move: Move): void {
-  if (game.winner || game.awaitingNext || game.turn !== 'player' || aiThinking) return;
+function fxWait(ms: number): Promise<void> {
+  return new Promise((res) => (fxSkip ? res() : window.setTimeout(res, ms)));
+}
+
+/** The resolution juice: light up each phrase (what landed + why), pop combo chips on
+ * the connectors, count up the score, and flourish. Pure presentation — no engine state.
+ * Click anywhere to fast-forward. */
+async function playResolutionFx(side: 'you' | 'them', r: Reaction): Promise<void> {
+  const podium = app.querySelector<HTMLElement>(`.podium.${side}`);
+  const speech = podium?.querySelector<HTMLElement>('.speech');
+  if (!podium || !speech) return;
+  resolving = true;
+  fxSkip = false;
+  // Click anywhere to fast-forward — but ARM it only after a grace period, so the click that
+  // ended the turn (or a reflexive click toward the Next button when you finish second) doesn't
+  // instantly skip the animation. (That was the "player FX sometimes doesn't play" bug.)
+  let skipArmed = false;
+  const armTimer = window.setTimeout(() => (skipArmed = true), 500);
+  const skip = () => {
+    if (skipArmed) fxSkip = true;
+  };
+  document.addEventListener('pointerdown', skip, true);
+
+  // Reveal the readout strip chip-by-chip; each chip briefly highlights its word(s) in sync.
+  // `fx-show` turns word markup ON only for the duration of the FX — removed at the end so the
+  // statement reverts to a single color + font (clean to screenshot/share).
+  const strip = podium.querySelector<HTMLElement>('.fx-strip');
+  strip?.classList.add('fx-running');
+  speech.classList.add('fx-show', 'fx-dim'); // landed phrases start dim, brighten as their chip lands
+  const chips = strip ? [...strip.querySelectorAll<HTMLElement>('.fx-chip')] : [];
+  await fxWait(160);
+  for (const chip of chips) {
+    chip.classList.add('show');
+    const hi = chip.getAttribute('data-hit');
+    if (hi !== null) speech.querySelectorAll<HTMLElement>(`[data-hit="${hi}"]`).forEach((w) => w.classList.add('lit'));
+    else if (chip.classList.contains('combo')) speech.querySelectorAll<HTMLElement>('.w.wchip').forEach((w) => w.classList.add('lit'));
+    else if (chip.classList.contains('finisher')) speech.querySelectorAll<HTMLElement>('.w.finisher').forEach((w) => w.classList.add('lit'));
+    await fxWait(FX_STEP);
+  }
+
+  // The one number on screen: count it up from zero as the needle settles.
+  const tally = podium.querySelector<HTMLElement>('.fx-tally');
+  if (tally) {
+    const target = r.delta;
+    const steps = 12;
+    for (let i = 1; i <= steps && !fxSkip; i++) {
+      tally.textContent = fmtDelta((target * i) / steps);
+      await fxWait(26);
+    }
+    tally.textContent = fmtDelta(target);
+    tally.classList.add('pop');
+  }
+
+  flourish(side, r);
+  await fxWait(fxSkip ? 0 : 240);
+
+  window.clearTimeout(armTimer);
+  document.removeEventListener('pointerdown', skip, true);
+  speech.classList.remove('fx-show', 'fx-dim'); // statement returns to plain, single-color text
+  strip?.classList.remove('fx-running');
+  resolving = false;
+}
+
+/** Screen shake + a flash, scaled to the swing — celebratory for a win, a thud for a bomb. */
+function flourish(side: 'you' | 'them', r: Reaction): void {
+  const stage = app.querySelector<HTMLElement>('.stage');
+  const mag = Math.abs(r.delta);
+  if (!stage || mag < 4) return;
+  const cls = mag >= 12 ? 'fx-shake-lg' : 'fx-shake-sm';
+  const tone = r.delta > 0 ? (side === 'you' ? 'fx-cheer' : '') : 'fx-boo';
+  stage.classList.add(cls);
+  if (tone) stage.classList.add(tone);
+  window.setTimeout(() => stage.classList.remove('fx-shake-lg', 'fx-shake-sm', 'fx-cheer', 'fx-boo'), 700);
+}
+
+async function playerMove(move: Move): Promise<void> {
+  if (game.winner || game.awaitingNext || game.turn !== 'player' || aiThinking || resolving) return;
+  const wasSpeaking = !game.player.done;
   applyMove(game, move);
   checkDebateEnd();
+  // Animate whenever the statement actually RESOLVED (done flipped true) — this covers ending
+  // the turn AND playing a finisher, which resolves via a `take` move, not `kind:'end'`.
+  const reaction = wasSpeaking && game.player.done ? game.player.lastReaction : undefined;
+  // If this ended the round (player spoke second), hold the summary panel until the FX plays out,
+  // so the round summary only appears once BOTH statements have finished animating.
+  if (reaction && game.awaitingNext && !runScreen) fxHoldSummary = true;
   render();
+  if (reaction) await playResolutionFx('you', reaction);
+  if (fxHoldSummary) {
+    fxHoldSummary = false;
+    render(); // now reveal the round summary
+  }
   driveAI();
 }
 
 function driveAI(): void {
-  if (game.winner || game.awaitingNext || game.turn !== 'ai' || game.ai.done) {
+  if (game.winner || game.awaitingNext || game.turn !== 'ai' || game.ai.done || resolving) {
     aiThinking = false;
     return;
   }
   aiThinking = true;
   render();
-  window.setTimeout(() => {
+  window.setTimeout(async () => {
+    const wasAiSpeaking = !game.ai.done;
     const move = aiTurn(game, { maxExtend: aiMaxExtend }); // difficulty rises up the ladder
     applyMove(game, move);
     aiThinking = false;
     checkDebateEnd();
+    // Resolved (done flipped true) covers both ending the turn and playing a finisher (a `take`).
+    const reaction = wasAiSpeaking && game.ai.done ? game.ai.lastReaction : undefined;
+    // AI spoke second → hold the summary until its FX finishes (summary shows after both animate).
+    if (reaction && game.awaitingNext && !runScreen) fxHoldSummary = true;
     render();
+    if (reaction) await playResolutionFx('them', reaction);
+    if (fxHoldSummary) {
+      fxHoldSummary = false;
+      render(); // now reveal the round summary
+    }
     driveAI(); // keep going if the AI still holds the turn (player already ended)
   }, AI_DELAY);
 }

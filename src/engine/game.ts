@@ -2,7 +2,7 @@ import type { Card, GameEvent, GameState, Move, PlayerId, PlayerState } from './
 import { isComplete, canAppend } from './grammar';
 import { scoreStatement } from './scoring';
 import { renderSentence, cardLabel } from './morphology';
-import { TOPICS, OPPONENTS, CROWDS, findDef, PERIOD } from '../data/cards';
+import { TOPICS, OPPONENTS, CROWDS, findDef, PERIOD, PERIOD_ENABLED } from '../data/cards';
 import {
   buildPrivateDeck,
   buildSharedDeck,
@@ -281,7 +281,7 @@ export function legalMoves(state: GameState): Move[] {
   // The period is free but limited to ONE per statement (caps you at two sentences —
   // chain conjunctions for more, and a combo). Offered only where the grammar allows
   // it to open a new clause (after a complete clause) — never on an empty/partial line.
-  if (!p.usedPeriod && canAppend(p.line, PERIOD)) moves.push({ kind: 'take', from: 'period', cardId: PERIOD.id });
+  if (PERIOD_ENABLED && !p.usedPeriod && canAppend(p.line, PERIOD)) moves.push({ kind: 'take', from: 'period', cardId: PERIOD.id });
   if (!p.usedRedraw) moves.push({ kind: 'redraw' }); // once per question, costs your turn
   // You may End any non-empty line. Ending an incomplete/ungrammatical one is
   // allowed (no soft-lock, no forced self-own) — it just scores as a muffled,

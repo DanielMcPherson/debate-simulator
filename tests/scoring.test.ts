@@ -313,3 +313,46 @@ describe('scoring — hidden crowd preference', () => {
     );
   });
 });
+
+describe('scoring — resolution breakdown & flags (UI juice)', () => {
+  it('breakdown maps each phrase to its category and word span', () => {
+    // 0 s_opp  1 p_kick_pup  2 c_and  3 s_i  4 p_patriot
+    const r = scoreStatement(cards('s_opp', 'p_kick_pup', 'c_and', 's_i', 'p_patriot'));
+    expect(r.breakdown).toBeDefined();
+    const cats = r.breakdown!.map((h) => h.category);
+    expect(cats).toContain('attack_opp');
+    expect(cats).toContain('praise_self');
+    const attack = r.breakdown!.find((h) => h.category === 'attack_opp')!;
+    const brag = r.breakdown!.find((h) => h.category === 'praise_self')!;
+    expect(attack.span).toEqual([0, 1]); // "My opponent kicks puppies"
+    expect(brag.span).toEqual([3, 4]); // "I am a true patriot"
+    expect(attack.tokenIdx).toBe(1); // anchor is the predicate word
+  });
+
+  it('off-topic sets the offTopic flag', () => {
+    const r = scoreStatement(cards('s_i', 'p_patriot'), { topicId: 'economy' });
+    expect(r.offTopic).toBe(true);
+    expect(scoreStatement(cards('s_i', 'p_patriot')).offTopic).toBeUndefined();
+  });
+
+  it('insulting the crowd sets the audienceInsulted flag', () => {
+    const r = scoreStatement(cards('s_people', 'p_disgrace')); // "The people are a disgrace"
+    expect(r.audienceInsulted).toBe(true);
+  });
+
+  it('the hidden crowd boost sets crowdFavorite on the result and the loved phrase', () => {
+    const r = scoreStatement(cards('s_opp', 'p_kick_pup'), {
+      crowd: { id: 'b', loves: 'attack_opp', boost: 1.5 },
+    });
+    expect(r.crowdFavorite).toBe(true);
+    expect(r.breakdown!.some((h) => h.crowdFavorite && h.category === 'attack_opp')).toBe(true);
+  });
+
+  it('a run-on (two clauses, no connector) is confused and flagged runOn', () => {
+    const r = scoreStatement(cards('s_opp', 'p_kick_pup', 's_i', 'p_patriot'));
+    expect(r.label).toBe('confused');
+    expect(r.runOn).toBe(true);
+    // a clean, complete line is never a run-on
+    expect(scoreStatement(cards('s_opp', 'p_kick_pup', 'c_and', 's_i', 'p_patriot')).runOn).toBeUndefined();
+  });
+});

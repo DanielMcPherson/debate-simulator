@@ -256,12 +256,16 @@ export function segmentDetailed(tokens: Card[]): { clauses: Seg[]; roleAt: Token
 export function parse(tokens: Card[]): SentenceStructure {
   const clauses: Clause[] = segmentDetailed(tokens).clauses.map((s) => ({
     subject: s.subjectIdx !== undefined ? tokens[s.subjectIdx] : undefined,
+    subjectIdx: s.subjectIdx,
     mods: s.mods.length ? s.mods.map((i) => tokens[i]) : undefined,
+    modIdxs: s.mods.length ? s.mods.slice() : undefined,
     joinedByPrev: s.joinedBy,
     connIdx: s.connIdx,
     preds: s.preds.map((p) => ({
       card: tokens[p.predIdx],
+      predIdx: p.predIdx,
       object: p.objIdx !== undefined ? tokens[p.objIdx] : undefined,
+      objIdx: p.objIdx,
       joinedBy: p.joinedBy,
       connIdx: p.connIdx,
     })),

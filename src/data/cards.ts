@@ -340,6 +340,16 @@ export const CONNECTORS: Card[] = [
  */
 export const PERIOD: Card = { id: 'c_period', role: 'connector', text: '.', conj: 'period' };
 
+/**
+ * Feature flag — the period button experiment. When false, the period is never
+ * offered (UI button hidden, AI `availFor` skips it), so a statement is one
+ * sentence (or connectors chained into one compound sentence); jamming two
+ * complete thoughts together reads as a "Run-on" (confused). All the period
+ * plumbing (grammar `CPERIOD`, scoring residual/decay, `endableLine` trim) stays
+ * intact, so flipping this back to `true` fully restores the feature.
+ */
+export const PERIOD_ENABLED = false;
+
 // --- intensifiers (finishers) -----------------------------------------------
 
 // One-shot action cards (not part of the sentence). Played from the hand. The two

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createGame, applyMove, legalMoves, canEnd, nextQuestion } from '../src/engine/game';
 import { isValidPrefix, isComplete } from '../src/engine/grammar';
 import { scoreStatement } from '../src/engine/scoring';
-import { findDef, PERIOD, TOPICS } from '../src/data/cards';
+import { findDef, PERIOD, PERIOD_ENABLED, TOPICS } from '../src/data/cards';
 
 const complete = () => [findDef('s_opp')!, findDef('p_disgrace')!]; // "My opponent is a national disgrace"
 
@@ -419,13 +419,15 @@ describe('resource model — chunk cards, no replenish, must-finish', () => {
 });
 
 describe('the free period', () => {
-  it('is offered once a clause is complete, but never on an empty/partial line', () => {
+  it('is NOT offered while the period experiment is disabled (PERIOD_ENABLED)', () => {
     const g = createGame({ seed: 1 });
     g.turn = 'player';
     const hasPeriod = () => legalMoves(g).some((m) => m.kind === 'take' && m.from === 'period');
     expect(hasPeriod()).toBe(false); // empty line — nothing to end
     g.player.line = complete(); // "My opponent is a national disgrace"
-    expect(hasPeriod()).toBe(true);
+    // Disabled: a statement is one sentence (or connector-chained). Flip PERIOD_ENABLED
+    // back to restore the offering — the engine plumbing below still works either way.
+    expect(hasPeriod()).toBe(PERIOD_ENABLED);
   });
 
   it('plays a period without consuming anything from the pool or hand', () => {
@@ -464,7 +466,7 @@ describe('the free period', () => {
     expect(g.player.lastReaction?.grammatical).toBe(true);
   });
 
-  it('the period is limited to one per statement', () => {
+  it.runIf(PERIOD_ENABLED)('the period is limited to one per statement', () => {
     const g = createGame({ seed: 1 });
     g.turn = 'player';
     g.player.line = [findDef('s_opp')!, findDef('p_disgrace')!]; // a complete clause

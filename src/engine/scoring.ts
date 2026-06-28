@@ -1,4 +1,4 @@
-import type { Card, Category, Crowd, PredInstance, Reaction, ReactionLabel, SentenceStructure, Side } from './types';
+import type { Card, Category, Crowd, PhraseHit, PredInstance, Reaction, ReactionLabel, SentenceStructure, Side } from './types';
 import { isComplete, isValidPrefix, parse } from './grammar';
 import { renderSentence } from './morphology';
 
@@ -92,6 +92,21 @@ interface Contrib {
    * scored at full strength OUTSIDE the combo/decay machinery so same-clause praise
    * can't quietly net it away. (Good-direction modifiers fold into the clause instead.) */
   aside?: boolean;
+  /** Token indices for highlighting this phrase in the resolution animation. */
+  subjectIdx?: number;
+  predIdx?: number;
+  objIdx?: number;
+  modIdxs?: number[];
+  /** Set in scoreStatement when this contribution got the hidden-crowd boost. */
+  crowdFavorite?: boolean;
+}
+
+/** Inclusive word-index span covering a contribution's tokens (for the highlight glow). */
+function spanOf(c: Contrib): [number, number] | undefined {
+  const idxs = [c.subjectIdx, c.predIdx, c.objIdx, ...(c.modIdxs ?? [])].filter(
+    (n): n is number => n !== undefined,
+  );
+  return idxs.length ? [Math.min(...idxs), Math.max(...idxs)] : undefined;
 }
 
 function contributions(structure: SentenceStructure): Contrib[] {
@@ -118,15 +133,19 @@ function contributions(structure: SentenceStructure): Contrib[] {
     let goodModDelta = 0;
     const asides: Contrib[] = [];
     let goodModCat: Category = 'neutral';
-    for (const m of clause.mods ?? []) {
+    (clause.mods ?? []).forEach((m, mi) => {
       const { delta, category } = signed(m.sentiment ?? 0);
+      const modIdx = clause.modIdxs?.[mi];
       if (delta > 0) {
         goodModDelta += delta;
         goodModCat = category;
       } else {
-        asides.push({ delta, category, side, predBase: m.id.split('#')[0], aside: true });
+        asides.push({
+          delta, category, side, predBase: m.id.split('#')[0], aside: true,
+          subjectIdx: clause.subjectIdx, predIdx: modIdx, modIdxs: modIdx !== undefined ? [modIdx] : undefined,
+        });
       }
-    }
+    });
 
     const clauseContribs: Contrib[] = clause.preds.map((p, pi) => {
       const { delta, category } = signed(predP(p));
@@ -135,7 +154,10 @@ function contributions(structure: SentenceStructure): Contrib[] {
       // the clause-join from the previous clause.
       const joinedByPrev = pi > 0 ? p.joinedBy : clause.joinedByPrev;
       const connIdx = pi > 0 ? p.connIdx : clause.connIdx;
-      return { delta, category, side, predBase: p.card.id.split('#')[0], joinedByPrev, connIdx };
+      return {
+        delta, category, side, predBase: p.card.id.split('#')[0], joinedByPrev, connIdx,
+        subjectIdx: clause.subjectIdx, predIdx: p.predIdx, objIdx: p.objIdx,
+      };
     });
 
     if (clauseContribs.length > 0) {
@@ -143,7 +165,11 @@ function contributions(structure: SentenceStructure): Contrib[] {
     } else if (goodModDelta !== 0) {
       // A subject + good modifier with no predicate (a stall): keep the partial intent so
       // the lenient "confused" path still reads it.
-      out.push({ delta: goodModDelta, category: goodModCat, side, predBase: 'mod', joinedByPrev: clause.joinedByPrev, connIdx: clause.connIdx });
+      out.push({
+        delta: goodModDelta, category: goodModCat, side, predBase: 'mod',
+        joinedByPrev: clause.joinedByPrev, connIdx: clause.connIdx,
+        subjectIdx: clause.subjectIdx, predIdx: clause.modIdxs?.[0], modIdxs: clause.modIdxs,
+      });
     }
     out.push(...clauseContribs, ...asides);
   });
@@ -313,7 +339,7 @@ export function scoreStatement(line: Card[], opts: ScoreOptions = {}): Reaction 
     const agg = aggregate(contributions(parse(line)));
     let total = Math.max(-CONFUSION_CAP, Math.min(CONFUSION_CAP, agg.total * CONFUSION_DAMPEN));
     total = Math.round(total * 10) / 10;
-    return { delta: total, label: 'confused', detail: confusedDetail(line, total), grammatical: false };
+    return { delta: total, label: 'confused', detail: confusedDetail(line, total), grammatical: false, runOn: looksRunOn(line) };
   }
 
   // The crowd's hidden taste amplifies your single BEST on-taste contribution.
@@ -334,7 +360,7 @@ export function scoreStatement(line: Card[], opts: ScoreOptions = {}): Reaction 
     });
     if (bestIdx >= 0) {
       crowdPleased = true;
-      contribs[bestIdx] = { ...contribs[bestIdx], delta: contribs[bestIdx].delta * opts.crowd.boost };
+      contribs[bestIdx] = { ...contribs[bestIdx], delta: contribs[bestIdx].delta * opts.crowd.boost, crowdFavorite: true };
     }
   }
 
@@ -377,6 +403,20 @@ export function scoreStatement(line: Card[], opts: ScoreOptions = {}): Reaction 
   if (crowdPleased && total >= 12) note += ' This crowd is especially fired up by that.';
   else if (crowdPleased && total <= -12) note += ' (Somehow that landed even harder than usual.)';
 
+  // Per-phrase breakdown for the resolution animation — built from the final (crowd-/
+  // poison-adjusted) contributions so categories, spans and effective magnitudes match
+  // what actually counted. Inert (neutral) phrases are dropped — nothing to show.
+  const breakdown: PhraseHit[] = scored
+    .filter((c) => c.category !== 'neutral')
+    .map((c) => ({
+      category: c.category,
+      delta: c.delta,
+      tokenIdx: c.predIdx ?? c.subjectIdx ?? 0,
+      span: spanOf(c),
+      aside: c.aside || undefined,
+      crowdFavorite: c.crowdFavorite || undefined,
+    }));
+
   return {
     delta: total,
     label,
@@ -384,6 +424,12 @@ export function scoreStatement(line: Card[], opts: ScoreOptions = {}): Reaction 
     grammatical: true,
     combo: agg.combo,
     comboChips: agg.chips.length ? agg.chips : undefined,
+    breakdown: breakdown.length ? breakdown : undefined,
+    offTopic: dodged || undefined,
+    rambling: rambling || undefined,
+    audienceInsulted: audienceInsulted || undefined,
+    crowdFavorite: crowdPleased || undefined,
+    mitigated: agg.mitigated || undefined,
   };
 }
 
@@ -405,7 +451,7 @@ function confusedDetail(line: Card[], total: number): string {
   // needs an ending; anything else is jumbled and needs its grammar sorted out.
   let lead: string;
   if (looksRunOn(line)) {
-    lead = 'the crowd can’t tell where one thought ends and the next begins — you slammed two thoughts together at full speed. Hit the brakes with a period, or bolt them into a real combo with “and”, “but”, or “because”';
+    lead = 'the crowd can’t tell where one thought ends and the next begins — you slammed two thoughts together at full speed. Make one clear point, or use “and” to chain them into a combo';
   } else if (isValidPrefix(line)) {
     lead = 'the audience leans in for the rest of that sentence… and you just stop — land the thought before you drop the mic';
   } else {
