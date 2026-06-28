@@ -293,6 +293,29 @@ tickers, audience reactions. Tied to this: properly **stage the opponent's turn*
 and reaction text are already structured as placeholders to swap for juiced versions (animate the
 chip popping in on the connector when the statement resolves).
 
+**DONE (2026-06) — visual skin.** Live-TV-debate broadcast theme: engraved title, audience needle,
+two-podium stage with text **teleprompters**, **parchment cards** (generated frame texture +
+grammatical role banners: Noun/Verb/Connector/Aside/Finisher/Action), self-hosted fonts (Cinzel/EB
+Garamond/Oswald), pressable controls. **Caricature opponent portraits with mood states** (6 opponents ×
+confident/nervous/embarrassed, driven by `oppMood()` off score+gaffes; filename-keyed
+`${oppId}-${mood}.webp` via `import.meta.glob`). Art is generated offline by `scripts/genart.mjs`
+(`npm run genart`, gpt-image-2, key in gitignored `.env`, auto PNG→WebP) and committed under
+`src/ui/art/`. Card/hand/pool rows are single-row with horizontal scroll (no vertical scroll on desktop).
+**Player character-select** is live (tutorial → choose candidate → ladder): 3 candidates
+(maverick/stateswoman/veteran), shown in the YOU podium as a single **confident** portrait —
+**no mood-switching for the player** (only opponents react by mood). Rationale: the opponents'
+"confident" is already a caricature so their moods stay on-model, but the flattering player faces
+diverge across the distorted nervous/embarrassed, reading as a different person. Player mood art still
+exists (`player-<id>-{nervous,embarrassed}.webp`) and `playerMood()` is easy to re-add if wanted.
+(`PLAYER_CHARACTERS` + the `'select'` runScreen in ui/main.ts; `run.character` persists per run.)
+
+**Remaining juice sub-items:** (1) **card carousel** — swipe/scroll the pool & hand with CSS
+scroll-snap + an edge **peek/fade** cue (gradient mask showing more cards off either side); touch-swipe
+works natively on `overflow-x`. (2) A **cleaner card frame** (border closer to the edge / larger clear
+center) so long card text needs less padding — current frame's inset border forces wide `.ctext`
+padding. Declined for now: viewport auto-scale to force zero-scroll on tiny laptops (horizontal-scroll +
+desktop fit deemed good enough).
+
 **Why gated:** the connector-fit scoring + combo/period/topic system just landed; get playtest data
 on *its* feel before layering meta-progression on top.
 

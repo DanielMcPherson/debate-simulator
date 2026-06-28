@@ -15,8 +15,15 @@ let pendingHotMic: string | null = null; // a Hot Mic awaiting the card to steal
 let ackedSabotage: GameState['lastSabotage'] = undefined; // sabotage the player has dismissed
 
 // --- campaign run (Slay-the-Spire-style ladder) ---
-let run = { rung: 0, bonus: [] as Card[] }; // current rung + earned reward cards
-let runScreen: 'tutorial' | 'map' | 'reward' | 'defeat' | 'victory' | null = null;
+let run = { rung: 0, bonus: [] as Card[], character: null as string | null }; // rung + earned cards + chosen candidate
+let runScreen: 'tutorial' | 'select' | 'map' | 'reward' | 'defeat' | 'victory' | null = null;
+
+// The player's selectable candidates (cosmetic for now — portrait + name; art in src/ui/art/portraits).
+const PLAYER_CHARACTERS = [
+  { id: 'maverick', name: 'The Maverick', tagline: 'A rough-edged outsider who tells it like it is.' },
+  { id: 'stateswoman', name: 'The Stateswoman', tagline: 'Polished, commanding, three steps ahead.' },
+  { id: 'veteran', name: 'The Veteran', tagline: 'A trusted old hand with a steady reputation.' },
+];
 let rewardChoices: Card[] = [];
 let aiMaxExtend = LADDER[0].maxExtend;
 
@@ -41,9 +48,9 @@ function startDebate(): GameState {
 let game = startDebate();
 
 function newRun(): void {
-  run = { rung: 0, bonus: [] };
+  run = { rung: 0, bonus: [], character: null };
   game = startDebate();
-  runScreen = 'tutorial'; // tutorial first, then the campaign map before debate 1
+  runScreen = 'tutorial'; // tutorial → choose candidate → campaign map → debate 1
   render();
 }
 
@@ -119,6 +126,58 @@ function oppSpeechHtml(): string {
   return words.join(' ').replace(/\s+\./g, '.').trim();
 }
 
+// Opponent portrait caricatures keyed `${opponentId}-${mood}.webp`. import.meta.glob gives
+// Vite-hashed URLs that resolve in dev AND the GitHub Pages build. Missing art → undefined
+// (opponents without portraits yet just show a nameplate).
+const PORTRAITS = import.meta.glob('./art/portraits/*.webp', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>;
+
+type Mood = 'confident' | 'nervous' | 'embarrassed';
+/** The opponent's read on the room — picks which portrait expression to show. */
+function oppMood(): Mood {
+  const r = game.ai.lastReaction;
+  // delta is signed toward the speaker — a booed/confused/self-own line reads as just-gaffed.
+  if (r && (r.label === 'boos' || r.label === 'confused' || r.delta < -4)) return 'embarrassed';
+  if (game.bar > 12) return 'nervous'; // bar is signed toward the player → opponent is behind
+  return 'confident';
+}
+const MOOD_LABEL: Record<Mood, string> = {
+  confident: 'Riding high',
+  nervous: 'Getting rattled',
+  embarrassed: 'Mortified — just gaffed',
+};
+
+/** A podium header: a portrait (or placeholder) + role label, name, and mood. */
+function portraitHeader(side: 'you' | 'them'): string {
+  if (side === 'you') {
+    // Player shows ONE flattering portrait, no mood-switching: the comical opponent faces stay
+    // consistent across moods, but the flattering player faces don't, so we keep just "confident".
+    // (Player mood art still exists — player-<id>-{nervous,embarrassed}.webp — if we re-enable later.)
+    const ch = PLAYER_CHARACTERS.find((c) => c.id === run.character);
+    const url = ch ? PORTRAITS[`./art/portraits/player-${ch.id}-confident.webp`] : undefined;
+    const pic = url
+      ? `<img class="portrait" src="${url}" alt="${ch?.name ?? 'You'}">`
+      : '<div class="portrait placeholder">🇺🇸</div>';
+    return `<div class="pheader">${pic}
+      <div class="pmeta"><div class="who">You</div>${ch ? `<div class="name">${ch.name}</div>` : ''}</div></div>`;
+  }
+  const id = game.opponent?.id;
+  const mood = oppMood();
+  const url = id ? PORTRAITS[`./art/portraits/${id}-${mood}.webp`] : undefined;
+  const pic = url
+    ? `<img class="portrait" src="${url}" alt="${game.opponent?.name ?? 'Opponent'}">`
+    : '<div class="portrait placeholder">🎙️</div>';
+  return `<div class="pheader">${pic}
+    <div class="pmeta">
+      <div class="who">Opponent</div>
+      <div class="name">${game.opponent?.name ?? 'Opponent'}</div>
+      <div class="mood them">${url ? MOOD_LABEL[mood] : game.opponent?.blurb ?? ''}</div>
+    </div></div>`;
+}
+
 function reactionClass(r?: Reaction): string {
   if (!r) return '';
   if (r.label === 'cheers' || r.label === 'approve') return 'good';
@@ -158,6 +217,25 @@ function onTopic(c: Card): boolean {
   return !!game.topic && !!c.topics?.includes(game.topic.id);
 }
 
+// Player-facing grammatical-function labels (the real engine roles, no invented words).
+// "Noun" (not "Subject") because an np plays as subject OR object.
+const ROLE_LABEL: Record<Card['role'], string> = {
+  np: 'Noun',
+  predicate: 'Verb',
+  connector: 'Connector',
+  modifier: 'Aside',
+  intensifier: 'Finisher',
+  powerup: 'Action',
+};
+// On-topic glow is a DEBUG aid now (catches mislabeled `topics`), hidden in normal play.
+// Re-enable by loading the page with ?debug.
+const DEBUG = new URLSearchParams(location.search).has('debug');
+
+/** A card's face: the phrase + a grammatical-role banner. No scoring numbers on cards. */
+function cardFace(c: Card): string {
+  return `<span class="ctext">${cardLabel(c)}</span><span class="banner">${ROLE_LABEL[c.role]}</span>`;
+}
+
 function cardHtml(c: Card, source: 'pool' | 'hand'): string {
   if (c.role === 'powerup') {
     const isTypo = c.effect === 'typo';
@@ -167,32 +245,27 @@ function cardHtml(c: Card, source: 'pool' | 'hand'): string {
     const disabled = !canPlay() || noTypoTarget || noForgotTarget ? 'disabled' : '';
     const sel = pendingTypo === c.id || pendingHotMic === c.id ? ' selecting' : '';
     // fx-<effect> gives each power-up its own color so they aren't all "the purple card".
-    return `<button class="card power fx-${c.effect}${sel}" data-id="${c.id}" data-power="1" data-effect="${c.effect}" ${disabled}>${cardLabel(c)}</button>`;
+    return `<button class="card power fx-${c.effect}${sel}" data-id="${c.id}" data-power="1" data-effect="${c.effect}" ${disabled}>${cardFace(c)}</button>`;
   }
-  // While choosing a Typo target, sentence cards become jam targets.
+  // While choosing a Typo target, sentence cards become jam targets (still full faces).
   if (pendingTypo) {
-    return `<button class="card ${source} target" data-id="${c.id}" data-from="${source}">${cardLabel(c)}</button>`;
+    return `<button class="card ${source} role-${c.role} target" data-id="${c.id}" data-from="${source}">${cardFace(c)}</button>`;
   }
   const isIntens = c.role === 'intensifier';
   // A finisher is an END move: playable only when your line is already a complete
-  // sentence (so appending it is grammatical). It then banks the ×bonus and ends your turn.
+  // sentence (so appending it is grammatical). It then banks the bonus and ends your turn.
   const canFinish = isIntens && canAppend(game.player.line, c);
   const disabled = !canPlay() || (isIntens && !canFinish) ? 'disabled' : '';
-  // TEMPORARY (debug aid): the on-topic glow + "on topic ✓" tag make it obvious if any
-  // card's `topics` are mislabeled. REMOVE LATER — players should learn to spot on-topic
-  // cards themselves (drop the `.ontopic` class + the tag below, and `onTopic`/.ontopic CSS).
-  const cls = `card ${source}${isIntens ? ' intens' : ''}${onTopic(c) ? ' ontopic' : ''}`;
-  const tag = isIntens
-    ? `<span class="role">Finisher! ×${c.factor}</span>`
-    : onTopic(c)
-      ? '<span class="role">on topic ✓</span>'
-      : '';
-  return `<button class="${cls}" data-id="${c.id}" data-from="${source}" ${disabled}>${tag}${cardLabel(c)}</button>`;
+  const cls = `card ${source} role-${c.role}${DEBUG && onTopic(c) ? ' ontopic' : ''}`;
+  return `<button class="${cls}" data-id="${c.id}" data-from="${source}" ${disabled}>${cardFace(c)}</button>`;
 }
 
 /** Render an opponent's-hand card: a steal target during a Hot Mic, else read-only intel. */
 function oppCardHtml(c: Card): string {
-  if (pendingHotMic) return `<button class="card them target" data-id="${c.id}" data-from="oppHand">${cardLabel(c)}</button>`;
+  if (pendingHotMic) {
+    const tint = c.role === 'powerup' ? `power fx-${c.effect}` : `role-${c.role}`;
+    return `<button class="card ${tint} target" data-id="${c.id}" data-from="oppHand">${cardFace(c)}</button>`;
+  }
   return `<span class="oppcard">${cardLabel(c)}</span>`;
 }
 
@@ -268,7 +341,21 @@ function runModalHtml(): string {
     return `<div class="modal-backdrop"><div class="modal map-modal">
       <div class="modal-title" style="color:var(--gold)">📝 How to Debate</div>
       ${TUTORIAL_BODY}
-      <button class="action" id="beginTutorial">Got it — show me the ladder ▶</button>
+      <button class="action" id="beginTutorial">Got it — pick my candidate ▶</button>
+    </div></div>`;
+  }
+  if (runScreen === 'select') {
+    const cards = PLAYER_CHARACTERS.map((c) => {
+      const url = PORTRAITS[`./art/portraits/player-${c.id}-confident.webp`];
+      const pic = url ? `<img class="char-portrait" src="${url}" alt="${c.name}">` : '<div class="char-portrait"></div>';
+      return `<button class="char-card" data-char="${c.id}">${pic}
+        <div class="char-name">${c.name}</div>
+        <div class="char-tag">${c.tagline}</div></button>`;
+    }).join('');
+    return `<div class="modal-backdrop"><div class="modal select-modal">
+      <div class="modal-title" style="color:var(--gold)">🎙️ Choose Your Candidate</div>
+      <p>Who are you on the campaign trail? (Looks only, for now — pick whoever you'd vote for.)</p>
+      <div class="char-grid">${cards}</div>
     </div></div>`;
   }
   if (runScreen === 'map') {
@@ -287,9 +374,9 @@ function runModalHtml(): string {
   }
   if (runScreen === 'reward') {
     const choices = rewardChoices
-      .map((c) => `<button class="card reward" data-reward="${c.id}">${cardLabel(c)}</button>`)
+      .map((c) => `<button class="card reward role-${c.role}" data-reward="${c.id}">${cardFace(c)}</button>`)
       .join('');
-    return `<div class="modal-backdrop"><div class="modal">
+    return `<div class="modal-backdrop"><div class="modal reward-modal">
       <div class="modal-title" style="color:var(--gold)">🏆 You beat ${game.opponent?.name ?? 'your opponent'}!</div>
       <p>Add a card to your deck — it stays with you up the ladder:</p>
       <div class="cards" style="margin-top:8px">${choices}</div>
@@ -388,23 +475,23 @@ function render(): void {
 
     <div class="stage">
       <div class="podium you">
-        <div class="who">You</div>
+        ${portraitHeader('you')}
         <div class="speech">${partialText(game.player.line) || '<span style="color:var(--muted)">…</span>'}</div>
         <div class="reaction ${reactionClass(game.player.lastReaction)}">${reactionText(game.player.lastReaction)}</div>
         ${comboHtml(game.player.lastReaction)}
       </div>
       <div class="podium them${pendingTypo ? ' typo-target' : ''}">
-        <div class="who">${game.opponent?.name ?? 'Opponent'}</div>
+        ${portraitHeader('them')}
         <div class="speech">${oppSpeechHtml()}</div>
         <div class="reaction ${reactionClass(game.ai.lastReaction)}">${reactionText(game.ai.lastReaction)}</div>
         ${comboHtml(game.ai.lastReaction)}
       </div>
     </div>
 
-    <div class="zone-title">Shared Pool — contested, no refill (gold) &nbsp;·&nbsp; <span class="ontopic-key">✓ on topic</span></div>
+    <div class="zone-title">Shared Pool — contested, no refill${DEBUG ? ' &nbsp;·&nbsp; <span class="ontopic-key">✓ on topic</span>' : ''}</div>
     <div class="cards" id="pool">${game.pool.map((c) => cardHtml(c, 'pool')).join('') || '<span style="color:var(--muted)">(pool empty)</span>'}</div>
 
-    <div class="zone-title">Your Hand — private, no refill (blue)</div>
+    <div class="zone-title">Your Hand — private, no refill</div>
     <div class="cards" id="hand">${game.player.hand.map((c) => cardHtml(c, 'hand')).join('') || '<span style="color:var(--muted)">(hand empty)</span>'}</div>
 
     ${
@@ -429,6 +516,7 @@ function render(): void {
       <span class="turn-hint">${hint}</span>
     </div>
 
+    <div class="zone-title">📡 Live Transcript</div>
     <div class="log">${game.log.slice(-8).reverse().map((l) => `<div>${l}</div>`).join('') || '<div>The stage is set…</div>'}</div>
 
     ${
@@ -562,8 +650,15 @@ function render(): void {
   app.querySelector<HTMLButtonElement>('#dumplog')?.addEventListener('click', downloadDebugLog);
   app.querySelector<HTMLButtonElement>('#newrun')?.addEventListener('click', newRun);
   app.querySelector<HTMLButtonElement>('#beginTutorial')?.addEventListener('click', () => {
-    runScreen = 'map'; // tutorial dismissed — show the campaign ladder
+    runScreen = 'select'; // tutorial dismissed — choose a candidate, then the ladder
     render();
+  });
+  app.querySelectorAll<HTMLButtonElement>('.char-card').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      run.character = btn.dataset.char ?? null;
+      runScreen = 'map'; // candidate chosen — on to the campaign ladder
+      render();
+    });
   });
   app.querySelector<HTMLButtonElement>('#beginDebate')?.addEventListener('click', () => {
     runScreen = null; // dismiss the map and step onto the debate stage

@@ -4,6 +4,13 @@ dist/
 .DS_Store
 .vite/
 
+# Secrets — API keys for the offline art-generation script (NEVER commit)
+.env
+*.env
+
+# Concept-art references (ChatGPT mockups) — kept locally, too large to version
+concept_art/
+
 # Emacs backup / auto-save / lock files
 *~
 \#*\#

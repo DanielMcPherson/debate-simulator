@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "catalog": "vite-node scripts/gen-catalog.ts"
+    "catalog": "vite-node scripts/gen-catalog.ts",
+    "genart": "node scripts/genart.mjs"
   },
   "devDependencies": {
     "typescript": "^5.4.0",
