@@ -14,6 +14,12 @@ let resolving = false; // a statement's resolution animation is playing — lock
 let fxHoldSummary = false; // hold the round-summary panel until the resolving FX finishes
 let pendingQuestionCard = false; // show the "next question" card modal before the player acts
 let fxSkip = false; // the player clicked to fast-forward the current resolution FX
+// A statement's score/chips are held until BOTH speakers have finished the exchange, so the
+// first speaker's readout doesn't grow their podium and shove the cards down while the second
+// player is still building. `pendingFx` is the first finisher awaiting the other; `fxShownSides`
+// gates which podiums currently reveal their score (populated as each side animates at the end).
+let pendingFx: 'you' | 'them' | null = null;
+const fxShownSides = new Set<'you' | 'them'>();
 const FX_STEP = 150; // ms between each phrase/chip reveal
 let pendingTypo: string | null = null; // a Teleprompter Typo awaiting its target card
 let pendingHotMic: string | null = null; // a Hot Mic awaiting the card to steal
@@ -44,6 +50,7 @@ function startDebate(): GameState {
   pendingHotMic = null;
   ackedSabotage = undefined;
   aiThinking = false;
+  resetRoundFx();
   // Up to 8 questions, ending early at the ±100 landslide.
   return createGame({
     seed: (Date.now() & 0xffff) || 1,
@@ -217,36 +224,45 @@ function questionCardHtml(): string {
 }
 
 /** A podium header: a portrait (or placeholder) + role label, name, and mood. */
-function portraitHeader(side: 'you' | 'them'): string {
-  // Audience support % lives here now (near the portrait/mood), not in a separate line.
-  const youSupport = Math.round((game.bar + 100) / 2);
-  const support = side === 'you' ? youSupport : 100 - youSupport;
-  const supportHtml = `<div class="support ${side}">${support}% approval</div>`;
+// Portrait and meta are now separate so the podium can place the portrait as a tall
+// left column with the name/approval + speech bubble stacked to its right (broadcast look).
+function portraitPic(side: 'you' | 'them'): string {
   if (side === 'you') {
     // Player shows ONE flattering portrait, no mood-switching: the comical opponent faces stay
     // consistent across moods, but the flattering player faces don't, so we keep just "confident".
     // (Player mood art still exists — player-<id>-{nervous,embarrassed}.webp — if we re-enable later.)
     const ch = PLAYER_CHARACTERS.find((c) => c.id === run.character);
     const url = ch ? PORTRAITS[`./art/portraits/player-${ch.id}-confident.webp`] : undefined;
-    const pic = url
+    return url
       ? `<img class="portrait" src="${url}" alt="${ch?.name ?? 'You'}">`
       : '<div class="portrait placeholder">🇺🇸</div>';
-    return `<div class="pheader">${pic}
-      <div class="pmeta"><div class="who">You</div>${ch ? `<div class="name">${ch.name}</div>` : ''}${supportHtml}</div></div>`;
   }
   const id = game.opponent?.id;
   const mood = oppMood();
   const url = id ? PORTRAITS[`./art/portraits/${id}-${mood}.webp`] : undefined;
-  const pic = url
+  return url
     ? `<img class="portrait" src="${url}" alt="${game.opponent?.name ?? 'Opponent'}">`
     : '<div class="portrait placeholder">🎙️</div>';
-  return `<div class="pheader">${pic}
-    <div class="pmeta">
+}
+
+function podiumMeta(side: 'you' | 'them'): string {
+  // Audience support % lives here (near the portrait/mood), not in a separate line.
+  const youSupport = Math.round((game.bar + 100) / 2);
+  const support = side === 'you' ? youSupport : 100 - youSupport;
+  const supportHtml = `<div class="support ${side}">${support}% approval</div>`;
+  if (side === 'you') {
+    const ch = PLAYER_CHARACTERS.find((c) => c.id === run.character);
+    return `<div class="pmeta"><div class="who">You</div>${ch ? `<div class="name">${ch.name}</div>` : ''}${supportHtml}</div>`;
+  }
+  const id = game.opponent?.id;
+  const mood = oppMood();
+  const hasArt = !!(id && PORTRAITS[`./art/portraits/${id}-${mood}.webp`]);
+  return `<div class="pmeta">
       <div class="who">Opponent</div>
       <div class="name">${game.opponent?.name ?? 'Opponent'}</div>
-      <div class="mood them">${url ? MOOD_LABEL[mood] : game.opponent?.blurb ?? ''}</div>
+      <div class="mood them">${hasArt ? MOOD_LABEL[mood] : game.opponent?.blurb ?? ''}</div>
       ${supportHtml}
-    </div></div>`;
+    </div>`;
 }
 
 function reactionClass(r?: Reaction): string {
@@ -444,7 +460,12 @@ function tutorialStep(): TutorialStep | null {
   if (line.length === 0) return { roles: ['np'], text: 'Tap a subject card to start your statement.' };
   const last = line[line.length - 1];
   if (last.role === 'connector') return { roles: ['np'], text: 'Now tap a subject to begin your next point.' };
-  if (!isComplete(line)) return { roles: ['predicate'], text: 'Tap a verb to say something about them.' };
+  if (!isComplete(line))
+    return {
+      roles: ['predicate'],
+      // Reassure about agreement — a playtester thought a plural subject couldn't take "is".
+      text: 'Tap a verb to say something about them. Don’t worry about plurals — “is/are” auto-matches the subject.',
+    };
   const hasConn = line.some((c) => c.role === 'connector' && c.conj !== 'period');
   if (!hasConn) return { roles: ['connector'], text: 'Tap “and” to chain a second point — combos score big!' };
   const finisher = [...game.pool, ...game.player.hand].some((c) => c.role === 'intensifier' && canAppend(line, c));
@@ -471,6 +492,26 @@ const DEBUG = new URLSearchParams(location.search).has('debug');
 function cardFace(c: Card, hint = false): string {
   const hand = hint ? '<span class="hint-hand">👉</span>' : '';
   return `<span class="ctext">${cardLabel(c)}</span><span class="banner">${hand}${ROLE_LABEL[c.role]}</span>`;
+}
+
+// A flickable card rail: a side label badge, a scrollable card row (keeps its #id +
+// .cards hooks), prev/next chevrons, and a pagination-dots strip filled by setupRails().
+function carousel(id: 'pool' | 'hand' | 'opphand', label: string, inner: string, title = ''): string {
+  return `<div class="carousel">
+    <span class="rail-label"${title ? ` title="${title}"` : ''}>${label}</span>
+    <button class="rail-arrow prev" data-rail="${id}" aria-label="Scroll ${label} left">‹</button>
+    <div class="cards" id="${id}">${inner}</div>
+    <button class="rail-arrow next" data-rail="${id}" aria-label="Scroll ${label} right">›</button>
+    <div class="rail-dots" data-dots="${id}" aria-hidden="true"></div>
+  </div>`;
+}
+
+// The first-question tutorial instruction, rendered as a panel filling the spare space in the
+// hand row (Q1 hand is ≤4 cards, no power-ups) — so the coaching lives INSIDE the established
+// play area instead of adding a banner that grows the visible region.
+function tutHintHtml(): string {
+  if (!currentHint || !tutorialIntroSeen) return '';
+  return `<div class="tut-hint">👉 ${currentHint.text}</div>`;
 }
 
 function cardHtml(c: Card, source: 'pool' | 'hand'): string {
@@ -652,19 +693,6 @@ function render(): void {
   // but only once per statement (you get a single period; chain conjunctions for more).
   const periodOk = PERIOD_ENABLED && canPlay() && !pendingTypo && !pendingHotMic && !game.player.usedPeriod && canAppend(game.player.line, PERIOD);
 
-  const hint = game.winner
-    ? 'Debate over.'
-    : game.awaitingNext
-      ? 'The crowd has reacted. Press Next Question to continue.'
-      : aiThinking || game.turn === 'ai'
-        ? 'Your opponent is speaking…'
-        : game.player.done
-          ? 'You have finished — your opponent is still speaking.'
-          : complete
-          ? 'Complete! End to lock it in (safe from sabotage), Pass to hold & wait (e.g. to set up a Typo), or extend.'
-          : game.player.line.length > 0
-            ? 'Keep building — you can only end on a complete sentence.'
-            : 'Pick a word to begin — or Pass to wait (e.g. to set up a Teleprompter Typo).';
   const sabotaged = !!game.lastSabotage && game.lastSabotage.victim === 'player';
   // A fresh sabotage pops a modal you must dismiss; afterwards it stays as a banner.
   const showSabotageModal = sabotaged && game.lastSabotage !== ackedSabotage;
@@ -694,31 +722,40 @@ function render(): void {
   const finisherNote = notes.map((n) => `<div class="held">${n}</div>`).join('');
 
   app.innerHTML = `
-    <h1>⚖️ DEBATE SIMULATOR</h1>
-    <div class="run-pill">🏛️ Campaign — Debate ${run.rung + 1} / ${LADDER.length} &nbsp;·&nbsp; vs <b>${game.opponent?.name ?? '—'}</b> &nbsp;·&nbsp; Earned cards: ${run.bonus.length}</div>
+    <h1><span class="tstar">✦</span>⚖️ DEBATE SIMULATOR ⚖️<span class="tstar">✦</span></h1>
     ${runScreen === 'result' ? '' : bannerHtml()}
     <div class="scorebar-wrap">
-      <div class="scorebar-labels"><span class="you">◀ You</span><span class="them">Opponent ▶</span></div>
+      <div class="crowd" aria-hidden="true"></div>
+      <div class="scorebar-labels">
+        <span class="you">◀ You</span>
+        <span class="score-meta">Debate ${run.rung + 1} / ${LADDER.length}</span>
+        <span class="them">Opponent ▶</span>
+      </div>
       <div class="scorebar"><div class="needle" style="left:${needle}%"></div></div>
     </div>
 
     <div class="stage">
       <div class="podium you">
-        ${portraitHeader('you')}
-        <div class="speech">${speechHtml('you')}</div>
-        ${fxStripHtml(game.player.lastReaction, game.player.line)}
-        ${tallyHtml(game.player.lastReaction)}
+        ${portraitPic('you')}
+        <div class="pbody">
+          ${podiumMeta('you')}
+          <div class="speech">${speechHtml('you')}</div>
+          ${fxShownSides.has('you') ? fxStripHtml(game.player.lastReaction, game.player.line) : ''}
+          ${fxShownSides.has('you') ? tallyHtml(game.player.lastReaction) : ''}
+        </div>
       </div>
       <div class="podium them${pendingTypo ? ' typo-target' : ''}">
-        ${portraitHeader('them')}
-        <div class="speech">${speechHtml('them')}</div>
-        ${fxStripHtml(game.ai.lastReaction, game.ai.line)}
-        ${tallyHtml(game.ai.lastReaction)}
+        ${portraitPic('them')}
+        <div class="pbody">
+          ${podiumMeta('them')}
+          <div class="speech">${speechHtml('them')}</div>
+          ${fxShownSides.has('them') ? fxStripHtml(game.ai.lastReaction, game.ai.line) : ''}
+          ${fxShownSides.has('them') ? tallyHtml(game.ai.lastReaction) : ''}
+        </div>
       </div>
     </div>
 
-    <div class="question-pill"><span class="q-num">Question ${game.round}/${game.maxRounds}</span><span class="q-topic">${game.topic?.label ?? '—'}</span> — “${game.question ?? ''}”</div>
-    ${currentHint && tutorialIntroSeen ? `<div class="tutorial-banner">👉 ${currentHint.text}</div>` : ''}
+    <div class="question-pill"><span class="qstar">✦</span><span class="q-num">Question ${game.round}/${game.maxRounds}</span><span class="q-topic">${game.topic?.label ?? '—'}</span> — “${game.question ?? ''}”<span class="qstar">✦</span></div>
 
     ${
       runScreen === 'result'
@@ -741,14 +778,27 @@ function render(): void {
             ${game.round >= game.maxRounds ? '<div class="rs-progress">Final question complete — tallying the debate…</div>' : ''}
             <button class="action" id="next">Next Question ▶</button>
           </div>`
-        : `<div class="zone-title">Shared Pool — contested, no refill${DEBUG ? ' &nbsp;·&nbsp; <span class="ontopic-key">✓ on topic</span>' : ''}</div>
-          <div class="cards" id="pool">${game.pool.map((c) => cardHtml(c, 'pool')).join('') || '<span style="color:var(--muted)">(pool empty)</span>'}</div>
-          <div class="zone-title">Your Hand — private, no refill</div>
-          <div class="cards" id="hand">${game.player.hand.map((c) => cardHtml(c, 'hand')).join('') || '<span style="color:var(--muted)">(hand empty)</span>'}</div>
+        : `${carousel(
+            'pool',
+            `Shared Pool${DEBUG ? ' <span class="ontopic-key">✓ on topic</span>' : ''}`,
+            game.pool.map((c) => cardHtml(c, 'pool')).join('') || '<span class="rail-empty">(pool empty)</span>',
+            'Contested — no refill this question',
+          )}
+          ${carousel(
+            'hand',
+            'Your Hand',
+            (game.player.hand.map((c) => cardHtml(c, 'hand')).join('') || '<span class="rail-empty">(hand empty)</span>') +
+              tutHintHtml(), // Q1 tutorial coaching fills the hand row's spare space
+            'Private — no refill this question',
+          )}
           ${
             game.player.knowsOppHand && !pendingHotMic && game.ai.hand.length
-              ? `<div class="zone-title">👂 ${game.opponent?.name ?? 'Opponent'}'s hand (revealed by your Hot Mic)</div>
-                 <div class="cards" id="opphand">${game.ai.hand.map(oppCardHtml).join('')}</div>`
+              ? carousel(
+                  'opphand',
+                  `👂 ${game.opponent?.name ?? 'Opponent'}'s hand`,
+                  game.ai.hand.map(oppCardHtml).join(''),
+                  'Revealed by your Hot Mic',
+                )
               : ''
           }`
     }
@@ -784,18 +834,14 @@ function render(): void {
       showPanel
         ? ''
         : `<div class="controls">
-      <button class="action${currentHint?.end ? ' hint' : ''}" id="end" ${endOk ? '' : 'disabled'}>${currentHint?.end ? '👉 ' : ''}End Statement</button>
+      <button class="action${currentHint?.end ? ' hint' : ''}" id="end" ${endOk ? '' : 'disabled'}><span class="btn-ico">🎤</span>${currentHint?.end ? '👉 ' : ''}End Statement</button>
       ${PERIOD_ENABLED ? `<button class="ghost" id="period" ${periodOk ? '' : 'disabled'} title="${game.player.usedPeriod ? 'Already used your one period this statement — chain a connector to keep going.' : 'Free, once per statement — finish this sentence and start a new one. No combo bonus; use a connector for that.'}">Add “.” (new sentence)${game.player.usedPeriod ? ' — used' : ''}</button>` : ''}
-      <button class="ghost" id="pass" ${canPlay() && (complete || game.player.line.length === 0) ? '' : 'disabled'}>Pass (wait)</button>
-      <button class="ghost" id="regroup" ${canPlay() && !game.player.usedRedraw ? '' : 'disabled'}>↻ Call a Recess (fresh talking points, costs your turn)</button>
-      <button class="ghost" id="restart">Abandon Run</button>
-      <button class="ghost" id="dumplog" title="Download a JSON event log of this debate for bug analysis">🐞 Debug log</button>
-      <span class="turn-hint">${hint}</span>
+      <button class="ghost" id="pass" ${canPlay() && (complete || game.player.line.length === 0) ? '' : 'disabled'}><span class="btn-ico">⏳</span>Pass <span class="btn-sub">(wait)</span></button>
+      <button class="ghost" id="regroup" ${canPlay() && !game.player.usedRedraw ? '' : 'disabled'}><span class="btn-ico">🔨</span>Call a Recess <span class="btn-sub">fresh talking points · costs your turn</span></button>
+      <button class="ghost danger" id="restart"><span class="btn-ico">🏛️</span>Abandon Run</button>
+      <button class="ghost" id="dumplog" title="Download a JSON event log of this debate for bug analysis"><span class="btn-ico">🐞</span>Debug</button>
     </div>`
     }
-
-    <div class="zone-title">📡 Live Transcript</div>
-    <div class="log">${game.log.slice(-8).reverse().map((l) => `<div>${l}</div>`).join('') || '<div>The stage is set…</div>'}</div>
 
     ${
       showSabotageModal
@@ -831,14 +877,14 @@ function render(): void {
     ${runModalHtml()}
   `;
 
-  // Pop the hint banner to grab attention whenever its text changes (i.e. the player just
+  // Pop the in-hand hint panel to grab attention whenever its text changes (i.e. the player just
   // played a card and the next step updated). rAF runs after the synchronous render chain,
-  // so it lands on the final banner element even when render() is called twice in a tick.
+  // so it lands on the final element even when render() is called twice in a tick.
   if (currentHint && tutorialIntroSeen && currentHint.text !== lastHintText) {
     lastHintText = currentHint.text;
-    requestAnimationFrame(() => app.querySelector('.tutorial-banner')?.classList.add('pop'));
+    requestAnimationFrame(() => app.querySelector('.tut-hint')?.classList.add('pop'));
   } else if (!currentHint) {
-    lastHintText = null; // reset so the banner pops fresh next time it appears
+    lastHintText = null; // reset so it pops fresh next time it appears
   }
 
   app.querySelectorAll<HTMLButtonElement>('.card').forEach((btn) => {
@@ -931,6 +977,7 @@ function render(): void {
     pendingTypo = null;
     pendingHotMic = null;
     nextQuestion(game);
+    resetRoundFx(); // fresh round — clear the deferred-score bookkeeping
     pendingQuestionCard = true; // show the next-question card before play resumes
     render();
     // driveAI deferred until the card is dismissed (even questions open on the AI's turn)
@@ -973,6 +1020,53 @@ function render(): void {
     render();
     if (!pendingQuestionCard) driveAI(); // (debate 1 opens player-first, but stay robust if that changes)
   });
+
+  wireCarousels();
+}
+
+// --- flickable card rails: chevrons scroll the row; dots reflect/seek scroll position.
+// Arrows + dots auto-hide when a row doesn't overflow. Touch/trackpad swipe works natively
+// on the .cards overflow-x; this adds the desktop affordance + a "there's more" cue.
+function updateRail(car: HTMLElement): void {
+  const cards = car.querySelector<HTMLElement>('.cards');
+  const dots = car.querySelector<HTMLElement>('.rail-dots');
+  const prev = car.querySelector<HTMLButtonElement>('.rail-arrow.prev');
+  const next = car.querySelector<HTMLButtonElement>('.rail-arrow.next');
+  if (!cards) return;
+  const overflow = cards.scrollWidth - cards.clientWidth;
+  const has = overflow > 4;
+  car.classList.toggle('has-overflow', has);
+  // pages by viewport width; dots are a coarse position cue, not an exact card count
+  const pages = has ? Math.max(2, Math.ceil(cards.scrollWidth / cards.clientWidth)) : 0;
+  if (dots && dots.childElementCount !== pages) {
+    dots.innerHTML = Array.from({ length: pages }, () => '<span class="dot"></span>').join('');
+  }
+  const cur = pages ? Math.round((cards.scrollLeft / overflow) * (pages - 1)) : 0;
+  dots?.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('on', i === cur));
+  const atStart = cards.scrollLeft <= 2;
+  const atEnd = cards.scrollLeft >= overflow - 2;
+  cards.classList.toggle('at-start', has && atStart); // fade only the far edge that has more
+  cards.classList.toggle('at-end', has && atEnd);
+  if (prev) prev.disabled = atStart;
+  if (next) next.disabled = atEnd;
+}
+
+let railResizeWired = false;
+function wireCarousels(): void {
+  app.querySelectorAll<HTMLElement>('.carousel').forEach((car) => {
+    const cards = car.querySelector<HTMLElement>('.cards');
+    if (!cards) return;
+    const step = (dir: number) => cards.scrollBy({ left: dir * cards.clientWidth * 0.8, behavior: 'smooth' });
+    car.querySelector<HTMLButtonElement>('.rail-arrow.prev')?.addEventListener('click', () => step(-1));
+    car.querySelector<HTMLButtonElement>('.rail-arrow.next')?.addEventListener('click', () => step(1));
+    cards.addEventListener('scroll', () => updateRail(car), { passive: true }); // dies with the node on re-render
+    updateRail(car);
+  });
+  // Recompute overflow/dots on viewport changes (no re-render, so no rebinding).
+  if (!railResizeWired) {
+    railResizeWired = true;
+    window.addEventListener('resize', () => app.querySelectorAll<HTMLElement>('.carousel').forEach(updateRail));
+  }
 }
 
 function fxWait(ms: number): Promise<void> {
@@ -1050,22 +1144,45 @@ function flourish(side: 'you' | 'them', r: Reaction): void {
   window.setTimeout(() => stage.classList.remove('fx-shake-lg', 'fx-shake-sm', 'fx-cheer', 'fx-boo'), 700);
 }
 
+// Clear the deferred-FX bookkeeping at the start of a fresh round / debate.
+function resetRoundFx(): void {
+  pendingFx = null;
+  fxShownSides.clear();
+}
+
+// Both speakers have finished (or the debate just ended): reveal + animate the earlier speaker
+// first, then the one who just finished, then show the round summary. Deferring the first
+// speaker's readout to here is what keeps the podiums compact while the second player builds.
+async function playRoundFx(secondSide: 'you' | 'them'): Promise<void> {
+  const order: ('you' | 'them')[] =
+    pendingFx && pendingFx !== secondSide ? [pendingFx, secondSide] : [secondSide];
+  pendingFx = null;
+  // Hold the round-summary panel (show the "votes coming in" placeholder) while we animate.
+  if (game.awaitingNext && !runScreen) fxHoldSummary = true;
+  for (const side of order) {
+    const r = side === 'you' ? game.player.lastReaction : game.ai.lastReaction;
+    if (!r) continue;
+    fxShownSides.add(side); // reveal THIS podium's score (chips stay hidden until the FX pops them)
+    render();
+    await playResolutionFx(side, r);
+  }
+  fxHoldSummary = false;
+  render(); // reveal the round summary / result now that both have animated
+}
+
 async function playerMove(move: Move): Promise<void> {
   if (game.winner || game.awaitingNext || game.turn !== 'player' || aiThinking || resolving) return;
   const wasSpeaking = !game.player.done;
   applyMove(game, move);
   checkDebateEnd();
-  // Animate whenever the statement actually RESOLVED (done flipped true) — this covers ending
-  // the turn AND playing a finisher, which resolves via a `take` move, not `kind:'end'`.
-  const reaction = wasSpeaking && game.player.done ? game.player.lastReaction : undefined;
-  // If this ended the round (player spoke second), hold the summary panel until the FX plays out,
-  // so the round summary only appears once BOTH statements have finished animating.
-  if (reaction && game.awaitingNext && !runScreen) fxHoldSummary = true;
-  render();
-  if (reaction) await playResolutionFx('you', reaction);
-  if (fxHoldSummary) {
-    fxHoldSummary = false;
-    render(); // now reveal the round summary
+  // Resolved (done flipped true) covers ending the turn AND playing a finisher (a `take`, not `end`).
+  const justResolved = wasSpeaking && game.player.done && !!game.player.lastReaction;
+  if (justResolved && (game.ai.done || game.awaitingNext || game.winner)) {
+    render();
+    await playRoundFx('you'); // player finished the exchange (or won outright) → animate both now
+  } else {
+    if (justResolved) pendingFx = 'you'; // finished first → wait for the opponent before scoring
+    render();
   }
   driveAI();
 }
@@ -1083,19 +1200,32 @@ function driveAI(): void {
     applyMove(game, move);
     aiThinking = false;
     checkDebateEnd();
-    // Resolved (done flipped true) covers both ending the turn and playing a finisher (a `take`).
-    const reaction = wasAiSpeaking && game.ai.done ? game.ai.lastReaction : undefined;
-    // AI spoke second → hold the summary until its FX finishes (summary shows after both animate).
-    if (reaction && game.awaitingNext && !runScreen) fxHoldSummary = true;
-    render();
-    if (reaction) await playResolutionFx('them', reaction);
-    if (fxHoldSummary) {
-      fxHoldSummary = false;
-      render(); // now reveal the round summary
+    const justResolved = wasAiSpeaking && game.ai.done && !!game.ai.lastReaction;
+    if (justResolved && (game.player.done || game.awaitingNext || game.winner)) {
+      render();
+      await playRoundFx('them'); // AI finished the exchange → animate both now
+    } else {
+      if (justResolved) pendingFx = 'them'; // finished first → hold its score until the player ends
+      render();
     }
     driveAI(); // keep going if the AI still holds the turn (player already ended)
   }, AI_DELAY);
 }
+
+// A gilded broadcast frame hugging the viewport edge, with corner flourishes. Injected ONCE
+// (outside #app, so render()'s innerHTML churn never touches it); pointer-events:none, below modals.
+const CORNER_SVG = `<svg viewBox="0 0 48 48" aria-hidden="true">
+  <g fill="none" stroke="#e8c069" stroke-linecap="round">
+    <path d="M4 22 L4 4 L22 4" stroke-width="2"/>
+    <path d="M11 26 Q11 11 26 11" stroke-width="1.4" opacity="0.7"/>
+  </g>
+  <circle cx="4" cy="4" r="2.4" fill="#e8c069"/>
+</svg>`;
+const broadcastFrame = document.createElement('div');
+broadcastFrame.className = 'broadcast-frame';
+broadcastFrame.setAttribute('aria-hidden', 'true');
+broadcastFrame.innerHTML = ['tl', 'tr', 'bl', 'br'].map((c) => `<span class="corner ${c}">${CORNER_SVG}</span>`).join('');
+document.body.appendChild(broadcastFrame);
 
 runScreen = 'tutorial'; // open on the tutorial, then the campaign map, before the first debate
 render();

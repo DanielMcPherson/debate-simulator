@@ -83,11 +83,14 @@ const JOBS = [
     optimize: { width: 320, quality: 82 }, // → committed .webp; raw .png is dropped
     prompt:
       'A blank antique trading-card frame on aged cream parchment paper. Subtle paper grain and ' +
-      'faint foxing/age spots. A slim ornate engraved border in muted antique gold and sepia runs ' +
-      'around all four edges. The large central area is left clean, smooth and EMPTY (a flat space ' +
-      'for text to be placed later). Absolutely no text, no letters, no words, no numbers, no ' +
-      'illustration, no portrait, no characters, no symbols in the center. Flat front-facing scan, ' +
-      'soft even lighting, vintage 19th-century political campaign card aesthetic. Portrait orientation.',
+      'faint foxing/age spots. A VERY THIN ornate engraved border line in muted antique gold and ' +
+      'sepia runs close to the very outer edge of the card, hugging the rim with only a tiny margin. ' +
+      'The central area is as LARGE as possible — a generous, clean, smooth, flat EMPTY field filling ' +
+      'almost the entire card (a roomy space for text to be placed later); keep the border slim so the ' +
+      'inner field is maximized. Absolutely no text, no letters, no words, no numbers, no illustration, ' +
+      'no portrait, no characters, no symbols, no ornament in the center — only near the edges. Flat ' +
+      'front-facing scan, soft even lighting, vintage 19th-century political campaign card aesthetic. ' +
+      'Portrait orientation.',
   },
   // --- opponents (match cards.ts OPPONENTS ids: pander/blowhard/passer/smearwell/slander/grandstand) ---
   ...opp('pander', 'female American politician, "Gov. Patty Pander", about 55, neat blonde bob with a slight flip, pearl earrings and a single strand of pearls, tailored bright teal skirt-suit blazer with a small American-flag lapel pin, rosy cheeks, exaggerated wide expressive eyes, slightly overdone makeup'),
