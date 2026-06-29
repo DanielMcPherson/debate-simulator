@@ -7,19 +7,21 @@ import type { Card, Clause, Role, SentenceStructure } from './types';
 // audience judges the result.
 //
 //   TOP   -> S | S INT
-//   S     -> CLAUSE | S CCAND CLAUSE | S CJOIN CLAUSE
+//   S     -> CLAUSE | S CCAND CLAUSE | S CJOIN CLAUSE | S CBEC CLAUSE | S CPERIOD CLAUSE
 //   CLAUSE-> NP PREDS
 //   PREDS -> PRED | PREDS CCAND PRED | PREDS CJOIN PRED
 //   PRED  -> PC | PO NP            (PC = closed predicate, PO = open predicate)
 //
-// A *conjunction* followed by a new subject (NP) opens a new clause; followed by a
-// predicate it coordinates within the clause, sharing the subject ("the swamp eats
-// crayons and therefore will destroy this country"). A *period* is a sentence
-// boundary: it can ONLY open a new clause, and so always needs its own subject —
-// it never strings bare predicates into fragments.
+// A coordinating conjunction (CCAND "and", or CJOIN "and therefore"/"but") followed by a
+// new subject (NP) opens a new clause; followed by a predicate it coordinates within the
+// clause, sharing the subject ("the swamp eats crayons and therefore will destroy this
+// country"). A *period* (CPERIOD) and *"because"* (CBEC) are clause-only: they can ONLY
+// open a new clause and so always need their own subject — "because" subordinates a full
+// clause and can't elide the subject ("…a jackass because *they* want to raise taxes"), so
+// it never strings bare predicates into fragments (CBEC is absent from the PREDS rules).
 
-type Term = 'NP' | 'MOD' | 'PC' | 'PO' | 'CCAND' | 'CJOIN' | 'CPERIOD' | 'INT';
-const TERMS = new Set<Term>(['NP', 'MOD', 'PC', 'PO', 'CCAND', 'CJOIN', 'CPERIOD', 'INT']);
+type Term = 'NP' | 'MOD' | 'PC' | 'PO' | 'CCAND' | 'CJOIN' | 'CBEC' | 'CPERIOD' | 'INT';
+const TERMS = new Set<Term>(['NP', 'MOD', 'PC', 'PO', 'CCAND', 'CJOIN', 'CBEC', 'CPERIOD', 'INT']);
 
 /** The part(s) of speech a card can play. */
 export function rolesOf(card: Card): Role[] {
@@ -35,11 +37,13 @@ function termOfRole(r: Role, card: Card): Term {
     case 'predicate':
       return card.open ? 'PO' : 'PC';
     case 'connector':
-      // 'and' coordinates predicates (CCAND); 'period' only joins full clauses
-      // (CPERIOD); the rest — because / and therefore / but — are CJOIN (which can
-      // both join clauses and coordinate predicates under a shared subject).
+      // 'and' coordinates predicates (CCAND); 'period' and 'because' only join full
+      // clauses (CPERIOD / CBEC — each needs its own subject); the rest — and therefore
+      // / but — are CJOIN (can both join clauses and coordinate predicates under a
+      // shared subject).
       if (card.conj === 'and') return 'CCAND';
       if (card.conj === 'period') return 'CPERIOD';
+      if (card.conj === 'because') return 'CBEC';
       return 'CJOIN';
     case 'intensifier':
       return 'INT';
@@ -49,7 +53,7 @@ function termOfRole(r: Role, card: Card): Term {
 }
 /** Connector term implied by a card's `conj` (shared by real connectors & dual-role asides). */
 function connTerm(conj: NonNullable<Card['conj']>): Term {
-  return conj === 'and' ? 'CCAND' : conj === 'period' ? 'CPERIOD' : 'CJOIN';
+  return conj === 'and' ? 'CCAND' : conj === 'period' ? 'CPERIOD' : conj === 'because' ? 'CBEC' : 'CJOIN';
 }
 
 function termsAt(card: Card): Term[] {
@@ -66,7 +70,7 @@ function termsAt(card: Card): Term[] {
 
 const GRAMMAR: Record<string, string[][]> = {
   TOP: [['S'], ['S', 'INT']],
-  S: [['CLAUSE'], ['S', 'CCAND', 'CLAUSE'], ['S', 'CJOIN', 'CLAUSE'], ['S', 'CPERIOD', 'CLAUSE']],
+  S: [['CLAUSE'], ['S', 'CCAND', 'CLAUSE'], ['S', 'CJOIN', 'CLAUSE'], ['S', 'CBEC', 'CLAUSE'], ['S', 'CPERIOD', 'CLAUSE']],
   // A subject may carry one or more post-nominal modifier asides before its predicates.
   CLAUSE: [['NP', 'PREDS'], ['NP', 'MODS', 'PREDS']],
   MODS: [['MOD'], ['MODS', 'MOD']],
@@ -151,6 +155,21 @@ export function canAppend(tokens: Card[], card: Card): boolean {
   return analyze([...setsOf(tokens), termsAt(card)]).valid;
 }
 
+/**
+ * Index of the first token where the line stops being a valid prefix of any
+ * grammatical sentence — i.e. exactly where parsing breaks (a stray second subject,
+ * a `because` with no subject after it, word salad). Returns -1 if the whole line is
+ * still a valid prefix (merely unfinished, not wrong). Drives the resolution "???"
+ * highlight on a confused statement.
+ */
+export function firstInvalidIndex(tokens: Card[]): number {
+  const sets = setsOf(tokens);
+  for (let i = 0; i < tokens.length; i++) {
+    if (!analyze(sets.slice(0, i + 1)).valid) return i;
+  }
+  return -1;
+}
+
 // --- structural segmentation for scoring & rendering -----------------------
 
 export type TokenRole = 'subject' | 'object' | 'mod' | 'pred' | 'conn' | 'int';
@@ -223,7 +242,7 @@ export function segmentDetailed(tokens: Card[]): { clauses: Seg[]; roleAt: Token
           open = null;
           const conj = t.conj;
           const next = tokens[i + 1];
-          if (next && next.role === 'np') {
+          if (conj === 'because' || (next && next.role === 'np')) {
             push();
             cur = { mods: [], preds: [], joinedBy: conj, connIdx: i };
             started = false;
@@ -261,10 +280,11 @@ export function segmentDetailed(tokens: Card[]): { clauses: Seg[]; roleAt: Token
         open = null;
         const conj = t.conj ?? 'and';
         const next = tokens[i + 1];
-        // A period is a hard sentence boundary (always a new clause). A conjunction
-        // opens a new clause only when a fresh subject follows; otherwise it
-        // coordinates the next predicate under the shared subject.
-        if (conj === 'period' || (next && next.role === 'np')) {
+        // A period and "because" are hard clause boundaries (always a new clause, always
+        // needing their own subject). A coordinating conjunction opens a new clause only
+        // when a fresh subject follows; otherwise it coordinates the next predicate under
+        // the shared subject.
+        if (conj === 'period' || conj === 'because' || (next && next.role === 'np')) {
           push();
           cur = { mods: [], preds: [], joinedBy: conj, connIdx: i };
           started = false;

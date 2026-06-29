@@ -285,6 +285,21 @@ describe('scoring — modifier asides', () => {
     expect(r.grammatical).toBe(false);
   });
 
+  it('an egregious blunder punches through the "confused" muffle (you can\'t ramble it away)', () => {
+    // p_bed_with is an OPEN predicate with no object → the line is incomplete (confused),
+    // but the audience-insult aside still lands at full strength.
+    const r = scoreStatement(cards('s_people', 'm_ugly', 'p_bed_with'));
+    expect(r.label).toBe('confused');
+    expect(r.grammatical).toBe(false);
+    expect(r.delta).toBeLessThan(-8); // beyond the ±8 muffle cap — the insult is not dampened away
+    // a self-own in word salad punches through too (full −8, vs the ~−4 the old muffle gave)
+    expect(scoreStatement(cards('s_i', 'm_ugly', 'p_bed_with')).delta).toBeLessThanOrEqual(-8);
+    // but a confused line with NO blunder stays muffled within the ±8 cap
+    const benign = scoreStatement(cards('s_opp', 'p_bed_with')); // attack-ish, but incomplete
+    expect(benign.label).toBe('confused');
+    expect(Math.abs(benign.delta)).toBeLessThanOrEqual(8);
+  });
+
   it('insulting the crowd dominates pandering in the same clause (not easily forgiven)', () => {
     // "The American people, who are ugly, love freedom" — the insult stands, pandering suppressed.
     const mix = scoreStatement(cards('s_people', 'm_ugly', 'p_love_fd'));

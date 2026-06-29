@@ -310,19 +310,6 @@ describe('resource model — chunk cards, no replenish, must-finish', () => {
     expect(g.pool.some((c) => c.id === target.id)).toBe(false); // removed from pool
   });
 
-  it('Recess reshuffles the pool only, once per question, costing the turn', () => {
-    const g = createGame({ seed: 8 });
-    g.player.hand.push({ id: 'pw_fb', role: 'powerup', effect: 'filibuster', text: 'x' });
-    const handBefore = g.player.hand.map((c) => c.id);
-    expect(legalMoves(g).some((m) => m.kind === 'redraw')).toBe(true);
-    applyMove(g, { kind: 'redraw' });
-    expect(g.player.hand.map((c) => c.id)).toEqual(handBefore); // hand untouched (Filibuster survives)
-    expect(g.player.usedRedraw).toBe(true);
-    expect(g.turn).toBe('ai'); // a recess passes the turn
-    g.turn = 'player';
-    expect(legalMoves(g).some((m) => m.kind === 'redraw')).toBe(false);
-  });
-
   it('does not replenish the pool after a take', () => {
     const g = createGame({ seed: 2 });
     const before = g.pool.length;
@@ -367,10 +354,6 @@ describe('resource model — chunk cards, no replenish, must-finish', () => {
     const finishers = (g: { pool: { role: string }[] }) => g.pool.filter((c) => c.role === 'intensifier').length;
     for (let seed = 1; seed <= 30; seed++) {
       const g = createGame({ seed });
-      expect(finishers(g)).toBeLessThanOrEqual(1);
-      // …and still at most one after a Recess re-deals the pool.
-      g.turn = 'player';
-      applyMove(g, { kind: 'redraw' });
       expect(finishers(g)).toBeLessThanOrEqual(1);
     }
   });

@@ -92,6 +92,7 @@ function dealRound(state: GameState): void {
   ensurePoolHasTopic(state, state.topic.id);
   ensurePoolPlayable(state);
   capPoolFinishers(state); // at most one finisher on the board — keep the race-for-it tension
+  capPoolModifiers(state); // at most two asides — don't let flavor crowd out nouns/verbs
   // Onboarding Q1: replace the pool with the randomized combo toolkit (see buildTutorialPool).
   if (tutorialQ1) state.pool = buildTutorialPool(rng);
 
@@ -133,7 +134,6 @@ function dealRound(state: GameState): void {
       }
     }
     p.line = [];
-    p.usedRedraw = false;
     p.usedPeriod = false;
     p.gaffing = false;
     p.nextMultiplier = undefined;
@@ -160,32 +160,62 @@ function dealRound(state: GameState): void {
   });
 }
 
-/** Swap a card matching `pred` into the pool from the deck if none is present. */
-function ensurePool(state: GameState, pred: (c: Card) => boolean): void {
-  if (state.pool.some(pred)) return;
-  const idx = state.sharedDeck.findIndex(pred);
-  if (idx === -1) return;
-  const card = state.sharedDeck.splice(idx, 1)[0];
-  const removed = state.pool.pop();
-  if (removed) state.sharedDeck.push(removed);
-  state.pool.unshift(card);
+/**
+ * Ensure the pool holds at least `n` cards matching `pred`, swapping the shortfall
+ * in from the deck. Evicts from the END, skipping any `protect`ed card so filling
+ * one guarantee can't void another (and so filler — objects/asides — is pushed out
+ * in favour of the structural cards we actually want more of).
+ */
+function ensurePool(state: GameState, pred: (c: Card) => boolean, n = 1, protect?: (c: Card) => boolean): void {
+  while (state.pool.filter(pred).length < n) {
+    const idx = state.sharedDeck.findIndex(pred);
+    if (idx === -1) return; // deck exhausted of this kind
+    const card = state.sharedDeck.splice(idx, 1)[0];
+    let victim = state.pool.length - 1;
+    if (protect) {
+      for (let i = state.pool.length - 1; i >= 0; i--) {
+        if (!protect(state.pool[i])) { victim = i; break; }
+      }
+    }
+    const removed = state.pool.splice(victim, 1)[0];
+    if (removed) state.sharedDeck.push(removed);
+    state.pool.unshift(card);
+  }
 }
 
+const isSubjectCard = (c: Card) => c.role === 'np' && !!c.side && c.side !== 'neutral';
+const isPredicateCard = (c: Card) => c.role === 'predicate';
+
 /**
- * Guarantee the pool can open AND finish a statement: a real (sided) subject to
- * start with, and a complete predicate to land. With those a complete statement
- * is always reachable — the pressure is a *bad* completion, not an impossible one.
+ * Guarantee the pool is comfortably *buildable*, not just barely completable: enough
+ * subjects and verbs to assemble a two-clause combo from the pool, plus a connector to
+ * join it. Floors (not exact counts) — a richer random draw is left alone. Structural
+ * cards are protected from eviction, so the shortfall is filled by ejecting filler
+ * (objects, asides, spare finishers) rather than the nouns/verbs we're short on.
  */
 function ensurePoolPlayable(state: GameState): void {
-  ensurePool(state, (c) => c.role === 'np' && !!c.side && c.side !== 'neutral'); // a subject
-  ensurePool(state, (c) => c.role === 'predicate' && !c.open); // a complete predicate
+  const isCompletePred = (c: Card) => c.role === 'predicate' && !c.open;
+  const isConnector = (c: Card) => c.role === 'connector';
+  // Never evict the on-topic card or any subject/verb/connector — those are exactly
+  // what we want the pool stocked with, so eviction targets filler instead.
+  const protect = (c: Card) =>
+    !!(state.topic && c.topics?.includes(state.topic.id)) ||
+    isSubjectCard(c) ||
+    isPredicateCard(c) ||
+    isConnector(c);
+  // Floors scale with the (larger, no-recess) pool so two players can each build a
+  // multi-clause combo from one non-replenishing deal.
+  ensurePool(state, isSubjectCard, 3, protect); // ≥3 subjects → enough to open several clauses
+  ensurePool(state, isCompletePred, 1, protect); // ≥1 CLOSED predicate (open preds need an object)
+  ensurePool(state, isPredicateCard, 3, protect); // ≥3 verbs total → clauses can land
+  ensurePool(state, isConnector, 2, protect); // ≥2 connectors so a combo chain is always reachable
 }
 
 /**
  * Guarantee a player's HAND can open a statement: at least one sided subject. The
- * pool's guaranteed subject is CONTESTED (the speaker who goes first may take it),
+ * pool's guaranteed subjects are CONTESTED (the speaker who goes first may take them),
  * so a private opener in hand prevents a mid-question lockout where you can't even
- * start and must burn a Recess. Pulls one from the draw pile (then the discard) and
+ * start. Pulls one from the draw pile (then the discard) and
  * returns the displaced card, so hand size is unchanged.
  */
 function ensureHandHasOpener(p: PlayerState): void {
@@ -209,14 +239,27 @@ function ensureHandHasOpener(p: PlayerState): void {
  * from the deck (and returning the evicted finisher to the deck).
  */
 function capPoolFinishers(state: GameState): void {
-  const isFin = (c: Card) => c.role === 'intensifier';
-  const finIdxs = state.pool.map((c, i) => (isFin(c) ? i : -1)).filter((i) => i >= 0);
-  for (let k = finIdxs.length - 1; k >= 1; k--) {
-    const i = finIdxs[k]; // keep finIdxs[0]; evict the rest (replace in place — indices stay valid)
+  capPoolRole(state, (c) => c.role === 'intensifier', 1);
+}
+
+/**
+ * Asides (modifiers) are flavorful but non-load-bearing; a pool with 3–4 of them
+ * crowds out the nouns and verbs you need to build. Cap them so they stay a garnish.
+ */
+function capPoolModifiers(state: GameState): void {
+  capPoolRole(state, (c) => c.role === 'modifier', 2);
+}
+
+/** Keep at most `max` pool cards matching `is`, swapping the excess for non-matching
+ * cards from the deck (in place, so other guarantees' indices stay valid). */
+function capPoolRole(state: GameState, is: (c: Card) => boolean, max: number): void {
+  const idxs = state.pool.map((c, i) => (is(c) ? i : -1)).filter((i) => i >= 0);
+  for (let k = idxs.length - 1; k >= max; k--) {
+    const i = idxs[k]; // keep the first `max`; evict the rest
     const evicted = state.pool[i];
-    const repl = state.sharedDeck.findIndex((c) => !isFin(c));
+    const repl = state.sharedDeck.findIndex((c) => !is(c));
     if (repl === -1) {
-      state.pool.splice(i, 1); // no non-finisher to swap in — just drop the extra
+      state.pool.splice(i, 1); // no replacement available — just drop the extra
     } else {
       state.pool[i] = state.sharedDeck.splice(repl, 1)[0];
     }
@@ -242,7 +285,7 @@ export function createGame(opts: GameOptions = {}): GameState {
     maxRounds: opts.maxRounds ?? 8,
     sharedDeck: [],
     pool: [],
-    poolSize: opts.poolSize ?? 9,
+    poolSize: opts.poolSize ?? 12,
     handSize: opts.handSize ?? 4,
     player: newPlayer('player'),
     ai: newPlayer('ai'),
@@ -325,7 +368,6 @@ export function legalMoves(state: GameState): Move[] {
   // chain conjunctions for more, and a combo). Offered only where the grammar allows
   // it to open a new clause (after a complete clause) — never on an empty/partial line.
   if (PERIOD_ENABLED && !p.usedPeriod && canAppend(p.line, PERIOD)) moves.push({ kind: 'take', from: 'period', cardId: PERIOD.id });
-  if (!p.usedRedraw) moves.push({ kind: 'redraw' }); // once per question, costs your turn
   // You may End any non-empty line. Ending an incomplete/ungrammatical one is
   // allowed (no soft-lock, no forced self-own) — it just scores as a muffled,
   // "confused" statement (see scoreStatement). Completing well is still better.
@@ -600,24 +642,6 @@ export function applyMove(state: GameState, move: Move): GameState {
 
   if (move.kind === 'power') {
     applyPowerup(state, p, move);
-    return state;
-  }
-
-  if (move.kind === 'redraw') {
-    if (p.usedRedraw) return state;
-    const rng = rngFor.get(state)!;
-    // Reshuffle the SHARED POOL only and redraw it fresh — your private hand
-    // (including any Filibuster connectors) is left untouched.
-    state.sharedDeck.push(...state.pool);
-    state.pool = [];
-    state.sharedDeck = shuffle(state.sharedDeck, rng);
-    refill(state.sharedDeck, state.pool, state.poolSize);
-    if (state.topic) ensurePoolHasTopic(state, state.topic.id); // topic first…
-    ensurePoolPlayable(state); // …then re-assert playability (see dealRound)
-    capPoolFinishers(state); // …and cap finishers at one (see dealRound)
-    p.usedRedraw = true;
-    logEvent(state, 'redraw', { by: p.id });
-    advanceTurn(state); // costs your turn
     return state;
   }
 

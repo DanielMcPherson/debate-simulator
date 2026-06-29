@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isValidPrefix, isComplete, canAppend, parse } from '../src/engine/grammar';
+import { isValidPrefix, isComplete, canAppend, parse, firstInvalidIndex } from '../src/engine/grammar';
 import { renderSentence } from '../src/engine/morphology';
 import { findDef, PERIOD } from '../src/data/cards';
 import type { Card } from '../src/engine/types';
@@ -53,6 +53,24 @@ describe('grammar — chunk model', () => {
     const line = cards('s_opp', 'p_disgrace', 'c_because', 's_people', 'p_love_fd');
     expect(isComplete(line)).toBe(true);
     expect(parse(line).clauses).toHaveLength(2);
+  });
+
+  it('"because" REQUIRES its own subject — it cannot elide it like "and"/"and therefore"', () => {
+    // "...is a disgrace because lies" is ungrammatical (no subject after because);
+    // the same shape with "and" or "and therefore" is fine (shared subject).
+    expect(isComplete(cards('s_opp', 'p_disgrace', 'c_because', 'p_lie'))).toBe(false);
+    expect(isValidPrefix(cards('s_opp', 'p_disgrace', 'c_because', 'p_lie'))).toBe(false);
+    expect(isComplete(cards('s_opp', 'p_disgrace', 'c_and', 'p_lie'))).toBe(true);
+    expect(isComplete(cards('s_opp', 'p_disgrace', 'c_therefore', 'p_lie'))).toBe(true);
+  });
+
+  it('firstInvalidIndex points at the token where parsing breaks (for the "WHAT??" highlight)', () => {
+    // bare predicate after "because" — breaks at that predicate (index 3)
+    expect(firstInvalidIndex(cards('s_opp', 'p_disgrace', 'c_because', 'p_lie'))).toBe(3);
+    // run-on: a second subject with no connector — breaks at the second subject (index 2)
+    expect(firstInvalidIndex(cards('s_opp', 'p_kick_pup', 's_i', 'p_patriot'))).toBe(2);
+    // a clean, valid line never breaks
+    expect(firstInvalidIndex(cards('s_opp', 'p_disgrace', 'c_and', 'p_lie'))).toBe(-1);
   });
 
   it('the free period joins two clauses; bare adjacency does not', () => {

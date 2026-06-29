@@ -1,5 +1,5 @@
 import type { Card, Category, Crowd, PhraseHit, PredInstance, Reaction, ReactionLabel, SentenceStructure, Side } from './types';
-import { isComplete, isValidPrefix, parse } from './grammar';
+import { firstInvalidIndex, isComplete, isValidPrefix, parse } from './grammar';
 import { renderSentence } from './morphology';
 
 // Deterministic audience-reaction scoring. `delta` is signed TOWARD THE SPEAKER:
@@ -340,10 +340,24 @@ export function scoreStatement(line: Card[], opts: ScoreOptions = {}): Reaction 
     // Lenient: read whatever coherent intent the partial line has, muffled, with a
     // coaching note. A bare fragment nets ~0 (a wasted, mumbled turn); a half-formed
     // jab leans mildly +/-. Never a soft-lock or a forced self-own.
-    const agg = aggregate(contributions(parse(line)));
-    let total = Math.max(-CONFUSION_CAP, Math.min(CONFUSION_CAP, agg.total * CONFUSION_DAMPEN));
+    //
+    // EXCEPT — an egregious BLUNDER (self-own / audience-insult / opponent-boost) PUNCHES
+    // THROUGH the muffle at full strength: you can't ramble your way out of insulting the
+    // crowd or owning yourself, even in word salad. Only the *rest* of the salad is dampened
+    // + capped; the blunder lands at its real (already ×1.6) value.
+    const contribs = contributions(parse(line));
+    const isBlunder = (c: Contrib) =>
+      c.category === 'self_own' || c.category === 'insult_aud' || c.category === 'boost_opp';
+    const blunderTotal = contribs.filter(isBlunder).reduce((s, c) => s + c.delta, 0); // ≤ 0
+    let rest = aggregate(contribs.filter((c) => !isBlunder(c))).total * CONFUSION_DAMPEN;
+    rest = Math.max(-CONFUSION_CAP, Math.min(CONFUSION_CAP, rest));
+    // As in the full path: an audience insult anywhere poisons the (muffled) positives too.
+    if (rest > 0 && contribs.some((c) => c.category === 'insult_aud')) rest = 0;
+    let total = Math.max(-STATEMENT_CAP, Math.min(STATEMENT_CAP, blunderTotal + rest));
     total = Math.round(total * 10) / 10;
-    return { delta: total, label: 'confused', detail: confusedDetail(line, total), grammatical: false, runOn: looksRunOn(line) };
+    const bad = firstInvalidIndex(line); // where parsing actually broke (−1 if just unfinished)
+    const confusedSpan: [number, number] | undefined = bad >= 0 ? [bad, line.length - 1] : undefined;
+    return { delta: total, label: 'confused', detail: confusedDetail(line, total), grammatical: false, runOn: looksRunOn(line), confusedSpan };
   }
 
   // The crowd's hidden taste amplifies your single BEST on-taste contribution.

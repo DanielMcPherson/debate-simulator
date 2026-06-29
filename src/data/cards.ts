@@ -234,6 +234,11 @@ export const SIG_PANDER: Card[] = [
   pi('p_refund', 'will personally refund your last parking ticket', 2, { topics: ['pander'] }),
   pc('p_dmv', 'promise', 'shorter lines at the DMV, forever', 2, { topics: ['pander'] }),
   pi('p_coffeeshop', 'will put a coffee shop on every single corner', 2, { topics: ['pander'] }),
+  // Recognizable presidential rhetoric — baked into a promise (where these phrases
+  // actually live), not bare nouns. Playtester suggestions.
+  pi('p_city_hill', 'will build a shining city on a hill', 3, { topics: ['freedom'] }),
+  pi('p_points_light', 'will light a thousand points of light across this great land', 3, { topics: ['pander'] }),
+  pi('p_got_ending', 'will fix the ending of Game of Thrones in a way that satisfies everyone', 3, { topics: ['pander'] }),
 ];
 
 // SIGNATURE noun phrases — flavorful openers/objects, private decks only.
@@ -334,6 +339,12 @@ export const CONNECTORS: Card[] = [
   { id: 'c_therefore', role: 'connector', text: 'and therefore', conj: 'and therefore' },
   { id: 'c_which', role: 'connector', text: 'which is why', conj: 'and therefore' },
   { id: 'c_frankly', role: 'connector', text: 'and frankly', conj: 'and therefore' },
+  // Flavor variants (map to existing conj behaviors) — more connector words to chain
+  // longer compound sentences. Playtester wanted to ramble; these are the sanctioned
+  // way to do it (period stays disabled; jamming two thoughts with no connector = run-on).
+  { id: 'c_so', role: 'connector', text: 'so', conj: 'and therefore' },
+  { id: 'c_plus', role: 'connector', text: 'and plus', conj: 'and' },
+  { id: 'c_however', role: 'connector', text: 'however', conj: 'but' },
 ];
 
 /**
@@ -383,6 +394,7 @@ export const INTENSIFIERS: Card[] = [
   { id: 'x_otherguy', role: 'intensifier', text: "and you won't hear that from the other guy", factor: 1.4 },
   { id: 'x_history', role: 'intensifier', text: 'and history will prove me right', factor: 1.5 },
   { id: 'x_writedown', role: 'intensifier', text: 'write that down', factor: 1.4 },
+  { id: 'x_comeon', role: 'intensifier', text: 'come on, man', factor: 1.4 }, // playtester suggestion — folksy exasperated closer
 ];
 
 // --- topics -----------------------------------------------------------------
@@ -518,6 +530,15 @@ export const REWARDS: Card[] = [
   pc('r_never_truth', 'have', 'never once told the truth, not even by accident', -4, { topics: ['jackass', 'opponent'] }),
   NP('r_treason_opp', 'My crooked, treasonous opponent', 'opponent', -2, { intensity: 1.6 }),
   NP('r_blessed_nation', 'This blessed and chosen nation', 'audience', 2, { topics: ['freedom'], intensity: 1.6, animate: false }),
+  // Funny PRIVATE conjunctions — drafted rewards (connectors live only in the contested
+  // shared pool otherwise). Score exactly like their plain `conj` counterpart
+  // (and=1.25 / logic=1.30 / but=1.40); the verbose wording is the reward. A connector you
+  // OWN can't be out-raced, so it's a guaranteed combo-enabler for private-deck builds.
+  { id: 'r_conj_honesttruth', role: 'connector', text: 'but to tell the honest truth', conj: 'but' },
+  { id: 'r_conj_noonetells', role: 'connector', text: 'but what no one else in this room will tell you is that', conj: 'but' },
+  { id: 'r_conj_longstory', role: 'connector', text: 'and so to make a long though quite articulate story short', conj: 'and therefore' },
+  { id: 'r_conj_cannotstress', role: 'connector', text: 'because — and I cannot stress this enough —', conj: 'because' },
+  { id: 'r_conj_magnificent', role: 'connector', text: "and as if that weren't already magnificent enough", conj: 'and' },
 ];
 
 export const ALL: Card[] = [

@@ -365,6 +365,22 @@ const COMBO_BLURB: Record<'and' | 'logic' | 'but', string> = { and: 'COMBO!', lo
 function judgedSpeechHtml(line: Card[], r: Reaction): string {
   const words = displayWords(line);
   const n = words.length;
+  // Confused/ungrammatical line: mark the span where parsing broke so the FX can flash
+  // it red under a big "WHAT??" stamp. Reverts to plain text once the FX ends (like the
+  // grammatical path) — markup is transient, clean to screenshot.
+  if (!r.grammatical) {
+    const [s, e] = r.confusedSpan ?? [-1, -1];
+    let h = '';
+    for (let i = 0; i < n; i++) {
+      const w = words[i];
+      if (!w) continue;
+      const bad = i >= s && i <= e;
+      const startsPunct = /^[.,]/.test(w);
+      h += (h && !startsPunct ? ' ' : '') + `<span class="w${bad ? ' confused' : ''}">${w}</span>`;
+    }
+    h += `<span class="fx-stamp">${r.runOn ? 'RUN-ON?!' : 'WHAT??'}</span>`;
+    return /[.!?]\s*$/.test(words.filter(Boolean).join('')) ? h : h + '.';
+  }
   const cat: (string | undefined)[] = new Array(n); // per-word phrase kind (for the glow)
   const hitOf: (number | undefined)[] = new Array(n); // breakdown index — syncs the word pulse to its chip
   (r.breakdown ?? []).forEach((h, hi) => {
@@ -412,8 +428,10 @@ function fxStripHtml(r: Reaction | undefined, line: Card[]): string {
     if (line.some((c) => c.role === 'intensifier')) chips.push(`<span class="fx-chip finisher">⭐ FINISHER</span>`);
     if (r.offTopic) chips.push(`<span class="fx-chip flag offtopic">⌖ OFF TOPIC</span>`);
     if (r.rambling) chips.push(`<span class="fx-chip flag ramble">💤 RAMBLING</span>`);
+  } else if (r.confusedSpan) {
+    // The "WHAT??"/"RUN-ON!" chip lights the broken span (see playResolutionFx).
+    chips.push(`<span class="fx-chip flag confused" data-confused="1">❓ ${r.runOn ? 'RUN-ON!' : 'WHAT??'}</span>`);
   }
-  if (r.runOn) chips.push(`<span class="fx-chip flag runon">⚠ Run-on sentence</span>`);
   return chips.length ? `<div class="fx-strip">${chips.join('')}</div>` : '';
 }
 
@@ -430,7 +448,10 @@ function fmtDelta(d: number): string {
 /** A done speaker shows their JUDGED line (animatable); otherwise the in-progress text. */
 function speechHtml(side: 'you' | 'them'): string {
   const p = side === 'you' ? game.player : game.ai;
-  if (p.done && p.lastReaction?.grammatical) return judgedSpeechHtml(p.line, p.lastReaction);
+  // Animate the judged line for both a grammatical statement and a confused one that has a
+  // pinpointed bad span (so the "WHAT??" highlight can play); a merely-unfinished line falls through.
+  if (p.done && p.lastReaction && (p.lastReaction.grammatical || p.lastReaction.confusedSpan))
+    return judgedSpeechHtml(p.line, p.lastReaction);
   if (side === 'them') return oppSpeechHtml();
   return partialText(game.player.line) || '<span style="color:var(--muted)">…</span>';
 }
@@ -790,17 +811,7 @@ function render(): void {
             (game.player.hand.map((c) => cardHtml(c, 'hand')).join('') || '<span class="rail-empty">(hand empty)</span>') +
               tutHintHtml(), // Q1 tutorial coaching fills the hand row's spare space
             'Private — no refill this question',
-          )}
-          ${
-            game.player.knowsOppHand && !pendingHotMic && game.ai.hand.length
-              ? carousel(
-                  'opphand',
-                  `👂 ${game.opponent?.name ?? 'Opponent'}'s hand`,
-                  game.ai.hand.map(oppCardHtml).join(''),
-                  'Revealed by your Hot Mic',
-                )
-              : ''
-          }`
+          )}`
     }
 
     ${typoBanner}
@@ -837,7 +848,6 @@ function render(): void {
       <button class="action${currentHint?.end ? ' hint' : ''}" id="end" ${endOk ? '' : 'disabled'}><span class="btn-ico">🎤</span>${currentHint?.end ? '👉 ' : ''}End Statement</button>
       ${PERIOD_ENABLED ? `<button class="ghost" id="period" ${periodOk ? '' : 'disabled'} title="${game.player.usedPeriod ? 'Already used your one period this statement — chain a connector to keep going.' : 'Free, once per statement — finish this sentence and start a new one. No combo bonus; use a connector for that.'}">Add “.” (new sentence)${game.player.usedPeriod ? ' — used' : ''}</button>` : ''}
       <button class="ghost" id="pass" ${canPlay() && (complete || game.player.line.length === 0) ? '' : 'disabled'}><span class="btn-ico">⏳</span>Pass <span class="btn-sub">(wait)</span></button>
-      <button class="ghost" id="regroup" ${canPlay() && !game.player.usedRedraw ? '' : 'disabled'}><span class="btn-ico">🔨</span>Call a Recess <span class="btn-sub">fresh talking points · costs your turn</span></button>
       <button class="ghost danger" id="restart"><span class="btn-ico">🏛️</span>Abandon Run</button>
       <button class="ghost" id="dumplog" title="Download a JSON event log of this debate for bug analysis"><span class="btn-ico">🐞</span>Debug</button>
     </div>`
@@ -882,7 +892,14 @@ function render(): void {
   // so it lands on the final element even when render() is called twice in a tick.
   if (currentHint && tutorialIntroSeen && currentHint.text !== lastHintText) {
     lastHintText = currentHint.text;
-    requestAnimationFrame(() => app.querySelector('.tut-hint')?.classList.add('pop'));
+    requestAnimationFrame(() => {
+      app.querySelector('.tut-hint')?.classList.add('pop');
+      // The bigger pool scrolls horizontally, so the card the hint points at may be off-screen.
+      // Bring the hinted card (or the End button) into view so the 👉 is never hidden.
+      const target =
+        app.querySelector<HTMLElement>('.card.hint') ?? app.querySelector<HTMLElement>('#end.hint');
+      target?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+    });
   } else if (!currentHint) {
     lastHintText = null; // reset so it pops fresh next time it appears
   }
@@ -966,11 +983,6 @@ function render(): void {
     pendingTypo = null;
     pendingHotMic = null;
     playerMove({ kind: 'pass' });
-  });
-  app.querySelector<HTMLButtonElement>('#regroup')?.addEventListener('click', () => {
-    pendingTypo = null;
-    pendingHotMic = null;
-    playerMove({ kind: 'redraw' });
   });
   app.querySelector<HTMLButtonElement>('#next')?.addEventListener('click', () => {
     if (!game.awaitingNext || resolving) return; // let the resolution FX finish first
@@ -1104,7 +1116,10 @@ async function playResolutionFx(side: 'you' | 'them', r: Reaction): Promise<void
     chip.classList.add('show');
     const hi = chip.getAttribute('data-hit');
     if (hi !== null) speech.querySelectorAll<HTMLElement>(`[data-hit="${hi}"]`).forEach((w) => w.classList.add('lit'));
-    else if (chip.classList.contains('combo')) speech.querySelectorAll<HTMLElement>('.w.wchip').forEach((w) => w.classList.add('lit'));
+    else if (chip.classList.contains('confused')) {
+      speech.querySelectorAll<HTMLElement>('.w.confused').forEach((w) => w.classList.add('lit'));
+      speech.querySelector<HTMLElement>('.fx-stamp')?.classList.add('show'); // big "WHAT??" pops over the line
+    } else if (chip.classList.contains('combo')) speech.querySelectorAll<HTMLElement>('.w.wchip').forEach((w) => w.classList.add('lit'));
     else if (chip.classList.contains('finisher')) speech.querySelectorAll<HTMLElement>('.w.finisher').forEach((w) => w.classList.add('lit'));
     await fxWait(FX_STEP);
   }

@@ -209,12 +209,6 @@ export function chooseMove(state: GameState, opts: AiOptions = {}): Move {
     return { kind: 'power', cardId: search.id }; // draw into a better hand
   }
 
-  // At the start of a statement, if the best it can do is weak, redraw once
-  // (it costs a turn) rather than say something feeble.
-  if (line.length === 0 && !state.ai.usedRedraw && (!best || best.delta < 2)) {
-    return { kind: 'redraw' };
-  }
-
   if (best && best.ext.length === 0) {
     // Stopping here is the best option and the line is complete.
     return { kind: 'end' };

@@ -235,6 +235,11 @@ export interface Reaction {
   mitigated?: boolean;
   /** Confused because two complete thoughts were jammed together with no connector. */
   runOn?: boolean;
+  /** On a confused/ungrammatical line: inclusive word-index range [start, end] of the
+   * part where parsing broke (the stray/misplaced tokens), for the resolution "???"
+   * highlight. Indexes `displayWords(line)` (1:1 with the card line). Absent when the
+   * line is merely unfinished (a valid prefix) rather than wrong. */
+  confusedSpan?: [number, number];
 }
 
 export type PlayerId = 'player' | 'ai';
@@ -250,8 +255,6 @@ export interface PlayerState {
   discard: Card[];
   /** Tokens committed to the current statement, in order. */
   line: Statement;
-  /** Whether this player has used their once-per-question redraw. */
-  usedRedraw?: boolean;
   /** Whether this player has used their one free period this statement (caps a
    * statement at two sentences — chain with conjunctions for more, and a combo). */
   usedPeriod?: boolean;
@@ -315,7 +318,7 @@ export interface GameState {
 /** One structured event in the analytics trail. `t` is the type; the rest is
  * type-specific (card/source on a play, delta/combo/gaffe on a resolution, etc.). */
 export interface GameEvent {
-  t: 'deal' | 'take' | 'power' | 'redraw' | 'pass' | 'sabotage' | 'resolve' | 'win';
+  t: 'deal' | 'take' | 'power' | 'pass' | 'sabotage' | 'resolve' | 'win';
   round: number;
   by?: PlayerId;
   [k: string]: unknown;
@@ -327,6 +330,5 @@ export type Move =
   // play a power-up from your hand. For Teleprompter Typo, target* names the card
   // to jam onto the opponent; for Hot Mic, the card (from 'oppHand') to steal.
   | { kind: 'power'; cardId: string; targetFrom?: 'pool' | 'hand' | 'oppHand'; targetCardId?: string }
-  | { kind: 'redraw' } // reshuffle the pool + your hand; once per question; costs your turn
   | { kind: 'pass' } // hold a completed statement and wait (e.g. to set up a Typo)
   | { kind: 'end' };

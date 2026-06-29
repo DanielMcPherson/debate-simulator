@@ -42,8 +42,11 @@ Cards are **chunks**, not single words. `Card.role`:
 - `predicate` — a chunky verb phrase. Either **closed** (baked `sentiment`, e.g. "kicks
   puppies") or **open** (`open:true` + `affinity`/`deed`, takes an object, e.g. "wants to
   destroy ___"). Conjugates via `pre`/`lead`/`post` (or `invariant:true` for modal/past text).
-- `connector` — `conj`: `and` (coordinates predicates → CCAND); `because`/`and therefore`/`but`
-  join clauses (CJOIN); `period` is the **free** clause break, but limited to **one per statement**
+- `connector` — `conj`: `and` (coordinates predicates OR joins clauses → CCAND); `and therefore`/`but`
+  join clauses but may also coordinate bare predicates under a shared, elided subject ("…a jackass and
+  therefore wants to…" → CJOIN); **`because` is clause-ONLY → CBEC**: it subordinates a full clause and
+  **cannot elide its subject**, so "…a jackass because wants to raise taxes" is *confused* (CBEC is absent
+  from the `PREDS` rules — it can't string bare predicates; fixed 2026-06). `period` is the **free** clause break, but limited to **one per statement**
   (`PlayerState.usedPeriod`, reset each question in `dealRound`; the AI's `availFor` honors it too) —
   so a statement is at most two sentences and rambling-by-period is impossible (chain conjunctions for
   more, and a combo). The `PERIOD` card (cards.ts) is **virtual** — never drawn/consumed, NOT in
@@ -89,11 +92,16 @@ Cards are **chunks**, not single words. `Card.role`:
   bigger line before cashing it in risks the opponent grabbing it first.
 - `powerup` — one-shot action card (`effect`), never part of the sentence.
 
-Grammar: `TOP→S [INT]; S→CLAUSE | S (CCAND|CJOIN) CLAUSE; CLAUSE→NP [MODS] PREDS; MODS→MOD | MODS MOD; PRED→PC | PO NP`
-(`but`/`period` → CJOIN). Validity depends only on the **role sequence**, so `grammar.ts`
+Grammar: `TOP→S [INT]; S→CLAUSE | S (CCAND|CJOIN|CBEC|CPERIOD) CLAUSE; CLAUSE→NP [MODS] PREDS;
+MODS→MOD | MODS MOD; PREDS→PRED | PREDS (CCAND|CJOIN) PRED; PRED→PC | PO NP`. Terms: `and`→CCAND,
+`and therefore`/`but`→CJOIN (both can also coordinate bare predicates via the PREDS rules),
+`because`→**CBEC** and `period`→CPERIOD (clause-ONLY — absent from PREDS, so each needs its own
+subject). Validity depends only on the **role sequence**, so `grammar.ts`
 recognizes over term-sets and memoizes (keeps the AI's deep search fast). Play is freeform (any
 card any time, no POS labels); the grammar judges the *result* — ungrammatical lines score
 "confused". The clause segmenter stamps each clause's `joinedByPrev` connector (for scoring).
+`firstInvalidIndex(line)` returns where parsing breaks (the longest-valid-prefix boundary) — drives
+the resolution **"WHAT??" highlight** (`Reaction.confusedSpan`).
 
 ## Scoring (scoring.ts) — `delta` is signed TOWARD THE SPEAKER (+ = good for whoever said it)
 Per clause: `targetFor(subject)` gives `{sign, weight}` × `subject.intensity`. self/opp weight
@@ -128,7 +136,8 @@ contributions → aggregate` (Clause/PredInstance/Contrib all carry `connIdx`). 
 `scoreStatement` also returns a per-phrase **`breakdown: PhraseHit[]`** (`{category, delta, tokenIdx, span,
 aside, crowdFavorite}` — `delta` only buckets animation intensity, **never shown as a number**) plus
 statement-level booleans **`offTopic`/`rambling`/`audienceInsulted`/`crowdFavorite`/`mitigated`/`runOn`**
-(the UI used to fragile-parse these out of `detail` — now real fields). Token indices for the spans are
+(the UI used to fragile-parse these out of `detail` — now real fields), plus **`confusedSpan`** on a
+confused line (the `[start,end]` word range where parsing broke, from `firstInvalidIndex`). Token indices for the spans are
 threaded the same way (`Clause.subjectIdx`/`modIdxs`, `PredInstance.predIdx`/`objIdx`, `spanOf` in
 scoring.ts). The UI (`judgedSpeechHtml` + `fxStripHtml` + `playResolutionFx` in ui/main.ts) renders the
 judged line word-by-word. Word markup is **TRANSIENT** — only while the FX plays (`.fx-show` on `.speech`):
@@ -138,7 +147,10 @@ complaint; an even earlier float-above-the-word version also overlapped wrapping
 "what landed & why" lives in the **readout strip BELOW** the statement (`.fx-strip`): a chip per phrase
 (ATTACK/BRAG/PANDER/GAFFE/INSULT/BLUNDER — GAFFE = self_own, BLUNDER = boost_opp), the combo (⚡COMBO/CHAIN/PIVOT), a ⭐FINISHER
 chip (no number — the badge alone teaches finishers are good), and any OFF-TOPIC/RAMBLING/Run-on flag —
-popped in sequence (each chip flashes its word(s)). Then a **count-up** of the **only on-screen number**
+popped in sequence (each chip flashes its word(s)). **Confused/ungrammatical lines also animate** (2026-06):
+`judgedSpeechHtml` renders them word-by-word too, an `❓ WHAT??` (or `RUN-ON!`) chip flashes the
+**`confusedSpan`** words red (wavy underline + wobble) under a big transient **`.fx-stamp`** "WHAT??"
+over the line — pointing the eye at exactly where it broke. Then a **count-up** of the **only on-screen number**
 (the final delta) + a magnitude-scaled screen shake/flash; click anywhere to fast-forward — **the skip arms
 only after a 500ms grace period** so the click that ended the turn (or a reflexive click toward Next when
 you finish second) can't instakill the animation (that was the "player FX sometimes didn't play" bug).
@@ -158,22 +170,33 @@ so one strong clause ≈⅓ of the cap, leaving headroom for combos to out-climb
 nearly caps, *everything* saturates and combos lose their edge — that was the bug). `COMBO_MIN=3`,
 `CONFUSED_PENALTY −2.5` and `RAMBLE_STEP 2.5` scale with SCALE (off-topic is now a multiplier, not
 flat). If you change SCALE, rescale COMBO_MIN, those penalties, and the delta-unit thresholds in **ai.ts** (`chooseMove`:
-Forgot ≥4, soundbite ≥5, search <2.5, redraw <2) together — plus the absolute-magnitude assertions
+Forgot ≥4, soundbite ≥5, search <2.5) together — plus the absolute-magnitude assertions
 in tests/scoring.test.ts & tests/ai.test.ts. The worked-examples table lives in tests/scoring.test.ts.
 
 ## Game loop (game.ts)
-A debate = several **questions**. Each question deals a fixed **shared pool** (~9, contested) +
-a small **private hand**; **nothing replenishes** mid-question. **End** is allowed on ANY non-empty
+A debate = several **questions**. Each question deals a fixed **shared pool** (`poolSize` 12, contested) +
+a small **private hand**; **nothing replenishes** mid-question. The pool deal is **curated for
+buildability** (`ensurePoolPlayable`): ≥3 sided subjects, ≥3 predicates (≥1 closed), ≥2 connectors,
+≥1 on-topic card; finishers capped at 1 (`capPoolFinishers`) and asides capped at 2
+(`capPoolModifiers`) so flavor can't crowd out the nouns/verbs you need. Floors are protected from
+eviction so one guarantee can't void another. **End** is allowed on ANY non-empty
 line (no soft-lock, no forced self-own): an incomplete/ungrammatical line just scores **lenient
 "confused"** (partial intent ×0.5, capped ±8, + a coaching note — see `scoreStatement`/`confusedDetail`,
 which distinguishes a **run-on** ("two thoughts crammed in" — `looksRunOn`), an unfinished line, and
-word-salad). `endableLine` strips **only a trailing dangling connector** (a tapped-but-unused
+word-salad). **Exception (2026-06): an egregious BLUNDER punches through the muffle** — a self-own /
+audience-insult / opponent-boost in a confused line lands at **full strength** (its real ×1.6 value, not
+dampened/capped), while only the *rest* of the salad stays muffled. You can't ramble your way out of
+insulting the crowd. (Only the incomplete path; the complete path already weighs blunders fully.) `endableLine` strips **only a trailing dangling connector** (a tapped-but-unused
 period/"and"/"but") — never real content — so jamming two clauses together (a run-on) or stranding a
 half-clause scores "confused", instead of silently keeping just the first thought. The free **period**
 (`from:'period'`, **one per statement** — see above) ends a clause and opens a new one anywhere the
 grammar allows; **Pass**
-to wait on an empty/endable line; **Call a Recess** (once/question, costs turn) reshuffles the
-**pool only** (not your hand). After both speak the round **pauses** (`awaitingNext` →
+to wait on an empty/endable line. (**Call a Recess removed, 2026-06:** the pool-refresh button was
+a player-only exploit — the handicapped AI ends its statement early, after which the player built
+solo/uncontested and could recess for a *whole fresh pool* at zero real cost. Removed entirely
+(button, `usedRedraw`, the `redraw` Move/event, the AI's weak-opener redraw); the larger curated
+pool replaces the need for it. The AI no longer redraws weak openers — `search` still helps when it
+holds one.) After both speak the round **pauses** (`awaitingNext` →
 `nextQuestion()`). Win at ±100 (landslide) or lead after `maxRounds` (default 8). Each statement's
 `delta` is applied toward its speaker (`+player`/`−ai` on the bar).
 
@@ -242,7 +265,11 @@ global bar-pace change we deliberately avoided.)
 3-card reward modal to award a card mid-debate on certain plays: big combos, on-/off-topic streaks
 (track per-run), and crucially **self-own / heel-turn (insult-audience) / compliment-opponent as a
 risk-reward gamble** ("own-goal for a card!"). This gives the now-lenient self-own a *positive reason
-to exist*. Hidden (discovered, not documented). Opponent never gets awards. New cards shuffle into the
+to exist*. **"Heel Turn" framing (playtester-validated, 2026-06):** insult the audience *badly enough*
+and you're handed a high-powered card — but now you've dug a real hole on the bar and have to **fight
+your way back** from the damage you just did. So the gamble has teeth: the award should scale with how
+bad the blunder was, and the card must be strong enough to justify the deficit. Hidden (discovered, not
+documented). Opponent never gets awards. New cards shuffle into the
 player's persistent private deck. Seed the RNG. **Hook already in place:** the reward modal renders a
 `rewardPrompt {title, body}` (ui/main.ts) set by whatever triggered it — the debate-win path sets a
 margin-flavored one via `debateWinPrompt()`; a mid-debate trigger just sets `rewardPrompt` (its own
@@ -361,14 +388,16 @@ exact count fiddly). Opponent never earns achievements (mirrors the reward rule)
 `rewardChoices`).
 
 **P2 · small/medium (rides the reward/shop epics) — New ACTION cards (power-ups) to offer as awards.**
-`REWARDS` (cards.ts) is predicate/noun only today — no power-ups. A drafted power-up just needs a
+`REWARDS` (cards.ts) is predicate/noun/connector today (funny private conjunctions were added 2026-06)
+— no power-ups yet. A drafted power-up just needs a
 `powerup` entry in `REWARDS`; it rides `run.bonus` → shuffled into the persistent private deck → drawn to
 hand → plays like any pool/hand power-up (`applyPowerup` reads `p.hand`). **Each new effect = 4 spots:**
 the `PowerEffect` union (types.ts), a def in `POWERUPS` (cards.ts), a `case` in `applyPowerup()`'s switch
 (game.ts), and — only for *targeting* effects — a UI targeting mode (main.ts). Cards to add:
 - **"Back to the Drawing Board"** — discard your private hand and **re-deal** it (like `search` but
-  *replace*, not add). Low effort, non-targeting. NB the existing per-question `redraw` reshuffles pool+hand
-  and costs the turn; this is hand-only and a *drafted* power-up. Decide free vs turn-cost.
+  *replace*, not add). Low effort, non-targeting. (The per-question pool-refresh "Call a Recess" was
+  removed in 2026-06 — see Game loop — so this hand-only *drafted* power-up is now the only re-deal in
+  the game.) Decide free vs turn-cost.
 - **"Hack Their Teleprompter"** (named to distinguish from **Teleprompter Typo**) — a super-buffed Typo
   that **replaces the opponent's ENTIRE in-progress statement** with one of yours. A **distinct** new effect
   (e.g. `typo_full`), NOT a Typo tweak — Typo (`bestTypoJam`, `jammed`, `lastSabotage`) only swaps the last
@@ -377,6 +406,17 @@ the `PowerEffect` union (types.ts), a def in `POWERUPS` (cards.ts), a `case` in 
 - **"Winning Smile"** — sway the audience with a practiced smile: **not part of the statement**, raises your
   statement value by a **percentage**. Low effort — mirror `soundbite`'s `nextMultiplier` (game.ts); pick a
   factor and decide whether it stacks with Soundbite.
+- **"That's a lie!" / "Come on, man!" — a REACTIVE rebuttal** (playtester suggestion, 2026-06). A *defensive*
+  interjection played **after the opponent finishes an attack** to **soften it** — reduce the delta that just
+  landed against you (e.g. ×0.5 on the opponent's last attack clause, or a flat clawback). This is a NEW shape:
+  every power-up today is played on **your own** turn before/while you build; a rebuttal triggers on the
+  **opponent's** resolution, so it needs a reaction window (offer it during/just after the opponent's FX, before
+  the round summary). New `PowerEffect` (e.g. `rebut`) + a `case` in `applyPowerup` that edits the opponent's
+  just-scored delta + a UI prompt at the right moment. Decide: limited charges? does it work on audience-insult
+  knock-on? AI use? Pairs thematically with the broadcast skin (a heckle from the other podium). Worth it because
+  it gives the player **agency on defense** — right now you can only out-build, never blunt an incoming hit.
+  ("Come on, man!" also exists as a **finisher** today — `x_comeon` — so the phrase is dual-purpose; if built,
+  reserve "That's a lie!" for the rebuttal and keep "Come on, man!" as the finisher, or fork the wording.)
 These are the first **power-up rewards**; good fit for the deferred **shop** (price ∝ power) alongside the
 PRIVATE-finishers note above.
 

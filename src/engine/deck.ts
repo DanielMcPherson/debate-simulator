@@ -73,7 +73,7 @@ export function buildSharedDeck(): Card[] {
   return [
     ...each(SUBJECTS),
     ...each(OBJECTS),
-    ...each(CONNECTORS),
+    ...each(CONNECTORS, 2), // 2 copies each — so enough land in the pool to chain a long combo sentence
     ...each(INTENSIFIERS, 2), // contested finishers — worth fighting over
     ...each(MODIFIERS), // post-nominal asides — side-agnostic, contested
     ...each(OPEN_PREDS),
