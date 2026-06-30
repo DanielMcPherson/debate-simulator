@@ -7,6 +7,19 @@ an audience-reaction scorebar decides who wins. There's a roguelike campaign on 
 This file orients a new session. Player-facing rules live in `README.md`; sharing/deploy
 steps in `SHARING.md`.
 
+## Design north star (2026-06)
+**The fun is building long, ridiculous, over-the-top statements that parody how politicians
+talk.** Playtests confirm the joy is in chaining absurd chunks into one gloriously overblown
+sentence — not in tight optimization. Optimize the whole game for *that*: keep adding funny,
+quotable card phrases; make long combo-chains feel rewarding and reachable (enough subjects/
+verbs/connectors in the pool, generous combo headroom); don't punish ambitious construction
+harshly (lenient "confused" scoring, blunders only punch through when genuinely attributable);
+and prefer simpler controls so the player spends attention on the words, not the buttons (why
+the period button, Call a Recess, and Pass were all removed). When a change trades a little
+balance/realism for a funnier, longer, more satisfying statement, take the trade. Tensions to
+watch: the ±35/±50 score cap and the rambling penalty both *limit* long statements — revisit
+them (e.g. the "headliners" per-card-ceiling roadmap item) if length should pay off more.
+
 ## Commands
 - `npm install` — deps (Vite + TypeScript + Vitest only; no runtime deps).
 - `npm test` (`npx vitest run`) — engine unit tests. **Run before declaring work done.**
@@ -183,20 +196,31 @@ eviction so one guarantee can't void another. **End** is allowed on ANY non-empt
 line (no soft-lock, no forced self-own): an incomplete/ungrammatical line just scores **lenient
 "confused"** (partial intent ×0.5, capped ±8, + a coaching note — see `scoreStatement`/`confusedDetail`,
 which distinguishes a **run-on** ("two thoughts crammed in" — `looksRunOn`), an unfinished line, and
-word-salad). **Exception (2026-06): an egregious BLUNDER punches through the muffle** — a self-own /
-audience-insult / opponent-boost in a confused line lands at **full strength** (its real ×1.6 value, not
-dampened/capped), while only the *rest* of the salad stays muffled. You can't ramble your way out of
-insulting the crowd. (Only the incomplete path; the complete path already weighs blunders fully.) `endableLine` strips **only a trailing dangling connector** (a tapped-but-unused
+word-salad). Two refinements (2026-06) keep incoherence from being a free dodge — see the design
+north star (long *grammatical* statements are the goal; mashing isn't):
+(1) **an egregious BLUNDER punches through the muffle** — a self-own / audience-insult / opponent-boost
+*with an explicit subject* (a genuine, attributable gaffe, not a subject-orphaned parse artifact) lands
+at **full strength** (its real ×1.6 value, not dampened/capped); you can't ramble your way out of
+insulting the crowd.
+(2) a **bafflement cost** for genuinely ungrammatical lines (`firstInvalidIndex ≥ 0`, not a merely
+unfinished valid prefix): the muffled *upside* is scaled by coherence (`bad/len` — a line that's salad
+from the start keeps almost none of the "drift" the greedy parser scraped out), plus a mild penalty
+(`BAFFLE_BASE/STEP/CAP`, ≤ 6) scaling with the salad length. So pure gibberish nets **mildly negative**
+(with a "had a stroke?" coaching tier at `stray ≥ BAFFLE_STROKE`), a one-card misclick costs ~nothing,
+and an honest unfinished line still nets ~0. (Both refinements apply only to the incomplete path; the
+complete path already weighs blunders fully.) `endableLine` strips **only a trailing dangling connector** (a tapped-but-unused
 period/"and"/"but") — never real content — so jamming two clauses together (a run-on) or stranding a
 half-clause scores "confused", instead of silently keeping just the first thought. The free **period**
 (`from:'period'`, **one per statement** — see above) ends a clause and opens a new one anywhere the
-grammar allows; **Pass**
-to wait on an empty/endable line. (**Call a Recess removed, 2026-06:** the pool-refresh button was
-a player-only exploit — the handicapped AI ends its statement early, after which the player built
-solo/uncontested and could recess for a *whole fresh pool* at zero real cost. Removed entirely
-(button, `usedRedraw`, the `redraw` Move/event, the AI's weak-opener redraw); the larger curated
-pool replaces the need for it. The AI no longer redraws weak openers — `search` still helps when it
-holds one.) After both speak the round **pauses** (`awaitingNext` →
+grammar allows. (**Call a Recess and Pass both removed, 2026-06.** Recess (pool refresh) was a
+player-only exploit — the handicapped AI ends early, after which the player built solo/uncontested and
+could recess for a *whole fresh pool* at zero cost; removed (button, `usedRedraw`, the `redraw` Move/
+event, the AI's weak-opener redraw), with the larger curated pool replacing the need for it. **Pass**
+(wait without acting) was removed too — its only real use was stalling to set up a Teleprompter Typo,
+but card-by-card alternation already lets you Typo on your own turn, and asides/conjunctions give the
+player ways to pace a line; the move (`{kind:'pass'}`), the `passes` stalemate counter, and the button
+are gone. No soft-lock results: `ensureHandHasOpener` guarantees a playable subject, and the finite,
+non-replenishing pool forces an End. The AI never passed.) After both speak the round **pauses** (`awaitingNext` →
 `nextQuestion()`). Win at ±100 (landslide) or lead after `maxRounds` (default 8). Each statement's
 `delta` is applied toward its speaker (`+player`/`−ai` on the bar).
 
@@ -383,7 +407,10 @@ any attack on the opponent** (an attack is `category:'attack_opp'` in scoring.ts
 the `resolve` event or set a per-debate "played an attack" flag in main.ts at resolution). **"Used every
 card on the board"** — play **every** dealt pool+hand card (very rare, maybe near-impossible — untested;
 track `take`+`power` events vs cards dealt, but the persistent private deck + consumed power-ups make an
-exact count fiddly). Opponent never earns achievements (mirrors the reward rule). Hidden/discovered —
+exact count fiddly). **"Comeback Kid"** — be **down by a large margin** (e.g. the bar ≥ ~40 against you,
+i.e. `bar ≤ −40` since `+player`/`−ai`) at some point, then **win the debate** (track the run's worst
+deficit in main.ts at resolution — `Math.min` of `game.bar` across the debate — and check it at the win).
+Opponent never earns achievements (mirrors the reward rule). Hidden/discovered —
 **pairs with the in-debate card-award events note above** (same reward-modal hook: `rewardPrompt` +
 `rewardChoices`).
 

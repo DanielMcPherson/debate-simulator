@@ -300,6 +300,22 @@ describe('scoring — modifier asides', () => {
     expect(Math.abs(benign.delta)).toBeLessThanOrEqual(8);
   });
 
+  it('incoherence has a mild, scaling cost — gibberish is never free, a near-miss barely stings', () => {
+    // A truly baffling word salad: scrambled from the start, so the crowd catches no "drift"
+    // and it nets MILDLY negative (not the ~0 a greedy parse would otherwise scrape out).
+    const salad = scoreStatement(cards('s_people', 's_opp', 'p_disgrace', 'm_ugly', 'p_kick_pup', 'p_lie', 's_i', 'o_satan'));
+    expect(salad.label).toBe('confused');
+    expect(salad.delta).toBeLessThan(0);
+    expect(salad.delta).toBeGreaterThanOrEqual(-10); // mild, not catastrophic
+    // An honest UNFINISHED line (a valid prefix, just not landed) pays nothing — it's a mumble.
+    expect(Math.abs(scoreStatement(cards('s_opp')).delta)).toBeLessThanOrEqual(1);
+    // A near-miss (one stray card, e.g. a misclick after the pool shifted) is barely punished —
+    // the crowd still catches the drift of the part that parsed.
+    const nearMiss = scoreStatement(cards('s_opp', 'p_disgrace', 's_i'));
+    expect(nearMiss.delta).toBeGreaterThan(salad.delta); // less bad than a full salad
+    expect(nearMiss.delta).toBeGreaterThan(-2);
+  });
+
   it('insulting the crowd dominates pandering in the same clause (not easily forgiven)', () => {
     // "The American people, who are ugly, love freedom" — the insult stands, pandering suppressed.
     const mix = scoreStatement(cards('s_people', 'm_ugly', 'p_love_fd'));

@@ -16,6 +16,15 @@ const SCALE = 2.5;
 // scores mild + a coaching note rather than locking the player out.
 const CONFUSION_DAMPEN = 0.5;
 const CONFUSION_CAP = 8;
+// Incoherence has a MILD, scaling cost: a genuinely ungrammatical line (not merely an
+// unfinished-but-valid prefix) puzzles the crowd, and the more of it is salad the more it
+// stings — so mashing cards is never free (you can't dodge a blunder by piling errors after
+// it, and pure gibberish nets mildly negative, never ~0). Capped small — a single misordered
+// card (often a misclick after the pool shifts) costs almost nothing.
+const BAFFLE_BASE = 1.5; // cost of one stray/misordered token
+const BAFFLE_STEP = 1.0; // extra cost per additional salad token
+const BAFFLE_CAP = 6; // ceiling — even a total word salad stays only mildly negative
+const BAFFLE_STROKE = 4; // ≥ this many salad tokens earns the "had a stroke?" flavor
 const STATEMENT_CAP = 35;
 const INTENSIFIED_CAP = 50;
 const COMBO_MIN = 3; // min |delta| for a clause to be combo-eligible (≈ SCALE)
@@ -346,18 +355,33 @@ export function scoreStatement(line: Card[], opts: ScoreOptions = {}): Reaction 
     // crowd or owning yourself, even in word salad. Only the *rest* of the salad is dampened
     // + capped; the blunder lands at its real (already ×1.6) value.
     const contribs = contributions(parse(line));
+    // Only a GENUINE, attributable blunder punches through — one with an explicit subject.
+    // A negative predicate orphaned by a missing subject defaults to the audience side, but
+    // that's a garble artifact, not a real crowd insult, so it stays muffled (don't hammer a
+    // fumbled long statement for an insult the player never made).
     const isBlunder = (c: Contrib) =>
-      c.category === 'self_own' || c.category === 'insult_aud' || c.category === 'boost_opp';
+      (c.category === 'self_own' || c.category === 'insult_aud' || c.category === 'boost_opp') &&
+      c.subjectIdx !== undefined;
+    const bad = firstInvalidIndex(line); // where parsing actually broke (−1 if just unfinished)
     const blunderTotal = contribs.filter(isBlunder).reduce((s, c) => s + c.delta, 0); // ≤ 0
     let rest = aggregate(contribs.filter((c) => !isBlunder(c))).total * CONFUSION_DAMPEN;
     rest = Math.max(-CONFUSION_CAP, Math.min(CONFUSION_CAP, rest));
     // As in the full path: an audience insult anywhere poisons the (muffled) positives too.
     if (rest > 0 && contribs.some((c) => c.category === 'insult_aud')) rest = 0;
-    let total = Math.max(-STATEMENT_CAP, Math.min(STATEMENT_CAP, blunderTotal + rest));
+    // The more scrambled the line, the less positive "drift" the crowd actually catches: scale
+    // the muffled UPSIDE by how much parsed before the break (a line that's salad from the start
+    // keeps almost none of the intent the greedy parser scraped out of the jumble). Downside is
+    // never softened this way — a blunder is a blunder.
+    if (rest > 0 && bad >= 0) rest *= bad / line.length;
+    // Bafflement penalty: only when the line is genuinely ungrammatical (bad ≥ 0), scaled by how
+    // many tokens are salad. An unfinished-but-valid line (bad < 0) is a mumble, not a baffler —
+    // it pays nothing. So gibberish nets mildly NEGATIVE, while a near-miss costs almost nothing.
+    const stray = bad >= 0 ? line.length - bad : 0; // tokens from the break onward
+    const baffle = bad >= 0 ? -Math.min(BAFFLE_CAP, BAFFLE_BASE + BAFFLE_STEP * (stray - 1)) : 0;
+    let total = Math.max(-STATEMENT_CAP, Math.min(STATEMENT_CAP, blunderTotal + rest + baffle));
     total = Math.round(total * 10) / 10;
-    const bad = firstInvalidIndex(line); // where parsing actually broke (−1 if just unfinished)
     const confusedSpan: [number, number] | undefined = bad >= 0 ? [bad, line.length - 1] : undefined;
-    return { delta: total, label: 'confused', detail: confusedDetail(line, total), grammatical: false, runOn: looksRunOn(line), confusedSpan };
+    return { delta: total, label: 'confused', detail: confusedDetail(line, total, stray), grammatical: false, runOn: looksRunOn(line), confusedSpan };
   }
 
   // The crowd's hidden taste amplifies your single BEST on-taste contribution.
@@ -464,14 +488,16 @@ function looksRunOn(line: Card[]): boolean {
 }
 
 /** Flavor for an incomplete/ungrammatical statement — coaching, deterministic by shape. */
-function confusedDetail(line: Card[], total: number): string {
-  // Three shapes: a run-on needs punctuation/a connector; a valid-but-unfinished line
-  // needs an ending; anything else is jumbled and needs its grammar sorted out.
+function confusedDetail(line: Card[], total: number, stray = 0): string {
+  // Shapes: a run-on needs punctuation/a connector; a valid-but-unfinished line needs an
+  // ending; a deeply scrambled line ("had a stroke?"); anything else is jumbled word salad.
   let lead: string;
   if (looksRunOn(line)) {
     lead = 'the crowd can’t tell where one thought ends and the next begins — you slammed two thoughts together at full speed. Make one clear point, or use “and” to chain them into a combo';
   } else if (isValidPrefix(line)) {
     lead = 'the audience leans in for the rest of that sentence… and you just stop — land the thought before you drop the mic';
+  } else if (stray >= BAFFLE_STROKE) {
+    lead = 'everyone is utterly baffled by your word salad — the audience wonders aloud if you’ve just had a stroke. Try your words in an order a human would actually say';
   } else {
     lead = 'the crowd blinks, then mutters — that came out as word salad. Try your words in an order a human would actually say';
   }

@@ -300,8 +300,6 @@ export interface GameState {
   player: PlayerState;
   ai: PlayerState;
   turn: PlayerId;
-  /** Consecutive passes (a stalemate locks in both statements). */
-  passes?: number;
   /** Set when a sabotage power-up just hit someone (for the UI alert). `kind`
    * distinguishes a Teleprompter Typo (jammed a card on) from a Forgot My Line
    * (knocked their last card off). Defaults to 'typo' when absent. */
@@ -318,7 +316,7 @@ export interface GameState {
 /** One structured event in the analytics trail. `t` is the type; the rest is
  * type-specific (card/source on a play, delta/combo/gaffe on a resolution, etc.). */
 export interface GameEvent {
-  t: 'deal' | 'take' | 'power' | 'pass' | 'sabotage' | 'resolve' | 'win';
+  t: 'deal' | 'take' | 'power' | 'sabotage' | 'resolve' | 'win';
   round: number;
   by?: PlayerId;
   [k: string]: unknown;
@@ -330,5 +328,4 @@ export type Move =
   // play a power-up from your hand. For Teleprompter Typo, target* names the card
   // to jam onto the opponent; for Hot Mic, the card (from 'oppHand') to steal.
   | { kind: 'power'; cardId: string; targetFrom?: 'pool' | 'hand' | 'oppHand'; targetCardId?: string }
-  | { kind: 'pass' } // hold a completed statement and wait (e.g. to set up a Typo)
   | { kind: 'end' };

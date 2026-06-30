@@ -539,6 +539,9 @@ export const REWARDS: Card[] = [
   { id: 'r_conj_longstory', role: 'connector', text: 'and so to make a long though quite articulate story short', conj: 'and therefore' },
   { id: 'r_conj_cannotstress', role: 'connector', text: 'because — and I cannot stress this enough —', conj: 'because' },
   { id: 'r_conj_magnificent', role: 'connector', text: "and as if that weren't already magnificent enough", conj: 'and' },
+  // Clause-only (conj 'because' → CBEC): must be followed by a full noun–verb clause, e.g.
+  // "…is a lizard person which conclusively explains why my opponent naps through meetings".
+  { id: 'r_conj_conclusively', role: 'connector', text: 'which conclusively explains why', conj: 'because' },
 ];
 
 export const ALL: Card[] = [

@@ -145,7 +145,6 @@ function dealRound(state: GameState): void {
   // Alternate who speaks first each question so the player doesn't always get
   // first dibs on a contested on-topic card (odd questions player, even AI).
   state.turn = state.round % 2 === 1 ? 'player' : 'ai';
-  state.passes = 0;
   // Pick a moderator phrasing LAST (after all card deals) so it doesn't perturb
   // the deterministic deal for a given seed.
   state.question = state.topic.questions[Math.floor(rng() * state.topic.questions.length)];
@@ -345,10 +344,6 @@ export function legalMoves(state: GameState): Move[] {
   if (state.winner) return [];
   const p = activePlayer(state);
   if (p.done) return [];
-  // "Endable" = complete, or completable by dropping a trailing dangling connector
-  // (e.g. a period tapped to finish). Used for both End and Pass so a trailing
-  // period never locks you out.
-  const endable = endableLine(p.line) !== null;
   const moves: Move[] = [];
   const offer = (c: Card, from: 'pool' | 'hand') => {
     if (c.role === 'powerup') {
@@ -372,9 +367,6 @@ export function legalMoves(state: GameState): Move[] {
   // allowed (no soft-lock, no forced self-own) — it just scores as a muffled,
   // "confused" statement (see scoreStatement). Completing well is still better.
   if (p.line.length > 0) moves.push({ kind: 'end' });
-  // Pass to wait — allowed on an untouched (empty) or an endable statement, but
-  // not mid-way through an incomplete clause (you must finish what you started).
-  if (endable || p.line.length === 0) moves.push({ kind: 'pass' });
   return moves;
 }
 
@@ -614,7 +606,6 @@ export function applyMove(state: GameState, move: Move): GameState {
   if (state.winner) return state;
   const p = activePlayer(state);
   if (p.done) return state;
-  if (move.kind !== 'pass') state.passes = 0; // any real action breaks a pass streak
   // The victim has seen the sabotage once they take their turn — clear the alert.
   if (state.lastSabotage?.victim === p.id) state.lastSabotage = undefined;
 
@@ -622,21 +613,6 @@ export function applyMove(state: GameState, move: Move): GameState {
     resolveStatement(state, p);
     advanceTurn(state);
     endRoundIfDone(state);
-    return state;
-  }
-
-  if (move.kind === 'pass') {
-    if (p.line.length > 0 && endableLine(p.line) === null) return state; // can't bail mid-clause
-    logEvent(state, 'pass', { by: p.id });
-    state.passes = (state.passes ?? 0) + 1;
-    // Stalemate: opponent already locked in, or both passed in a row -> resolve.
-    if (state[other(p.id)].done || (state.passes ?? 0) >= 2) {
-      for (const q of [state.player, state.ai]) if (!q.done) resolveStatement(state, q);
-      state.passes = 0;
-      endRoundIfDone(state);
-    } else {
-      advanceTurn(state);
-    }
     return state;
   }
 

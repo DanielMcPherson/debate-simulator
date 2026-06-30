@@ -129,46 +129,6 @@ describe('resource model — chunk cards, no replenish, must-finish', () => {
     expect(qGuard).toBeGreaterThan(1); // actually advanced through multiple questions
   });
 
-  it('Pass holds a complete statement and waits (does not lock it in)', () => {
-    const g = createGame({ seed: 1 });
-    g.player.line = complete();
-    g.turn = 'player';
-    applyMove(g, { kind: 'pass' });
-    expect(g.player.done).toBe(false); // still live (can still Typo / be Typo'd)
-    expect(g.player.line.length).toBe(2); // statement unchanged
-    expect(g.turn).toBe('ai'); // handed the turn over
-  });
-
-  it('Pass works as a first move (empty statement) and hands over the turn', () => {
-    const g = createGame({ seed: 1 });
-    g.turn = 'player';
-    expect(legalMoves(g).some((m) => m.kind === 'pass')).toBe(true);
-    applyMove(g, { kind: 'pass' });
-    expect(g.player.done).toBe(false);
-    expect(g.turn).toBe('ai'); // opponent now gets to build
-  });
-
-  it('cannot pass on an incomplete statement', () => {
-    const g = createGame({ seed: 1 });
-    g.player.line = [findDef('s_opp')!]; // incomplete
-    g.turn = 'player';
-    expect(legalMoves(g).some((m) => m.kind === 'pass')).toBe(false);
-    applyMove(g, { kind: 'pass' });
-    expect(g.player.done).toBe(false);
-    expect(g.turn).toBe('player'); // no-op
-  });
-
-  it('passing when the opponent has locked in resolves the round', () => {
-    const g = createGame({ seed: 1 });
-    g.ai.line = [findDef('s_i')!, findDef('p_patriot')!];
-    g.ai.done = true; // opponent already ended
-    g.player.line = complete();
-    g.turn = 'player';
-    applyMove(g, { kind: 'pass' });
-    expect(g.player.done).toBe(true); // your held statement gets scored
-    expect(g.player.lastReaction).toBeDefined();
-  });
-
   it('Search Notes draws five cards and is a FREE action (keeps your turn)', () => {
     const g = createGame({ seed: 1 });
     g.turn = 'player';

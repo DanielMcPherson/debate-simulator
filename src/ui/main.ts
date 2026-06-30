@@ -708,7 +708,6 @@ function render(): void {
   const youSupport = Math.round((game.bar + 100) / 2);
   // The card area shows a centered panel (not cards) between questions and at a debate win.
   const showPanel = game.awaitingNext || runScreen === 'result';
-  const complete = isComplete(game.player.line);
   const endOk = canPlay() && canEnd(game);
   // The free period is offered wherever the grammar allows a new clause to open —
   // but only once per statement (you get a single period; chain conjunctions for more).
@@ -847,7 +846,6 @@ function render(): void {
         : `<div class="controls">
       <button class="action${currentHint?.end ? ' hint' : ''}" id="end" ${endOk ? '' : 'disabled'}><span class="btn-ico">🎤</span>${currentHint?.end ? '👉 ' : ''}End Statement</button>
       ${PERIOD_ENABLED ? `<button class="ghost" id="period" ${periodOk ? '' : 'disabled'} title="${game.player.usedPeriod ? 'Already used your one period this statement — chain a connector to keep going.' : 'Free, once per statement — finish this sentence and start a new one. No combo bonus; use a connector for that.'}">Add “.” (new sentence)${game.player.usedPeriod ? ' — used' : ''}</button>` : ''}
-      <button class="ghost" id="pass" ${canPlay() && (complete || game.player.line.length === 0) ? '' : 'disabled'}><span class="btn-ico">⏳</span>Pass <span class="btn-sub">(wait)</span></button>
       <button class="ghost danger" id="restart"><span class="btn-ico">🏛️</span>Abandon Run</button>
       <button class="ghost" id="dumplog" title="Download a JSON event log of this debate for bug analysis"><span class="btn-ico">🐞</span>Debug</button>
     </div>`
@@ -978,11 +976,6 @@ function render(): void {
     pendingTypo = null;
     pendingHotMic = null;
     playerMove({ kind: 'take', from: 'period', cardId: PERIOD.id });
-  });
-  app.querySelector<HTMLButtonElement>('#pass')?.addEventListener('click', () => {
-    pendingTypo = null;
-    pendingHotMic = null;
-    playerMove({ kind: 'pass' });
   });
   app.querySelector<HTMLButtonElement>('#next')?.addEventListener('click', () => {
     if (!game.awaitingNext || resolving) return; // let the resolution FX finish first
