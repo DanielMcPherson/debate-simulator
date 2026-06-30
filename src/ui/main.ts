@@ -27,7 +27,8 @@ let ackedSabotage: GameState['lastSabotage'] = undefined; // sabotage the player
 
 // --- campaign run (Slay-the-Spire-style ladder) ---
 let run = { rung: 0, bonus: [] as Card[], character: null as string | null }; // rung + earned cards + chosen candidate
-let runScreen: 'tutorial' | 'select' | 'map' | 'result' | 'reward' | 'defeat' | 'victory' | null = null;
+let runScreen: 'tutorial' | 'select' | 'map' | 'result' | 'reward' | 'awardhint' | 'defeat' | 'victory' | null = null;
+let awardHintSeen = false; // one-time-ever: after the FIRST card award, teach the player to hunt for more
 
 // The player's selectable candidates (cosmetic for now — portrait + name; art in src/ui/art/portraits).
 const PLAYER_CHARACTERS = [
@@ -35,17 +36,43 @@ const PLAYER_CHARACTERS = [
   { id: 'stateswoman', name: 'The Stateswoman', tagline: 'Polished, commanding, three steps ahead.' },
   { id: 'veteran', name: 'The Veteran', tagline: 'A trusted old hand with a steady reputation.' },
 ];
-let rewardChoices: Card[] = [];
-// What the reward dialog's top line says — set by whatever TRIGGERED the reward (debate win
-// for now; later: big combos, heel turns, etc., each with their own headline + emoji).
-let rewardPrompt: { title: string; body: string } = { title: '🏆 A Reward!', body: 'Choose a card.' };
+// A queued reward offer. The modal renders the head of the queue; the queue lets a single win
+// (base reward + several achievements) OR a single big play (multiple mid-debate awards) chain
+// into a series of draft dialogs. `rewardMode` decides what happens when the queue drains.
+type AwardSpec = { title: string; body: string }; // a headline; choices are rolled at display time
+type RewardOffer = AwardSpec & { choices: Card[] };
+let rewardQueue: RewardOffer[] = [];
+let rewardMode: 'post' | 'mid' = 'post';
+// Mid-debate award headlines earned by the just-resolved statement, shown after its FX at the
+// round-summary pause — or folded into the win draft if the statement also ended the debate.
+// Choices are rolled (deduped vs owned + the rest of the series) only when actually shown.
+let pendingMid: AwardSpec[] = [];
 let aiMaxExtend = LADDER[0].maxExtend;
+
+// --- card-award tracking (player-only). The master throttle is the WIN-GATE: a loss runs
+// newRun() which wipes run.bonus, so an award only persists if the player wins that debate. ---
+// Self-sabotage / big-combo thresholds — tunable. A self-sabotage award only fires if the
+// statement tanks the player hard enough (commit, or get the damage and no card).
+const BIG_COMBO_DELTA = 40; // a true ceiling-break (post-headliners)
+const HEEL_TURN_DELTA = -15; // an audience insult must really hurt you
+const GAFFE_DELTA = -12; // a self-own (gets the ×1.6 blunder mult)
+const FLATTERY_DELTA = -10; // complimenting the opponent (boost_opp has NO ×1.6 mult, so a lower bar)
+const COMEBACK_BAR = -40; // down at least this far, then win → Comeback Kid
+function freshDebateStats() {
+  return { statements: 0, onTopic: 0, offTopic: 0, attackStmts: 0, bragStmts: 0, panderStmts: 0, worstBar: 0 };
+}
+let debateStats = freshDebateStats(); // reset each debate in startDebate()
+let midAwardsFired = new Set<string>(); // mid-debate award ids already granted this debate (≤1 each)
 
 function startDebate(): GameState {
   const rung = LADDER[run.rung];
   aiMaxExtend = rung.maxExtend;
   runScreen = null;
-  rewardChoices = [];
+  rewardQueue = [];
+  rewardMode = 'post';
+  pendingMid = [];
+  debateStats = freshDebateStats();
+  midAwardsFired = new Set();
   pendingTypo = null;
   pendingHotMic = null;
   ackedSabotage = undefined;
@@ -96,13 +123,28 @@ function downloadDebugLog(): void {
   URL.revokeObjectURL(url);
 }
 
-function pickRewards(n: number): Card[] {
-  const pool = [...REWARDS];
+/** Draw `n` distinct reward cards, skipping any id in `exclude` (cards the player already owns,
+ *  or already offered earlier in the same series — so you can't be offered or stack duplicates).
+ *  Falls back to the full pool if exclusions would leave too few — avoids an empty draft. */
+function pickRewards(n: number, exclude: Set<string> = new Set()): Card[] {
+  let pool = REWARDS.filter((c) => !exclude.has(c.id));
+  if (pool.length < n) pool = [...REWARDS]; // pool nearly exhausted — relax rather than show < n
   const out: Card[] = [];
   for (let i = 0; i < n && pool.length > 0; i++) {
     out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
   }
   return out;
+}
+
+/** Roll a series of draft offers, threading an exclusion set so no card is offered twice across
+ *  the series and no already-owned card is re-offered. */
+function rollSeries(specs: AwardSpec[]): RewardOffer[] {
+  const exclude = new Set(run.bonus.map((c) => c.id));
+  return specs.map((s) => {
+    const choices = pickRewards(3, exclude);
+    choices.forEach((c) => exclude.add(c.id));
+    return { title: s.title, body: s.body, choices };
+  });
 }
 
 /** The reward headline for a debate win — flavored by how decisive it was. */
@@ -114,20 +156,100 @@ function debateWinPrompt(): { title: string; body: string } {
   return { title: '🏆 Debate Winner!', body: `You barely squeaked by, but you defeated ${name}. Choose a card.` };
 }
 
+/** Post-debate achievements that this won debate qualifies for (each → one extra draft).
+ *  They STACK — a legendary win can chain several. Streaks are mutually exclusive. */
+function postAwardSpecs(): AwardSpec[] {
+  const s = debateStats;
+  const out: AwardSpec[] = [];
+  if (game.bar >= 100) out.push({ title: '🥊 Complete Knockout!', body: 'You drove the crowd to a total landslide. Choose a card.' });
+  if (s.statements > 0 && s.onTopic === s.statements)
+    out.push({ title: '✅ "You answered all the questions, Joe!"', body: 'On-topic every single time. Choose a card.' });
+  if (s.statements > 0 && s.offTopic === s.statements)
+    out.push({ title: '🎩 Artful Dodger', body: 'You ducked the question every single time — masterful. Choose a card.' });
+  if (s.statements > 0 && s.attackStmts === 0)
+    out.push({ title: '🕊️ Mr. Nice Guy', body: 'You won without a single attack on your opponent. Choose a card.' });
+  if (s.worstBar <= COMEBACK_BAR) out.push({ title: '🔥 Comeback Kid', body: 'You were way down, then clawed all the way back. Choose a card.' });
+  return out;
+}
+
 /** When a debate ends, set up the reward / victory / defeat screen (once). */
 function checkDebateEnd(): void {
   if (!game.winner || runScreen) return;
   if (game.winner === 'player') {
-    if (run.rung >= LADDER.length - 1) runScreen = 'victory';
-    else {
-      // First announce the win in the board's summary area; the reward draft comes after.
-      runScreen = 'result';
-      rewardChoices = pickRewards(3);
-      rewardPrompt = debateWinPrompt();
+    if (run.rung >= LADDER.length - 1) {
+      runScreen = 'victory'; // winning the final rung ends the run — no draft
+      return;
     }
+    // Announce the win in the summary area; the reward draft (a queue: base win reward + any
+    // achievements + any pending mid-debate awards) comes after, via #toReward → 'reward'.
+    rewardMode = 'post';
+    rewardQueue = rollSeries([debateWinPrompt(), ...postAwardSpecs(), ...pendingMid]);
+    pendingMid = [];
+    runScreen = 'result';
   } else {
     runScreen = 'defeat'; // a loss or tie ends the run
   }
+}
+
+/** Tally a resolved PLAYER statement into the per-debate stats (drives post-debate achievements). */
+function recordPlayerStatement(r: Reaction): void {
+  const s = debateStats;
+  s.statements++;
+  if (r.offTopic) s.offTopic++;
+  else if (r.grammatical) s.onTopic++; // a confused line is neither — it breaks both streaks
+  const has = (cat: Category) => !!r.breakdown?.some((h) => h.category === cat);
+  if (has('attack_opp')) s.attackStmts++;
+  if (has('praise_self')) s.bragStmts++;
+  if (has('pander_aud')) s.panderStmts++;
+}
+
+/** Track the lowest the bar ever fell (for Comeback Kid). Call after any resolution. */
+function trackBar(): void {
+  debateStats.worstBar = Math.min(debateStats.worstBar, game.bar);
+}
+
+/** Evaluate mid-debate awards for a just-resolved PLAYER statement; queue any newly earned ones
+ *  in `pendingMid` (≤1 of each type per debate). Shown after the statement's FX. */
+function evalMidAwards(r: Reaction): void {
+  const fire = (id: string, title: string, body: string) => {
+    if (midAwardsFired.has(id)) return;
+    midAwardsFired.add(id);
+    pendingMid.push({ title, body });
+  };
+  const has = (cat: Category) => !!r.breakdown?.some((h) => h.category === cat);
+  if (game.player.hand.filter((c) => c.role !== 'powerup').length === 0)
+    fire('wholehand', '🃏 Played your whole hand!', 'You emptied your hand into one statement. Choose a card.');
+  if (r.delta >= BIG_COMBO_DELTA) fire('bigcombo', '⚡ Massive combo!', 'That statement brought the house down. Choose a card.');
+  if (r.audienceInsulted && r.delta <= HEEL_TURN_DELTA)
+    fire('heelturn', '😈 Massive Heel Turn!', 'You savaged the very voters you need — bold. Take a card and climb back.');
+  if (has('self_own') && r.delta <= GAFFE_DELTA) fire('gaffe', '🤡 Giant Gaffe!', 'A historic self-own. Choose a card and recover.');
+  if (has('boost_opp') && r.delta <= FLATTERY_DELTA)
+    fire('flattery', '🤝 Questionable Flattery', 'You talked up your own opponent — strange strategy. Choose a card.');
+}
+
+/** Show any pending mid-debate awards (after the round FX, only if the debate continues).
+ *  Returns true if the reward modal is now showing (the caller should not resume the AI). */
+function maybeShowMidAwards(): boolean {
+  if (game.winner || runScreen || !pendingMid.length) return false;
+  rewardQueue = rollSeries(pendingMid);
+  pendingMid = [];
+  rewardMode = 'mid';
+  runScreen = 'reward';
+  render();
+  return true;
+}
+
+/** After the reward queue (and the one-time hint) drains: a post-debate draft advances the rung
+ *  to the next debate; a mid-debate draft just resumes the current debate. */
+function finishRewards(): void {
+  if (rewardMode === 'post') {
+    run.rung += 1;
+    game = startDebate();
+    runScreen = 'map'; // show the ladder + next opponent before the next debate
+  } else {
+    runScreen = null; // back to the held round summary; the debate continues
+  }
+  render();
 }
 
 function partialText(line: Card[]): string {
@@ -665,13 +787,28 @@ function runModalHtml(): string {
     </div></div>`;
   }
   if (runScreen === 'reward') {
-    const choices = rewardChoices
-      .map((c) => `<button class="card reward role-${c.role}" data-reward="${c.id}">${cardFace(c)}</button>`)
+    const head = rewardQueue[0] ?? { title: '🏆 A Reward!', body: 'Choose a card.', choices: [] };
+    const choices = head.choices
+      .map((c) => {
+        // Power-ups need the "power" + per-effect classes for the dark action-card background
+        // (matching the in-hand renderer); other roles use their grammatical-role tint.
+        const cls = c.role === 'powerup' ? `power fx-${c.effect}` : `role-${c.role}`;
+        return `<button class="card reward ${cls}" data-reward="${c.id}">${cardFace(c)}</button>`;
+      })
       .join('');
+    const more = rewardQueue.length > 1 ? `<div class="reward-more">+${rewardQueue.length - 1} more reward${rewardQueue.length > 2 ? 's' : ''} to come…</div>` : '';
     return `<div class="modal-backdrop"><div class="modal reward-modal">
-      <div class="modal-title" style="color:var(--gold)">${rewardPrompt.title}</div>
-      <p>${rewardPrompt.body}</p>
+      <div class="modal-title" style="color:var(--gold)">${head.title}</div>
+      <p>${head.body}</p>
       <div class="cards" style="margin-top:8px">${choices}</div>
+      ${more}
+    </div></div>`;
+  }
+  if (runScreen === 'awardhint') {
+    return `<div class="modal-backdrop"><div class="modal">
+      <div class="modal-title" style="color:var(--gold)">🎁 You earned a card!</div>
+      <p><b>Hint:</b> Try to find all the ways to earn cards. There are lots of them. Some are very risky!</p>
+      <button class="action" id="awardHintGot">Got it ▶</button>
     </div></div>`;
   }
   if (runScreen === 'victory') {
@@ -707,15 +844,17 @@ function render(): void {
   // Zero-sum 1v1: bar (-100..+100, signed toward player) shown as audience-support % that sums to 100.
   const youSupport = Math.round((game.bar + 100) / 2);
   // The card area shows a centered panel (not cards) between questions and at a debate win.
-  const showPanel = game.awaitingNext || runScreen === 'result';
+  const showPanel = game.awaitingNext || runScreen === 'result' || fxHoldSummary;
   const endOk = canPlay() && canEnd(game);
   // The free period is offered wherever the grammar allows a new clause to open —
   // but only once per statement (you get a single period; chain conjunctions for more).
   const periodOk = PERIOD_ENABLED && canPlay() && !pendingTypo && !pendingHotMic && !game.player.usedPeriod && canAppend(game.player.line, PERIOD);
 
   const sabotaged = !!game.lastSabotage && game.lastSabotage.victim === 'player';
-  // A fresh sabotage pops a modal you must dismiss; afterwards it stays as a banner.
-  const showSabotageModal = sabotaged && game.lastSabotage !== ackedSabotage;
+  // A fresh sabotage pops a modal you must dismiss; afterwards it stays as a banner. Suppress it
+  // once the debate is decided — a defeat/result/reward screen takes over, and stacking the
+  // sabotage modal on top of those was the "multiple dialogs when I lose" bug.
+  const showSabotageModal = sabotaged && game.lastSabotage !== ackedSabotage && !game.winner;
   const oppName = game.opponent?.name ?? 'Your opponent';
   const isForgot = game.lastSabotage?.kind === 'forgot';
   const isHotMic = game.lastSabotage?.kind === 'hotmic';
@@ -743,7 +882,7 @@ function render(): void {
 
   app.innerHTML = `
     <h1><span class="tstar">✦</span>⚖️ DEBATE SIMULATOR ⚖️<span class="tstar">✦</span></h1>
-    ${runScreen === 'result' ? '' : bannerHtml()}
+    ${runScreen === 'result' || fxHoldSummary ? '' : bannerHtml()}
     <div class="scorebar-wrap">
       <div class="crowd" aria-hidden="true"></div>
       <div class="scorebar-labels">
@@ -785,7 +924,7 @@ function render(): void {
             <div class="rs-progress">Debate ${run.rung + 1} of ${LADDER.length} won</div>
             <button class="action" id="toReward">Choose your reward ▶</button>
           </div>`
-        : game.awaitingNext && fxHoldSummary
+        : fxHoldSummary
         ? `<div class="round-summary holding"><div class="rs-title">📊 The votes are coming in…</div></div>`
         : game.awaitingNext
         ? `<div class="round-summary">
@@ -904,15 +1043,25 @@ function render(): void {
 
   app.querySelectorAll<HTMLButtonElement>('.card').forEach((btn) => {
     btn.addEventListener('click', () => {
-      // Picking a reward card after a win.
+      // Picking a reward card (a win draft, a stacked achievement, or a mid-debate award).
       if (btn.dataset.reward) {
         const card = REWARDS.find((c) => c.id === btn.dataset.reward);
         if (card) {
-          run.bonus.push(card);
-          run.rung += 1;
-          game = startDebate();
-          runScreen = 'map'; // show the ladder + next opponent before the next debate
-          render();
+          run.bonus.push(card); // carried into future debates (wiped on a loss — the win-gate)
+          if (rewardMode === 'mid') {
+            // Also drop a live copy into the current deck so it's drawable the rest of this debate.
+            game.player.deck.push({ ...card, priv: true });
+          }
+          rewardQueue.shift();
+          if (rewardQueue.length) {
+            render(); // chain to the next offer in the series
+          } else if (!awardHintSeen) {
+            awardHintSeen = true; // first card ever — teach achievement-hunting before continuing
+            runScreen = 'awardhint';
+            render();
+          } else {
+            finishRewards(); // drained: advance the rung (post) or resume the debate (mid)
+          }
         }
         return;
       }
@@ -1004,6 +1153,7 @@ function render(): void {
     runScreen = 'reward'; // win acknowledged — now show the card draft
     render();
   });
+  app.querySelector<HTMLButtonElement>('#awardHintGot')?.addEventListener('click', finishRewards);
   app.querySelector<HTMLButtonElement>('#restart')?.addEventListener('click', newRun);
   app.querySelector<HTMLButtonElement>('#dumplog')?.addEventListener('click', downloadDebugLog);
   app.querySelector<HTMLButtonElement>('#newrun')?.addEventListener('click', newRun);
@@ -1165,8 +1315,10 @@ async function playRoundFx(secondSide: 'you' | 'them'): Promise<void> {
   const order: ('you' | 'them')[] =
     pendingFx && pendingFx !== secondSide ? [pendingFx, secondSide] : [secondSide];
   pendingFx = null;
-  // Hold the round-summary panel (show the "votes coming in" placeholder) while we animate.
-  if (game.awaitingNext && !runScreen) fxHoldSummary = true;
+  // Hold the round-summary panel (show the "votes coming in" placeholder) while we animate — for a
+  // normal round AND a debate-ending one. Deferring the end screen (checkDebateEnd, below) until the
+  // FX finishes is what keeps the defeat/result screen from sitting OVER the animation (the flicker).
+  if (!runScreen) fxHoldSummary = true;
   for (const side of order) {
     const r = side === 'you' ? game.player.lastReaction : game.ai.lastReaction;
     if (!r) continue;
@@ -1174,20 +1326,31 @@ async function playRoundFx(secondSide: 'you' | 'them'): Promise<void> {
     render();
     await playResolutionFx(side, r);
   }
+  // Animation done — NOW decide the end screen (win → 'result', loss/tie → 'defeat'), so it appears
+  // exactly once, after the FX, instead of flickering behind it.
+  checkDebateEnd();
   fxHoldSummary = false;
-  render(); // reveal the round summary / result now that both have animated
+  render(); // reveal the round summary / result / defeat now that both have animated
 }
 
 async function playerMove(move: Move): Promise<void> {
   if (game.winner || game.awaitingNext || game.turn !== 'player' || aiThinking || resolving) return;
   const wasSpeaking = !game.player.done;
   applyMove(game, move);
-  checkDebateEnd();
   // Resolved (done flipped true) covers ending the turn AND playing a finisher (a `take`, not `end`).
   const justResolved = wasSpeaking && game.player.done && !!game.player.lastReaction;
+  if (justResolved) {
+    recordPlayerStatement(game.player.lastReaction!); // tally for post-debate achievements
+    evalMidAwards(game.player.lastReaction!); // queue any mid-debate awards (shown after the FX)
+    trackBar();
+  }
+  // (game.winner is set by the engine in applyMove; the END SCREEN is deferred to playRoundFx so it
+  // doesn't sit over the resolution animation — that was the post-loss flicker.)
   if (justResolved && (game.ai.done || game.awaitingNext || game.winner)) {
+    if (!runScreen) fxHoldSummary = true; // hold the panel so the card area doesn't flash before the FX
     render();
-    await playRoundFx('you'); // player finished the exchange (or won outright) → animate both now
+    await playRoundFx('you'); // player finished the exchange (or won outright) → animate, then reveal
+    if (maybeShowMidAwards()) return; // mid-debate draft is showing — driveAI resumes after it drains
   } else {
     if (justResolved) pendingFx = 'you'; // finished first → wait for the opponent before scoring
     render();
@@ -1207,11 +1370,14 @@ function driveAI(): void {
     const move = aiTurn(game, { maxExtend: aiMaxExtend }); // difficulty rises up the ladder
     applyMove(game, move);
     aiThinking = false;
-    checkDebateEnd();
     const justResolved = wasAiSpeaking && game.ai.done && !!game.ai.lastReaction;
+    if (justResolved) trackBar(); // the bar may bottom out right after the AI speaks (Comeback Kid)
+    // (end screen deferred to playRoundFx so it doesn't flicker behind the resolution animation)
     if (justResolved && (game.player.done || game.awaitingNext || game.winner)) {
+      if (!runScreen) fxHoldSummary = true; // hold the panel so the card area doesn't flash before the FX
       render();
-      await playRoundFx('them'); // AI finished the exchange → animate both now
+      await playRoundFx('them'); // AI finished the exchange → animate, then reveal the end screen
+      if (maybeShowMidAwards()) return; // mid-debate awards earned this round (player spoke first)
     } else {
       if (justResolved) pendingFx = 'them'; // finished first → hold its score until the player ends
       render();

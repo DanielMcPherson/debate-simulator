@@ -17,8 +17,10 @@ harshly (lenient "confused" scoring, blunders only punch through when genuinely 
 and prefer simpler controls so the player spends attention on the words, not the buttons (why
 the period button, Call a Recess, and Pass were all removed). When a change trades a little
 balance/realism for a funnier, longer, more satisfying statement, take the trade. Tensions to
-watch: the ±35/±50 score cap and the rambling penalty both *limit* long statements — revisit
-them (e.g. the "headliners" per-card-ceiling roadmap item) if length should pay off more.
+watch: the score cap and the rambling penalty both *limit* long statements. The cap is now a
+**per-line ceiling** (Headliners, 2026-06 — see Scoring §): long combo-chains and powerful cards
+raise it (base ±35 → up to ±50, ±65 with a finisher), so length/power pay off without enabling
+single-statement knockouts. The rambling penalty still limits *unstructured* piling on purpose.
 
 ## Commands
 - `npm install` — deps (Vite + TypeScript + Vitest only; no runtime deps).
@@ -177,7 +179,19 @@ flag stays for future use). The round-summary headline is **varied** (`roundHead
 round by both deltas: swing-to-you / mixed / restless / electrified…). Then intensifier
 `factor`, **off-topic** is *multiplicative*
 (positive totals ×`OFF_TOPIC_MULT` 0.75 — a big statement can't cheaply ignore the question), clamp
-±35 (±50 with intensifier).
+to a **per-line cap** (see Headliners below): base `STATEMENT_CAP` 35 (pre-intensifier) / `INTENSIFIED_CAP`
+50 (post-finisher), each raised by `headroom`.
+**Headliners (per-line ceiling, 2026-06):** powerful/long lines break past the base cap.
+`headroom = min(HEADROOM_MAX 15, Σ card.ceiling + CHAIN_STEP 3 × agg.chips.length)` — i.e. the sum of the
+line's `ceiling` cards (a new optional `Card.ceiling`; only `REWARDS` carry it today — ±4 predicates +4,
+loaded subjects +3) **plus** one CHAIN_STEP per combo *junction* (rewards combo-chaining, NOT raw piling,
+which earns nothing and still rambles). Both clamps shift up together: `softCap = 35 + headroom` (≤50),
+`hardCap = 50 + headroom` (≤65), preserving the finisher's room. Bounded so no single statement is a
+knockout (win is ±100). **Symmetric** (a ceiling card mis-played into a self-own can also hit −50/−65 —
+intended; headliner cards are double-edged). The **confused/incomplete path keeps the fixed ±35 clamp** —
+ceiling never lifts incoherent lines. The **AI plays the default deck** (no ceiling cards) so it earns only
+*chain* headroom — the player's reward deck can out-ceiling it (intended progression). Tests:
+`describe('scoring — headliners …')` in tests/scoring.test.ts.
 **Tuning (rebalanced 2026-06: keep this ratio):** `SCALE=2.5` is deliberately small vs the ±35 cap
 so one strong clause ≈⅓ of the cap, leaving headroom for combos to out-climb piles (if a clause
 nearly caps, *everything* saturates and combos lose their edge — that was the bug). `COMBO_MIN=3`,
@@ -277,27 +291,45 @@ Decision: path is a straight line (no branching) — too few opponents to make p
 Ordered by priority/dependency. Engine work stays pure/seeded (no `Math.random` — thread the game
 RNG); player-only meta lives in `ui/main.ts`. Source: `~/Downloads/debate_game_session_notes.md`.
 
-**P1 · small · independent — Per-card scoring ceiling ("headliners").** A powerful card raises the
-statement cap (e.g. ±35 → ±45) *in addition to* adding score, so strong cards feel strong instead of
-clipping. Derive `STATEMENT_CAP` from the cards in the line (a `ceiling` field on the card). Do this
-**first** — it's what makes the reward/shop cards below actually land. (Reality check: the 35 cap
-binds ~5% of AI / ~16% of skilled-player statements today — not "most" — but powerful cards *are*
-muted when they push an already-good line into the cap. Per-card ceiling fixes that without the
-global bar-pace change we deliberately avoided.)
+**DONE (2026-06) — Per-card scoring ceiling ("headliners").** Powerful cards + long combo-chains raise
+the per-line cap *in addition to* adding score, so strong cards feel strong instead of clipping. A new
+optional `Card.ceiling` + a per-combo-junction bonus form `headroom` (bounded +15 → soft ≤50 / hard ≤65);
+see the Scoring § Headliners note for the formula and rationale. Implemented in scoring.ts (dynamic
+`softCap`/`hardCap`), `ceiling` threaded through the cards.ts builders, applied to `REWARDS` only; no base
+rescale (SCALE stays 2.5, so ai.ts thresholds untouched). Tests: `describe('scoring — headliners …')`.
+This was the prerequisite ("do this first") for the reward/shop card economy below — now unblocked.
+Optional follow-on if playtest shows swingy/short debates: a per-question net-swing clamp on `|Δbar|`
+(deliberately NOT built — independent of the ceiling).
 
-**P1 · medium — In-debate card-award events (player-only, hidden, probabilistic).** Reuse the existing
-3-card reward modal to award a card mid-debate on certain plays: big combos, on-/off-topic streaks
-(track per-run), and crucially **self-own / heel-turn (insult-audience) / compliment-opponent as a
-risk-reward gamble** ("own-goal for a card!"). This gives the now-lenient self-own a *positive reason
-to exist*. **"Heel Turn" framing (playtester-validated, 2026-06):** insult the audience *badly enough*
-and you're handed a high-powered card — but now you've dug a real hole on the bar and have to **fight
-your way back** from the damage you just did. So the gamble has teeth: the award should scale with how
-bad the blunder was, and the card must be strong enough to justify the deficit. Hidden (discovered, not
-documented). Opponent never gets awards. New cards shuffle into the
-player's persistent private deck. Seed the RNG. **Hook already in place:** the reward modal renders a
-`rewardPrompt {title, body}` (ui/main.ts) set by whatever triggered it — the debate-win path sets a
-margin-flavored one via `debateWinPrompt()`; a mid-debate trigger just sets `rewardPrompt` (its own
-headline/emoji, e.g. "😈 Massive Heel Turn!") + `rewardChoices` and shows the modal.
+**DONE (2026-06) — Card-award economy (mid-debate + post-debate achievements).** All player-only, all
+in `ui/main.ts` (engine untouched). **Master throttle = the win-gate:** a loss runs `newRun()` which
+wipes `run.bonus`, so an award only persists if the player wins that debate — post-debate awards are
+granted at the win; mid-debate awards are *provisional* (a fresh `{...card, priv:true}` is pushed to
+`game.player.deck` so it's drawable the rest of the current debate, AND the base def to `run.bonus`).
+**Mid-debate (fire on the player's statement at `playerMove`'s `justResolved`; ≤1 of each type per
+debate via `midAwardsFired`; shown after the round FX at the round-summary pause via `maybeShowMidAwards`):**
+Played Your Whole Hand, Big Combo (`delta ≥ BIG_COMBO_DELTA 40` — a ceiling-break), and the three
+self-sabotage gambles **Heel Turn** (`audienceInsulted && delta ≤ −15`), **Giant Gaffe** (`self_own &&
+delta ≤ −12`), **Questionable Flattery** (`boost_opp && delta ≤ −10` — lower bar because boost_opp gets
+no ×1.6 blunder mult). **Post-debate (`postAwardOffers()` in `checkDebateEnd`, stack as a series):**
+Complete Knockout (`bar ≥ 100`), "You answered all the questions, Joe!" (`onTopic === statements`),
+Artful Dodger (`offTopic === statements`), Mr. Nice Guy (`attackStmts === 0`), Comeback Kid (`worstBar
+≤ −40`). Plumbing: per-debate `debateStats` (counts on-topic/off-topic/attack/brag/pander + worstBar,
+reset in `startDebate`, fed from `player.lastReaction.breakdown` categories + `.offTopic` — no engine
+event change needed); a `rewardQueue: RewardOffer[]` + `rewardMode: 'post'|'mid'` drains via the
+existing reward-pick handler (post → advance rung; mid → resume debate). Thresholds are tunable consts
+atop main.ts. **One mixed REWARDS pool** for every award (no card-type tiering). **No total cap** on
+mid-debate awards yet (playtest). **Playtest watch:** Big Combo + Played Whole Hand are the only awards
+that aren't self-limiting — cap those first if farmable. Final-rung win still skips the draft (victory).
+Curse cards still shelved. **Draft dedup:** `pickRewards(n, exclude)` + `rollSeries` skip cards already
+in `run.bonus` AND already offered earlier in the same series (so you can't be offered/stack the same
+card — e.g. two Call-a-Recess offers), with a full-pool fallback if exclusions would leave < n.
+**Reward power-ups** need the `power fx-<effect>` classes in the reward modal (not just `role-…`) to get
+the dark action-card background. **One-time award hint:** the first card ever drafted (any award) shows a
+`runScreen:'awardhint'` modal nudging the player to hunt for more (`awardHintSeen`, NOT reset on newRun);
+`finishRewards()` is the shared post-drain continuation (advance rung / resume debate). **REWARDS expanded
+(2026-06):** more headliner nouns/verbs, **private finishers** (premium — owned, can't be out-raced:
+`r_x_pipe`/`r_x_idiot`/`r_x_votemany`), and drafted **Typo/Soundbite** actions (reuse existing effects).
 
 **P2 · large epic — Campaign donation economy + shop** (the long-deferred roguelike meta; needs its
 own design pass + phasing). Donations trickle in per-statement by type, scaled by your **chosen
@@ -394,25 +426,13 @@ completion, riding the combo). Grammar: likely a CLAUSE-internal production like
 just a `modifier` variant with `requiresPredicate:true`, or its own role? Decide against the modifier
 direction-split rules (GOOD-direction asides fold into the clause's first contribution today).
 
-**P2 · medium — Achievements that grant BONUS reward picks (hidden; player-only).** New idea: on a
-debate win, certain **achievements** award **extra** card rewards, presented as a **series of reward
-dialogs** rather than the single one today. The reward modal currently shows exactly one draft:
-`checkDebateEnd` (ui/main.ts) sets one `rewardChoices = pickRewards(3)` + `rewardPrompt`, and the
-pick handler pushes ONE card to `run.bonus` then immediately `run.rung += 1` → `startDebate()` →
-`'map'`. So chaining needs a small **queue** (e.g. `rewardQueue: {choices, prompt}[]`), reusing
-`pickRewards(n)` + the `'reward'` runScreen render, and crucially **don't advance the rung / start the
-next debate until the queue drains**. Achievements to seed: **"Mr. Nice Guy"** — win **without playing
-any attack on the opponent** (an attack is `category:'attack_opp'` in scoring.ts `contributions`; the
-`resolve` event logs `{cards,delta,label,combo}` but NOT per-contribution categories, so either extend
-the `resolve` event or set a per-debate "played an attack" flag in main.ts at resolution). **"Used every
-card on the board"** — play **every** dealt pool+hand card (very rare, maybe near-impossible — untested;
-track `take`+`power` events vs cards dealt, but the persistent private deck + consumed power-ups make an
-exact count fiddly). **"Comeback Kid"** — be **down by a large margin** (e.g. the bar ≥ ~40 against you,
-i.e. `bar ≤ −40` since `+player`/`−ai`) at some point, then **win the debate** (track the run's worst
-deficit in main.ts at resolution — `Math.min` of `game.bar` across the debate — and check it at the win).
-Opponent never earns achievements (mirrors the reward rule). Hidden/discovered —
-**pairs with the in-debate card-award events note above** (same reward-modal hook: `rewardPrompt` +
-`rewardChoices`).
+**DONE (2026-06) — Achievements that grant BONUS reward picks.** Built as part of the card-award
+economy DONE note above (the `rewardQueue` chains a win's base reward + every qualifying achievement as
+a series of dialogs; the rung doesn't advance until the queue drains). Shipped: Complete Knockout,
+"You answered all the questions, Joe!", Artful Dodger, Mr. Nice Guy, Comeback Kid. ("Used every card on
+the board" was dropped in favor of the easier mid-debate **Played Your Whole Hand**.) The per-contribution
+categories needed (attack/brag/pander) come free from `Reaction.breakdown` on `player.lastReaction` — no
+`resolve`-event change was needed. Opponent never earns achievements.
 
 **P2 · small/medium (rides the reward/shop epics) — New ACTION cards (power-ups) to offer as awards.**
 `REWARDS` (cards.ts) is predicate/noun/connector today (funny private conjunctions were added 2026-06)
@@ -605,3 +625,15 @@ difficulty/skill.
   (one-directional; no cycle — game.ts does NOT import ai.ts).
 - Grammar memoization keys on the role/term sequence; predicates carry no `text` (derived) — dedup
   by base id (`id.split('#')[0]`), not text.
+- **Modals can stack:** `render()` emits several independent `modal-backdrop` blocks in one pass
+  (runScreen modal, question card, hot-mic, sabotage, …). A debate-end screen (defeat/result/reward)
+  does NOT auto-suppress the others — each must self-guard. The sabotage modal lacked `&& !game.winner`
+  and stacked on the defeat screen ("multiple dialogs when I lose", fixed 2026-06). Any new modal that
+  could be live at a debate end must guard on `!game.winner`/`!runScreen`.
+- **End screen is set AFTER the resolution FX, not before:** `checkDebateEnd()` (which sets
+  `runScreen` to result/defeat) is called at the END of `playRoundFx`, not in playerMove/driveAI before
+  it. Otherwise the defeat/result screen sits OVER the count-up/shake/chip animation and the board
+  re-renders churn behind it ("jumping around and flickering after I lose", fixed 2026-06). The panel
+  hold (`fxHoldSummary` → "votes are coming in…") now also covers the debate-ending round (the engine
+  sets `game.winner` instead of `awaitingNext` there), so the card area doesn't flash during the final
+  FX. Keep `checkDebateEnd` after the animation if you touch this.

@@ -14,6 +14,8 @@ interface NpOpts {
   intensity?: number;
   /** False for a thing/abstraction subject so a modifier says "which", not "who". */
   animate?: boolean;
+  /** Headliner: raises the statement's score cap (see Card.ceiling). */
+  ceiling?: number;
 }
 // A subject's SIDE implies its topic(s): every self subject answers "Your Record";
 // every opponent subject answers BOTH "Your Opponent" and "Name-Calling" (naming the
@@ -34,12 +36,15 @@ const NP = (id: string, text: string, side: Side, sentiment: number, o: NpOpts =
     topics: topics.length ? topics : undefined,
     intensity: o.intensity,
     animate: o.animate,
+    ceiling: o.ceiling,
   };
 };
 
 interface PredExtra {
   pre?: string;
   topics?: string[];
+  /** Headliner: raises the statement's score cap (see Card.ceiling). */
+  ceiling?: number;
 }
 /** Closed, conjugatable predicate: "kicks puppies", "is a national disgrace". */
 const pc = (id: string, lead: string, post: string, sentiment: number, e: PredExtra = {}): Card => ({
@@ -50,6 +55,7 @@ const pc = (id: string, lead: string, post: string, sentiment: number, e: PredEx
   sentiment,
   pre: e.pre,
   topics: e.topics,
+  ceiling: e.ceiling,
 });
 /** Closed, invariant predicate (modal/negated phrasings work for any subject). */
 const pi = (id: string, text: string, sentiment: number, e: PredExtra = {}): Card => ({
@@ -59,6 +65,7 @@ const pi = (id: string, text: string, sentiment: number, e: PredExtra = {}): Car
   invariant: true,
   sentiment,
   topics: e.topics,
+  ceiling: e.ceiling,
 });
 /** Open predicate: needs an object; polarity = deed + affinity × object sentiment. */
 const po = (
@@ -68,7 +75,7 @@ const po = (
   affinity: number,
   deed: number,
   e: PredExtra = {},
-): Card => ({ id, role: 'predicate', open: true, lead, post, affinity, deed, pre: e.pre, topics: e.topics });
+): Card => ({ id, role: 'predicate', open: true, lead, post, affinity, deed, pre: e.pre, topics: e.topics, ceiling: e.ceiling });
 
 /**
  * Post-nominal modifier aside: "who is ugly, just very ugly" / "which is a treasure".
@@ -82,11 +89,11 @@ const md = (
   id: string,
   post: string,
   sentiment: number,
-  e: { lead?: string; pre?: string; rel?: 'who' | 'which'; topics?: string[]; invariant?: boolean; conj?: Card['conj'] } = {},
+  e: { lead?: string; pre?: string; rel?: 'who' | 'which'; topics?: string[]; invariant?: boolean; conj?: Card['conj']; ceiling?: number } = {},
 ): Card =>
   e.invariant
-    ? { id, role: 'modifier', text: post, invariant: true, sentiment, topics: e.topics, conj: e.conj } // `post` carries the full phrase incl. its pronoun
-    : { id, role: 'modifier', lead: e.lead ?? 'be', post, pre: e.pre, sentiment, rel: e.rel, topics: e.topics, conj: e.conj };
+    ? { id, role: 'modifier', text: post, invariant: true, sentiment, topics: e.topics, conj: e.conj, ceiling: e.ceiling } // `post` carries the full phrase incl. its pronoun
+    : { id, role: 'modifier', lead: e.lead ?? 'be', post, pre: e.pre, sentiment, rel: e.rel, topics: e.topics, conj: e.conj, ceiling: e.ceiling };
 
 // --- subjects (noun phrases with a side) ------------------------------------
 
@@ -519,17 +526,19 @@ export const CROWDS: Crowd[] = [
 // REWARD cards — exclusive to the campaign ladder (never in a starting deck).
 // Stronger than normal cards: ±4 predicates and high-intensity loaded subjects.
 export const REWARDS: Card[] = [
-  pc('r_traitor', 'be', 'a traitor to this very nation', -4, { topics: ['jackass', 'opponent'] }),
-  pc('r_lizard', 'be', 'secretly a lizard person', -4, { topics: ['jackass', 'opponent'] }),
-  pi('r_christmas', 'wants to cancel Christmas forever', -4, { topics: ['jackass', 'opponent'] }),
-  pc('r_eatpup', 'eat', 'live puppies on national television', -4, { topics: ['jackass', 'opponent'] }),
-  pc('r_greatest', 'be', 'the greatest leader in human history', 4),
-  pi('r_cured', 'personally cured a deadly disease last Tuesday', 4),
-  pi('r_pony', 'will give every citizen a pony and a tax cut', 4),
-  pc('r_oncegen', 'be', 'a once-in-a-generation genius', 4),
-  pc('r_never_truth', 'have', 'never once told the truth, not even by accident', -4, { topics: ['jackass', 'opponent'] }),
-  NP('r_treason_opp', 'My crooked, treasonous opponent', 'opponent', -2, { intensity: 1.6 }),
-  NP('r_blessed_nation', 'This blessed and chosen nation', 'audience', 2, { topics: ['freedom'], intensity: 1.6, animate: false }),
+  // Headliners: these powerful cards also raise the statement's score cap (`ceiling`) so they
+  // break past the base ±35 instead of clipping. ±4 predicates → +4, loaded subjects → +3.
+  pc('r_traitor', 'be', 'a traitor to this very nation', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
+  pc('r_lizard', 'be', 'secretly a lizard person', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
+  pi('r_christmas', 'wants to cancel Christmas forever', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
+  pc('r_eatpup', 'eat', 'live puppies on national television', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
+  pc('r_greatest', 'be', 'the greatest leader in human history', 4, { ceiling: 4 }),
+  pi('r_cured', 'personally cured a deadly disease last Tuesday', 4, { ceiling: 4 }),
+  pi('r_pony', 'will give every citizen a pony and a tax cut', 4, { ceiling: 4 }),
+  pc('r_oncegen', 'be', 'a once-in-a-generation genius', 4, { ceiling: 4 }),
+  pc('r_never_truth', 'have', 'never once told the truth, not even by accident', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
+  NP('r_treason_opp', 'My crooked, treasonous opponent', 'opponent', -2, { intensity: 1.6, ceiling: 3 }),
+  NP('r_blessed_nation', 'This blessed and chosen nation', 'audience', 2, { topics: ['freedom'], intensity: 1.6, animate: false, ceiling: 3 }),
   // Funny PRIVATE conjunctions — drafted rewards (connectors live only in the contested
   // shared pool otherwise). Score exactly like their plain `conj` counterpart
   // (and=1.25 / logic=1.30 / but=1.40); the verbose wording is the reward. A connector you
@@ -548,6 +557,29 @@ export const REWARDS: Card[] = [
   // card it sidesteps the old free-button exploit. Lives here, NOT in POWERUPS (which seeds every
   // default deck via buildPrivateDeck); effect handled in game.ts applyPowerup.
   { id: 'r_recess', role: 'powerup', effect: 'redeal', text: '🔄 Call a Recess — re-deal the shared pool' },
+
+  // More headliner nouns/verbs — funnier and higher-scoring than the default deck. ±4 predicates
+  // raise the cap (+4); loaded subjects are ×1.6 with a +3 ceiling.
+  pc('r_goldtoilet', 'bill', 'the taxpayer for a solid-gold toilet', -4, { pre: 'secretly', topics: ['jackass', 'opponent'], ceiling: 4 }),
+  pi('r_popupads', 'personally invented the pop-up ad', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
+  pc('r_coinslot', 'want', 'to put a coin slot on the Statue of Liberty', -4, { topics: ['jackass', 'opponent', 'freedom'], ceiling: 4 }),
+  pi('r_inventweekend', 'single-handedly invented the weekend', 4, { ceiling: 4 }),
+  pc('r_eagle', 'bench-press', 'a full-grown bald eagle before breakfast', 4, { ceiling: 4 }),
+  pi('r_everylaw', 'wrote every good law you have ever actually benefited from', 4, { ceiling: 4 }),
+  NP('r_weird_opp', 'My deeply weird, poll-tested opponent', 'opponent', -2, { intensity: 1.6, ceiling: 3 }),
+  NP('r_grill_patriots', 'The hardest-working patriots ever to fire up a backyard grill', 'audience', 2, { topics: ['pander'], intensity: 1.6, ceiling: 3, number: 'plural' }),
+
+  // PRIVATE finishers — premium: a guaranteed ×factor you OWN (can't be out-raced in the shared
+  // pool the way the pool finishers can). Phrasings author-supplied. (Rendered as a trailing
+  // flourish; no baked punctuation — renderSentence adds it.)
+  { id: 'r_x_pipe', role: 'intensifier', text: 'put that in your pipe and smoke it', factor: 1.5 },
+  { id: 'r_x_idiot', role: 'intensifier', text: 'and anyone who disagrees with that is an idiot', factor: 1.4 },
+  { id: 'r_x_votemany', role: 'intensifier', text: 'which is why you should vote for me, as many times as possible', factor: 1.5 },
+
+  // Drafted ACTION cards reusing existing effects (ride run.bonus → private deck → played from
+  // hand like any power-up). A privately-owned Typo can't be out-raced in the pool.
+  { id: 'r_typo', role: 'powerup', effect: 'typo', text: '🎤 Teleprompter Typo — REPLACE their last word with yours' },
+  { id: 'r_soundbite', role: 'powerup', effect: 'soundbite', text: '👏 Soundbite — your next statement ×1.5' },
 ];
 
 export const ALL: Card[] = [

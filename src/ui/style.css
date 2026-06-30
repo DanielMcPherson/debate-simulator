@@ -549,6 +549,7 @@ button.ghost.danger:hover:not(:disabled) { color:#ffb3b3; border-color:var(--the
 .modal button:not(.card) { margin-top:14px; width:100%; }
 .reward-modal { max-width:540px; }
 .reward-modal .cards { justify-content:center; }
+.reward-more { margin-top:12px; font-size:13px; opacity:0.7; font-style:italic; }
 
 /* --- candidate select --- */
 /* explicit width so the flex-centered modal doesn't shrink-wrap the grid into a column */

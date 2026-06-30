@@ -27,6 +27,11 @@ const BAFFLE_CAP = 6; // ceiling — even a total word salad stays only mildly n
 const BAFFLE_STROKE = 4; // ≥ this many salad tokens earns the "had a stroke?" flavor
 const STATEMENT_CAP = 35;
 const INTENSIFIED_CAP = 50;
+// Headliners: powerful cards and long combo-chains raise the per-line cap (added to
+// both clamps below, shifting them up together so the finisher's room is preserved).
+// Bounded so a single statement can't become a knockout (soft ≤50, hard ≤65).
+const HEADROOM_MAX = 15;
+const CHAIN_STEP = 3; // headroom per combo junction — rewards chaining, not raw piling
 const COMBO_MIN = 3; // min |delta| for a clause to be combo-eligible (≈ SCALE)
 const COMBO_AND = 1.25; // 'and' reinforce combo
 const COMBO_LOGIC = 1.3; // 'because' / 'and therefore' — joining logically scores better
@@ -421,7 +426,13 @@ export function scoreStatement(line: Card[], opts: ScoreOptions = {}): Reaction 
   // Rambling: too many simple sentences with no combos — each extra one hurts.
   const rambling = agg.residualCount > RAMBLE_LIMIT;
   if (rambling) total -= RAMBLE_STEP * (agg.residualCount - RAMBLE_LIMIT);
-  total = Math.max(-STATEMENT_CAP, Math.min(STATEMENT_CAP, total));
+  // Headliners: powerful cards (`ceiling`) and combo-chaining (`agg.chips`, one per combo
+  // junction — NOT raw card count, so piling earns nothing) raise both caps together.
+  const cardCeil = line.reduce((s, c) => s + (c.ceiling ?? 0), 0);
+  const headroom = Math.min(HEADROOM_MAX, cardCeil + CHAIN_STEP * agg.chips.length);
+  const softCap = STATEMENT_CAP + headroom;
+  const hardCap = INTENSIFIED_CAP + headroom;
+  total = Math.max(-softCap, Math.min(softCap, total));
 
   const factor = line.reduce((f, c) => (c.role === 'intensifier' ? f * (c.factor ?? 1) : f), 1);
   total *= factor;
@@ -431,7 +442,7 @@ export function scoreStatement(line: Card[], opts: ScoreOptions = {}): Reaction 
   const dodged = !!opts.topicId && !line.some((c) => c.topics?.includes(opts.topicId!));
   if (dodged && total > 0) total *= OFF_TOPIC_MULT;
 
-  total = Math.max(-INTENSIFIED_CAP, Math.min(INTENSIFIED_CAP, total));
+  total = Math.max(-hardCap, Math.min(hardCap, total));
   total = Math.round(total * 10) / 10;
   // A 'but' that deflected a self-own reads as confusion, not outrage — and so does
   // calling YOURSELF ugly: a muddled self-insult confuses the crowd rather than enraging it.

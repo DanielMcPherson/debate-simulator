@@ -246,6 +246,53 @@ describe('scoring — periods, conjunctions & combos', () => {
   });
 });
 
+describe('scoring — headliners (per-card + chain ceiling)', () => {
+  // Powerful REWARD cards carry `ceiling`, and each combo junction adds headroom, so a long
+  // or powerful line breaks past the base ±35 cap (and finisher ±50) — bounded at +15 headroom
+  // (soft ≤50 / hard ≤65) so no single statement is a knockout. See scoring.ts HEADROOM_MAX.
+
+  it('ceiling cards let a strong combo break the old ±35 base cap', () => {
+    // "My opponent is a traitor … and is secretly a lizard person … and has never told the truth"
+    // — three ±4 headliner attacks (ceiling 4 each) bound into one combo.
+    const d = delta('s_opp', 'r_traitor', 'c_and', 'r_lizard', 'c_and', 'r_never_truth');
+    expect(d).toBeGreaterThan(35); // would have clamped to 35 before headliners
+    expect(d).toBeLessThanOrEqual(50); // …but still within the soft cap
+  });
+
+  it('a finisher on a ceiling line breaks the old ±50 hard cap', () => {
+    const d = delta('s_opp', 'r_traitor', 'c_and', 'r_lizard', 'c_and', 'r_never_truth', 'x_guarantee');
+    expect(d).toBeGreaterThan(50); // ×factor on a 35+ base used to re-clamp at 50
+    expect(d).toBeLessThanOrEqual(65); // bounded by the hard cap
+  });
+
+  it('combo-chaining alone raises the cap for a plain (no-ceiling) deck', () => {
+    // A long plain combo + finisher: chain headroom (one per junction) lifts it past the old 50.
+    const d = delta('s_opp', 'p_kick_pup', 'c_and', 'p_lie', 'c_and', 'p_weak', 'c_and', 'p_naps', 'c_and', 'p_jackass', 'x_guarantee');
+    expect(d).toBeGreaterThan(50);
+  });
+
+  it('headroom is bounded: soft cap never exceeds 50, hard cap never exceeds 65', () => {
+    // Pile far more ceiling than +15 of headroom; the soft cap still clamps at 50.
+    const soft = delta('s_opp', 'r_traitor', 'c_and', 'r_lizard', 'c_and', 'r_never_truth', 'c_and', 'r_eatpup', 'c_and', 'r_christmas');
+    expect(soft).toBe(50);
+    // …and with a finisher on top, the hard cap clamps at 65.
+    const hard = delta('s_opp', 'r_traitor', 'c_and', 'r_lizard', 'c_and', 'r_never_truth', 'c_and', 'r_eatpup', 'x_guarantee');
+    expect(hard).toBe(65);
+  });
+
+  it('sub-cap statements are unchanged (raising a clamp cannot move a value below it)', () => {
+    expect(delta('s_i', 'p_deliver')).toBe(7.5); // single clause
+    expect(delta('s_opp', 'p_kick_pup', 'c_and', 'p_lie')).toBe(12.5); // simple 1-combo
+  });
+
+  it('ceiling cards do NOT lift the confused/ungrammatical path', () => {
+    // Two headliner predicates with no verb structure → scrambled; still capped at ±35, tiny.
+    const r = scoreStatement(cards('r_traitor', 'r_lizard', 's_opp'));
+    expect(r.label).toBe('confused');
+    expect(Math.abs(r.delta)).toBeLessThanOrEqual(35);
+  });
+});
+
 describe('scoring — modifier asides', () => {
   it('a correct modifier intensifies its clause', () => {
     // "My opponent's wife, who is ugly, eats babies" > "…eats babies"

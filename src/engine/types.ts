@@ -130,6 +130,11 @@ export interface Card {
   // --- intensifier ---
   factor?: number;
 
+  // --- headliner (any role) ---
+  /** Headliner: raises the statement's score cap (adds to `headroom` in scoring), so a
+   *  powerful card feels powerful instead of clipping at the base cap. Default 0. */
+  ceiling?: number;
+
   // --- powerup ---
   effect?: PowerEffect;
 
