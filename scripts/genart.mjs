@@ -92,6 +92,30 @@ const JOBS = [
       'front-facing scan, soft even lighting, vintage 19th-century political campaign card aesthetic. ' +
       'Portrait orientation.',
   },
+  {
+    // Sibling of card-parchment, but for power-up/action cards (the sneaky political
+    // maneuvers): a dark "classified campaign dossier" instead of cream parchment, so
+    // they read as a different kind of object. Kept NEUTRAL/dark so the per-effect colored
+    // borders + banners (set in CSS) still pop on top.
+    id: 'card-action',
+    tag: 'frames',
+    size: '1024x1536',
+    out: 'src/ui/art/frames/card-action.png',
+    optimize: { width: 320, quality: 82 }, // → committed .webp; raw .png is dropped
+    prompt:
+      'A blank dark "classified dossier" trading-card frame. The card is a desaturated dark ' +
+      'SLATE-BLUE-GREY (NOT pure black — clearly a dark grey-blue so its surface is visible), with a ' +
+      'CLEARLY VISIBLE leathery cardstock grain and faint scuffs across the whole surface, like the ' +
+      'cover of a confidential government file folder. A distinct ornate engraved DOUBLE border line in ' +
+      'tarnished antique silver runs all the way around, close to the outer edge, with small filigree ' +
+      'corner flourishes — visible but slim. The central area is as LARGE as possible: a generous, ' +
+      'clean, smooth, flat EMPTY dark slate field filling almost the entire card (a roomy space for ' +
+      'light text to be placed later). Absolutely no text, no letters, no words, no numbers, no ' +
+      'illustration, no portrait, no characters, no symbols, no stamps, no ornament in the center — ' +
+      'only the border near the edges. Flat front-facing scan, soft EVEN bright studio lighting (so the ' +
+      'grain texture is clearly visible), vintage spy-dossier / secret-campaign-memo aesthetic. ' +
+      'Portrait orientation.',
+  },
   // --- opponents (match cards.ts OPPONENTS ids: pander/blowhard/passer/smearwell/slander/grandstand) ---
   ...opp('pander', 'female American politician, "Gov. Patty Pander", about 55, neat blonde bob with a slight flip, pearl earrings and a single strand of pearls, tailored bright teal skirt-suit blazer with a small American-flag lapel pin, rosy cheeks, exaggerated wide expressive eyes, slightly overdone makeup'),
   ...opp('blowhard', 'male U.S. senator, "Senator Blowhard", about 60, stout and barrel-chested, florid ruddy face with heavy jowls, thinning grey-blond comb-over, double-breasted navy pinstripe suit, loud red power tie, flag lapel pin, puffed-up self-important posture'),

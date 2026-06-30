@@ -542,6 +542,12 @@ export const REWARDS: Card[] = [
   // Clause-only (conj 'because' → CBEC): must be followed by a full noun–verb clause, e.g.
   // "…is a lizard person which conclusively explains why my opponent naps through meetings".
   { id: 'r_conj_conclusively', role: 'connector', text: 'which conclusively explains why', conj: 'because' },
+
+  // Drafted ACTION card (NOT in the default deck — only ever earned as a reward). A revival of
+  // the removed "Call a Recess" button: re-deal the contested shared pool. As a one-shot drafted
+  // card it sidesteps the old free-button exploit. Lives here, NOT in POWERUPS (which seeds every
+  // default deck via buildPrivateDeck); effect handled in game.ts applyPowerup.
+  { id: 'r_recess', role: 'powerup', effect: 'redeal', text: '🔄 Call a Recess — re-deal the shared pool' },
 ];
 
 export const ALL: Card[] = [

@@ -13,7 +13,7 @@ export type Role =
   | 'powerup'; // a one-shot action card (not part of the sentence)
 
 /** What a power-up card does when played. */
-export type PowerEffect = 'search' | 'typo' | 'plant' | 'soundbite' | 'hotmic' | 'filibuster' | 'forgot';
+export type PowerEffect = 'search' | 'typo' | 'plant' | 'soundbite' | 'hotmic' | 'filibuster' | 'forgot' | 'redeal';
 
 /** Whose reputation a subject refers to. Drives scoring. */
 export type Side = 'self' | 'opponent' | 'audience' | 'neutral';

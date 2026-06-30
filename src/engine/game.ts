@@ -519,6 +519,26 @@ function applyPowerup(state: GameState, p: PlayerState, move: { cardId: string; 
     case 'plant': // reveal the crowd's hidden taste (for the rest of the debate)
       p.knowsCrowd = true;
       break;
+    case 'redeal': {
+      // Call a Recess — re-deal the SHARED POOL fresh (your private hand is untouched).
+      // Reshuffle the current pool back into the remaining shared deck so already-played
+      // cards stay gone (no resurrecting a spent card), then refill + re-assert the same
+      // curatorial guarantees dealRound uses. Costs the turn (free stays false) — exactly
+      // the removed once-per-question Recess, now a one-shot drafted reward card instead of
+      // a free repeatable button (which was the old player-only exploit). See cards.ts REWARDS.
+      const rng = rngFor.get(state)!;
+      state.sharedDeck.push(...state.pool);
+      state.pool = [];
+      state.sharedDeck = shuffle(state.sharedDeck, rng);
+      refill(state.sharedDeck, state.pool, state.poolSize);
+      if (state.topic) ensurePoolHasTopic(state, state.topic.id);
+      ensurePoolPlayable(state);
+      capPoolFinishers(state);
+      capPoolModifiers(state);
+      const who = p.id === 'player' ? 'You' : state.opponent?.name ?? 'Opponent';
+      state.log.push(`${who} call a recess — the board is dealt fresh.`);
+      break;
+    }
     case 'hotmic': {
       // Reveal the opponent's hand (for the rest of the debate) and steal a card.
       const opp = state[other(p.id)];

@@ -415,9 +415,15 @@ h1 .tstar { -webkit-text-fill-color:var(--gold); }
 /* on-topic hint is DEBUG-only now (gated by ?debug in main.ts) */
 .card.ontopic { box-shadow:0 5px 12px rgba(0,0,0,.45), inset 0 0 0 2px rgba(111,207,151,.6), 0 0 0 1px #4caf6e; }
 
-/* power-up cards: not parchment — they're not part of the sentence */
+/* power-up cards: not parchment — they're a dark "classified dossier" (generated
+   card-action.webp, sibling of the parchment frame). A translucent tint sits over the
+   texture so it still reads richly if the asset is missing; the flat color is the final
+   fallback. The per-effect border/banner colors below paint on top. */
 .card.power {
-  background:linear-gradient(180deg,#221a33,#171024); color:#e7dcff; border-color:#b07cff;
+  background:
+    linear-gradient(180deg, rgba(46,34,72,.28), rgba(20,14,34,.42)),
+    var(--power-bg, #1e1a30) url('./art/frames/card-action.webp') center / 100% 100% no-repeat;
+  color:#e7dcff; border-color:#b07cff;
   box-shadow:0 5px 12px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.08);
 }
 .card.power .ctext { color:#e7dcff; }
@@ -432,6 +438,7 @@ h1 .tstar { -webkit-text-fill-color:var(--gold); }
 .card.fx-plant     { border-color:#46b9c9; } .card.fx-plant .banner     { background:linear-gradient(180deg,#2e8a98,#1a5a64); }
 .card.fx-search    { border-color:#8aa0ff; } .card.fx-search .banner    { background:linear-gradient(180deg,#5a6fd0,#3a4a8a); }
 .card.fx-filibuster{ border-color:#b07cff; }
+.card.fx-redeal    { border-color:#e0b84a; } .card.fx-redeal .banner    { background:linear-gradient(180deg,#caa23a,#8a6a1f); color:#1a1408; }
 
 /* a card offered as a Teleprompter-Typo target */
 .card.target { border-style:dashed; border-color:var(--them); animation:pulse 1s ease-in-out infinite; }
