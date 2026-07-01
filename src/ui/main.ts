@@ -177,6 +177,14 @@ function debateWinPrompt(): { title: string; body: string } {
   return { title: '🏆 Debate Winner!', body: `You barely squeaked by, but you defeated ${name}. Choose a card.` };
 }
 
+/** Your approval % from the bar. While the debate is LIVE, cap at 99/1 so a bar of ~99 rounding
+ *  up to 100/0 doesn't read as a knockout that hasn't happened (the landslide win needs a true
+ *  bar of ±100). At an actual win, show the real value. */
+function approvalPct(): number {
+  const p = Math.round((game.bar + 100) / 2);
+  return game.winner ? p : Math.min(99, Math.max(1, p));
+}
+
 /** Post-debate achievements that this won debate qualifies for (each → one extra draft).
  *  They STACK — a legendary win can chain several. Streaks are mutually exclusive. */
 function postAwardSpecs(): AwardSpec[] {
@@ -432,7 +440,7 @@ function portraitPic(side: 'you' | 'them'): string {
 
 function podiumMeta(side: 'you' | 'them'): string {
   // Audience support % lives here (near the portrait/mood), not in a separate line.
-  const youSupport = Math.round((game.bar + 100) / 2);
+  const youSupport = approvalPct();
   const support = side === 'you' ? youSupport : 100 - youSupport;
   const supportHtml = `<div class="support ${side}">${support}% approval</div>`;
   if (side === 'you') {
@@ -930,7 +938,7 @@ function render(): void {
   const showTutorialIntro = !!currentHint && !tutorialIntroSeen && !runScreen;
   const needle = ((100 - game.bar) / 200) * 100; // 0..100 left%; You favored → left (matches podiums)
   // Zero-sum 1v1: bar (-100..+100, signed toward player) shown as audience-support % that sums to 100.
-  const youSupport = Math.round((game.bar + 100) / 2);
+  const youSupport = approvalPct();
   // The card area shows a centered panel (not cards) between questions and at a debate win.
   const showPanel = game.awaitingNext || runScreen === 'result' || fxHoldSummary;
   const endOk = canPlay() && canEnd(game);
