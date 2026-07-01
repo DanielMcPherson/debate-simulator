@@ -24,7 +24,12 @@ const fxShownSides = new Set<'you' | 'them'>();
 const FX_STEP = 150; // ms between each phrase/chip reveal
 let pendingTypo: string | null = null; // a Teleprompter Typo awaiting its target card
 let pendingHotMic: string | null = null; // a Hot Mic awaiting the card to steal
-let ackedSabotage: GameState['lastSabotage'] = undefined; // sabotage the player has dismissed
+// Sabotage MODALS queue so none is silently overwritten before you dismiss it (a Hot Mic steal
+// followed by a Typo used to clobber the steal's modal — you'd never see the theft). Each new
+// player-victim sabotage is enqueued; the modal shows the head, and dismissing pops it.
+type Sabotage = NonNullable<GameState['lastSabotage']>;
+let sabotageQueue: Sabotage[] = [];
+let seenSabotage: Sabotage | undefined; // the last game.lastSabotage already enqueued (dedup)
 
 // --- campaign run (Slay-the-Spire-style ladder) ---
 let run = { rung: 0, bonus: [] as Card[], character: null as string | null, removed: [] as string[] }; // rung + earned cards + chosen candidate + cut card ids
@@ -86,7 +91,8 @@ function startDebate(): GameState {
   midAwardsFired = new Set();
   pendingTypo = null;
   pendingHotMic = null;
-  ackedSabotage = undefined;
+  sabotageQueue = [];
+  seenSabotage = undefined;
   aiThinking = false;
   resetRoundFx();
   // Up to 8 questions, ending early at the ±100 landslide.
@@ -946,11 +952,18 @@ function render(): void {
   // but only once per statement (you get a single period; chain conjunctions for more).
   const periodOk = PERIOD_ENABLED && canPlay() && !pendingTypo && !pendingHotMic && !game.player.usedPeriod && canAppend(game.player.line, PERIOD);
 
+  // Enqueue each newly-seen sabotage aimed at the player (deduped by object identity), so a burst
+  // of sabotages each gets its own must-dismiss modal instead of overwriting one slot.
+  if (game.lastSabotage && game.lastSabotage !== seenSabotage) {
+    seenSabotage = game.lastSabotage;
+    if (game.lastSabotage.victim === 'player') sabotageQueue.push(game.lastSabotage);
+  }
+  const sabModal = sabotageQueue[0]; // the sabotage the player must acknowledge next
   const sabotaged = !!game.lastSabotage && game.lastSabotage.victim === 'player';
-  // A fresh sabotage pops a modal you must dismiss; afterwards it stays as a banner. Suppress it
-  // once the debate is decided — a defeat/result/reward screen takes over, and stacking the
-  // sabotage modal on top of those was the "multiple dialogs when I lose" bug.
-  const showSabotageModal = sabotaged && game.lastSabotage !== ackedSabotage && !game.winner;
+  // The MODAL walks through the queue (head); the inline banner lingers on the latest sabotage.
+  // Suppress the modal once the debate is decided — a defeat/result/reward screen takes over, and
+  // stacking the sabotage modal on top of those was the "multiple dialogs when I lose" bug.
+  const showSabotageModal = !!sabModal && !game.winner;
   const oppName = game.opponent?.name ?? 'Your opponent';
   const isForgot = game.lastSabotage?.kind === 'forgot';
   const isHotMic = game.lastSabotage?.kind === 'hotmic';
@@ -1088,18 +1101,18 @@ function render(): void {
 
     ${
       showSabotageModal
-        ? isHotMic
+        ? sabModal!.kind === 'hotmic'
           ? `<div class="modal-backdrop"><div class="modal">
             <div class="modal-title">🎙️ Caught on a hot mic!</div>
-            <p>${oppName} caught you on a hot mic and swiped “<b>${game.lastSabotage!.text}</b>”
+            <p>${oppName} caught you on a hot mic and swiped “<b>${sabModal!.text}</b>”
             right out of your hand — and got a peek at the rest of it.</p>
             <p>Nothing to be done about it now. Make the cards you've still got count.</p>
             <button class="action" id="ackSabotage">Got it — continue</button>
           </div></div>`
-          : isForgot
+          : sabModal!.kind === 'forgot'
           ? `<div class="modal-backdrop"><div class="modal">
             <div class="modal-title">🧠 You forgot your line!</div>
-            <p>${oppName} used <b>Forgot My Line</b> to knock “<b>${game.lastSabotage!.text}</b>”
+            <p>${oppName} used <b>Forgot My Line</b> to knock “<b>${sabModal!.text}</b>”
             off the end of your statement. It now reads:</p>
             <p class="modal-quote">“${partialText(game.player.line) || '…'}”</p>
             <p>Pick up where you left off and finish the thought — or End with what's left.</p>
@@ -1108,7 +1121,7 @@ function render(): void {
           : `<div class="modal-backdrop"><div class="modal">
             <div class="modal-title">⚠️ You've been sabotaged!</div>
             <p>${oppName} hit the teleprompter — your last word got swapped to
-            “<b>${game.lastSabotage!.text}</b>”. Your statement now reads:</p>
+            “<b>${sabModal!.text}</b>”. Your statement now reads:</p>
             <p class="modal-quote">“${partialText(game.player.line) || '…'}”</p>
             <p>You can spin it forward — add another sentence to recover (a “<b>but …</b>”
             helps most), or End and cut your losses.</p>
@@ -1228,7 +1241,7 @@ function render(): void {
     playerMove({ kind: 'end' });
   });
   app.querySelector<HTMLButtonElement>('#ackSabotage')?.addEventListener('click', () => {
-    ackedSabotage = game.lastSabotage; // dismiss the modal; the banner reminder stays
+    sabotageQueue.shift(); // dismiss this one; the next queued sabotage (if any) shows, banner stays
     render();
   });
   app.querySelector<HTMLButtonElement>('#period')?.addEventListener('click', () => {

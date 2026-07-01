@@ -274,6 +274,14 @@ Typo, Forgot, and Hot Mic all set `state.lastSabotage{victim,by,text,kind:'typo'
 which drives a must-dismiss modal (+ banner) when the player is the victim — so a stolen card is as
 visible as a typo'd word, not just a passing log line (the Hot Mic modal has no "your line now reads"
 quote, since it's a hand steal, not a line edit). FREE power-ups don't cost the turn; others do.
+**Sabotage modals QUEUE (2026-07):** `state.lastSabotage` is a single slot, so a burst of sabotages
+(e.g. a Hot Mic steal immediately followed by a Typo) used to OVERWRITE the slot and swallow the
+earlier modal — the player never saw their card get stolen. The UI now keeps a `sabotageQueue`
+(main.ts): each newly-seen player-victim `lastSabotage` is enqueued (deduped by object identity in
+render), the must-dismiss modal shows the HEAD, and dismissing pops it — so every sabotage gets its
+own modal, none silently lost. The inline banner still lingers on the latest `lastSabotage`. Hot Mic
+steals now also `logEvent('sabotage', {kind:'hotmic'})` (were previously only a bare `power` line — the
+theft was invisible in the debug log).
 **Soundbite REMOVED (2026-07):** the ×1.5 `nextMultiplier` power-up is gone from `POWERUPS` and
 `REWARDS`, and the AI's soundbite heuristic dropped — it duplicated a Finisher's ×factor but added no
 funny text (against the north star), doubled as a bland stall/waiting-move, and (the bug) applied its

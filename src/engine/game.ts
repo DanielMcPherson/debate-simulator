@@ -574,6 +574,7 @@ function applyPowerup(state: GameState, p: PlayerState, move: { cardId: string; 
           // Flag the theft so the victim gets a must-dismiss modal (like Typo/Forgot).
           // Only the player-as-victim case surfaces a modal (the AI never sees one).
           state.lastSabotage = { victim: opp.id, by: p.id, text: cardLabel(steal), kind: 'hotmic' };
+          logEvent(state, 'sabotage', { by: p.id, victim: opp.id, kind: 'hotmic', text: cardLabel(steal) });
         }
       }
       break;
