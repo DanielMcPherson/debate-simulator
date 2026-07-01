@@ -294,6 +294,9 @@ export interface GameState {
   crowd?: Crowd;
   /** Reward cards carried in from the run, shuffled into the player's private deck. */
   playerBonus?: Card[];
+  /** Base ids the player has cut from their deck (Debate Consultant). Filtered out of the
+   *  player's private deck at build time so a leaner deck draws its best cards more often. */
+  removedCards?: string[];
   /** First-debate onboarding: guarantees a combo-friendly first hand and a simple,
    * non-gaffe opponent on question 1 (drives the UI's first-question hints). */
   tutorial?: boolean;

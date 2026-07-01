@@ -32,11 +32,13 @@ describe('scoring — chunk predicates', () => {
   });
 
   it('insulting yourself is negative', () => {
-    expect(delta('s_i', 'p_disgrace')).toBeLessThan(-8);
+    expect(delta('s_i', 'p_disgrace')).toBeLessThan(-6); // self-own of a standard (−2) insult
   });
 
   it('insulting the audience is a large negative', () => {
-    expect(delta('s_people', 'p_disgrace')).toBeLessThan(-12);
+    // audience weight (1.3) makes the same insult land harder on the crowd than on yourself
+    expect(delta('s_people', 'p_disgrace')).toBeLessThan(delta('s_i', 'p_disgrace'));
+    expect(delta('s_people', 'p_disgrace')).toBeLessThan(-9);
   });
 
   it('ungrammatical/incomplete input is confused', () => {
@@ -236,9 +238,11 @@ describe('scoring — periods, conjunctions & combos', () => {
   });
 
   it('a "but" digs out of a self-own better than a period — and reads as confusion', () => {
-    const alone = delta('s_i', 'p_disgrace'); // a self-own
-    const period = delta('s_i', 'p_disgrace', 'c_period', 's_opp', 'p_kick_pup');
-    const but = scoreStatement(cards('s_i', 'p_disgrace', 'c_but', 's_opp', 'p_kick_pup'));
+    // A strong self-own (−3) vs a mild jab (−1) — the self-own dominates, so even the 'but' pivot
+    // stays net-negative (a heavier attack would flip it positive, which is the point of the pivot).
+    const alone = delta('s_i', 'p_eat_babies'); // a self-own
+    const period = delta('s_i', 'p_eat_babies', 'c_period', 's_opp', 'p_weak');
+    const but = scoreStatement(cards('s_i', 'p_eat_babies', 'c_but', 's_opp', 'p_weak'));
     expect(period).toBeGreaterThan(alone); // a tacked-on jab softens it a little
     expect(but.delta).toBeGreaterThan(period); // a "but" pivot softens it more
     expect(but.delta).toBeLessThan(0); // …but it's still a net loss
@@ -282,7 +286,7 @@ describe('scoring — headliners (per-card + chain ceiling)', () => {
 
   it('sub-cap statements are unchanged (raising a clamp cannot move a value below it)', () => {
     expect(delta('s_i', 'p_deliver')).toBe(7.5); // single clause
-    expect(delta('s_opp', 'p_kick_pup', 'c_and', 'p_lie')).toBe(12.5); // simple 1-combo
+    expect(delta('s_opp', 'p_lie', 'c_and', 'p_raise_taxes')).toBe(12.5); // simple 1-combo of two −2 attacks
   });
 
   it('ceiling cards do NOT lift the confused/ungrammatical path', () => {
@@ -389,7 +393,7 @@ describe('scoring — hidden crowd preference', () => {
     const line = cards('s_opp', 'p_kick_pup'); // an attack on the opponent
     const base = scoreStatement(line).delta;
     const loved = scoreStatement(line, { crowd: { id: 'b', loves: 'attack_opp', boost: 1.5 } }).delta;
-    expect(loved).toBeCloseTo(base * 1.5, 1);
+    expect(loved).toBeCloseTo(base * 1.5, 0); // ~×1.5 (0-digit tolerance absorbs the 0.1 rounding)
   });
 
   it('a crowd that loves a different type leaves the statement unchanged', () => {

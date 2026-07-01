@@ -260,10 +260,10 @@ engine. **Deliberately handicapped** (`AiOptions.maxExtend`, default 4) so it's 
 It's **blind to the crowd** (plans without it) and leans toward its opponent `style`
 (`STYLE_BONUS` via `dominantCategory`). Power-up heuristics: Teleprompter Typo **only** when
 `bestTypoJam` finds a pool card that completes the player's line into a real self-own (never
-gibberish); Hot Mic to steal the player's power-up; Search/Soundbite situationally; never Plant.
+gibberish); Hot Mic to steal the player's power-up; Search situationally; never Plant.
 
 ## Power-ups (`Move{kind:'power'}`)
-Search (draw 5, FREE), Filibuster (adds 3 connectors, FREE), Soundbite (`nextMultiplier` ×1.5),
+Search (draw 5, FREE), Filibuster (adds 3 connectors, FREE),
 Plant (`knowsCrowd`, reveal crowd for the debate), Teleprompter Typo (**REPLACE** the opponent's
 last card — pop it, push a card you choose; player targets, AI auto-picks the swap forcing the worst
 self-own via `bestTypoJam`, which searches *replacements* of the victim's last card; victim recovers
@@ -274,6 +274,16 @@ Typo, Forgot, and Hot Mic all set `state.lastSabotage{victim,by,text,kind:'typo'
 which drives a must-dismiss modal (+ banner) when the player is the victim — so a stolen card is as
 visible as a typo'd word, not just a passing log line (the Hot Mic modal has no "your line now reads"
 quote, since it's a hand steal, not a line edit). FREE power-ups don't cost the turn; others do.
+**Soundbite REMOVED (2026-07):** the ×1.5 `nextMultiplier` power-up is gone from `POWERUPS` and
+`REWARDS`, and the AI's soundbite heuristic dropped — it duplicated a Finisher's ×factor but added no
+funny text (against the north star), doubled as a bland stall/waiting-move, and (the bug) applied its
+multiplier AFTER `scoreStatement`'s clamp, so it **bypassed the statement cap** (a real
+knockout-blow — an AI Soundbite scored +62 in a playtest loss). Replaced by more Finishers (funnier,
+cap-respecting). The effect plumbing (`nextMultiplier`, the `applyPowerup` `soundbite` case) is left
+**inert** (no card sets it) but now **cap-safe**: the multiplier is threaded into `scoreStatement`
+(`ScoreOptions.multiplier`) and applied WITH the finisher factor **before** the clamp — so re-enabling
+Soundbite can't reintroduce the cap-bypass. New shared finishers (`x_brave`/`x_thankme`/`x_micdrop`/
+`x_oughtto`) + premium private ones (`r_x_science`/`r_x_polls`) added to INTENSIFIERS/REWARDS.
 
 ## Campaign run (lives in ui/main.ts, not the engine)
 `LADDER` (cards.ts) = 6 opponents of rising `maxExtend`. Win → pick 1 of 3 `REWARDS` (exclusive,
@@ -286,6 +296,19 @@ Slay-the-Spire-style straight-line ladder (`ladderHtml`) shown before the first 
 debates (after the reward pick). `startDebate` builds the next game eagerly, then the run screen
 overlays it; the Begin button clears the screen.
 Decision: path is a straight line (no branching) — too few opponents to make path choice meaningful.
+
+**Debate Consultant (2026-06) — between-debate deck refinement (the thinning slice of the deferred
+shop).** At waypoints (`CONSULTANT_WAYPOINTS` = after debates 2 and 4) the player **cuts N cards →
+drafts M** ("Sharpen your message"): #1 cut 5 → draft 1; #2 cut 8 → draft 2. The cut framing makes
+thinning the *reward path*, not a chore, and a leaner deck draws its best cards more often (the fix
+for the reward-dilution wall at opponents 4–5). Cut **any** cards (full agency, even rewards) — base
+ids go to `run.removed`, threaded via `createGame({removedCards})` → `dealRound` filters the player's
+private deck at build. Engine-safe: `ensureHandHasOpener` no-ops on a subjectless deck and the pool
+guarantees subjects, so aggressive cuts can't soft-lock. UI: `runScreen:'consultant'` (cut stage,
+`consultantSel` + `playerDeckDefs()`), then the draft reuses the reward modal with
+`rewardMode:'consultant'` (drains → `startDebate` rebuilds with the cuts, → `'map'`); skippable.
+`finishRewards` opens it from the post-win drain at a waypoint rung; `startDebate` is deferred until
+it finishes so the new deck reflects the cuts + draft.
 
 ## Roadmap (triaged — DON'T build until the current scoring is playtested)
 Ordered by priority/dependency. Engine work stays pure/seeded (no `Math.random` — thread the game
@@ -329,10 +352,13 @@ the dark action-card background. **One-time award hint:** the first card ever dr
 `runScreen:'awardhint'` modal nudging the player to hunt for more (`awardHintSeen`, NOT reset on newRun);
 `finishRewards()` is the shared post-drain continuation (advance rung / resume debate). **REWARDS expanded
 (2026-06):** more headliner nouns/verbs, **private finishers** (premium — owned, can't be out-raced:
-`r_x_pipe`/`r_x_idiot`/`r_x_votemany`), and drafted **Typo/Soundbite** actions (reuse existing effects).
+`r_x_pipe`/`r_x_idiot`/`r_x_votemany` + `r_x_science`/`r_x_polls`), and a drafted **Typo** action.
 
 **P2 · large epic — Campaign donation economy + shop** (the long-deferred roguelike meta; needs its
-own design pass + phasing). Donations trickle in per-statement by type, scaled by your **chosen
+own design pass + phasing). **Note:** the shop's deck-pruning half already shipped as the **Debate
+Consultant** (cut N → draft M at two waypoints — see Campaign run §); this epic now adds the
+*donation resource* + *buying specific cards* on top of (or merging with) that. Donations trickle in
+per-statement by type, scaled by your **chosen
 character's donor taste** (KNOWN to you) vs the **crowd's hidden taste** — the core win-vs-fund
 tension. Self-owns *refund* donations (net loss); opponent insults / off-taste plays reduce the
 trickle. Between debates, a **shop**: buy cards (priced by power) / remove cards (deck pruning).
@@ -451,8 +477,11 @@ the `PowerEffect` union (types.ts), a def in `POWERUPS` (cards.ts), a `case` in 
   word and leaves a recovery path; a full wipe has none, so balance it rare/expensive. Targeting ⇒ medium
   (reuse Typo's UI targeting + the `lastSabotage` modal plumbing).
 - **"Winning Smile"** — sway the audience with a practiced smile: **not part of the statement**, raises your
-  statement value by a **percentage**. Low effort — mirror `soundbite`'s `nextMultiplier` (game.ts); pick a
-  factor and decide whether it stacks with Soundbite.
+  statement value by a **percentage**. Low effort — reuse the now-inert-but-cap-safe `nextMultiplier`
+  plumbing (game.ts sets it; `scoreStatement`'s `multiplier` option applies it before the clamp). NOTE:
+  this is effectively the removed Soundbite — before re-adding a bland ×mult power-up, reconsider whether
+  it belongs (Soundbite was cut for duplicating a Finisher without the funny text). If added, it stacks
+  with a Finisher (both multiply before the clamp) and is bounded by the cap.
 - **"That's a lie!" / "Come on, man!" — a REACTIVE rebuttal** (playtester suggestion, 2026-06). A *defensive*
   interjection played **after the opponent finishes an attack** to **soften it** — reduce the delta that just
   landed against you (e.g. ×0.5 on the opponent's last attack clause, or a flat clawback). This is a NEW shape:
@@ -600,6 +629,14 @@ on *its* feel before layering meta-progression on top.
 - The engine is **pure/DOM-free and unit-tested**; keep new logic there with tests. The UI just
   renders `GameState` and dispatches `Move`s.
 - Adding cards is data-only in `cards.ts` (decks build programmatically from the arrays).
+- **Sentiment must track VERBAL PUNCH, not just category (2026-07 re-tier).** A funnier/more vivid
+  insult should out-score a bland one, so the player learns to read the crowd by *feel* (no scores on
+  cards — never make it a spreadsheet). Attack/insult tiers: **−1 bland filler** ("weak and out of
+  touch", "can't be trusted", "should be ashamed", "will say anything to get elected"), **−2 standard**
+  ("national disgrace", "raise your taxes", "lies to your face"), **−3 vivid/absurd** ("secretly eats
+  babies", "kicks puppies", "toll booth on your driveway", "monthly subscription for freedom"; all
+  SIG_ATTACK zingers are −3), **−4 reward-tier**. Praise/pander mirror it (+1..+4). Author new cards to
+  this scale; the −1 filler doubles as obvious Debate-Consultant cut fodder.
 - When changing scoring/grammar, run the worked examples — the test suites encode the intended
   behavior; update them deliberately, not reflexively.
 

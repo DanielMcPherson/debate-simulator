@@ -347,6 +347,9 @@ export interface ScoreOptions {
   topicId?: string;
   /** The crowd's hidden taste — applied only at resolution, never by the AI. */
   crowd?: Crowd;
+  /** A pre-resolution amplifier (e.g. a Soundbite's ×1.5), applied WITH the finisher factor
+   *  BEFORE the final clamp — so it respects the statement cap (no cap-bypass knockout). */
+  multiplier?: number;
 }
 
 export function scoreStatement(line: Card[], opts: ScoreOptions = {}): Reaction {
@@ -435,7 +438,7 @@ export function scoreStatement(line: Card[], opts: ScoreOptions = {}): Reaction 
   total = Math.max(-softCap, Math.min(softCap, total));
 
   const factor = line.reduce((f, c) => (c.role === 'intensifier' ? f * (c.factor ?? 1) : f), 1);
-  total *= factor;
+  total *= factor * (opts.multiplier ?? 1); // finisher × any pre-resolution amplifier, still capped below
 
   // Off-topic shrinks a good statement (can't out-pander the question); a bomb is
   // already a bomb, so leave non-positive totals alone.

@@ -176,25 +176,25 @@ export const COMMON_PRAISE: Card[] = [
 // Opponent ('opponent'): slinging mud IS the worst-thing-about-them. (Tags appended
 // below; de-duped so a topical insult like p_raise_taxes keeps 'economy' too.)
 export const COMMON_INSULTS: Card[] = [
-  pc('p_kick_pup', 'kick', 'puppies', -2),
-  pc('p_eat_babies', 'eat', 'babies', -2, { pre: 'secretly', topics: ['children'] }), // a child-harm, like cancelling school lunch
+  pc('p_kick_pup', 'kick', 'puppies', -3),
+  pc('p_eat_babies', 'eat', 'babies', -3, { pre: 'secretly', topics: ['children'] }), // a child-harm, like cancelling school lunch
   pc('p_lie', 'lie', 'to your face', -2),
-  pc('p_disgrace', 'be', 'a national disgrace', -3),
-  pc('p_weak', 'be', 'weak and out of touch', -2),
-  pc('p_jackass', 'be', 'an unscrupulous jackass', -3),
+  pc('p_disgrace', 'be', 'a national disgrace', -2),
+  pc('p_weak', 'be', 'weak and out of touch', -1),
+  pc('p_jackass', 'be', 'an unscrupulous jackass', -2),
   pc('p_raise_taxes', 'want', 'to raise your taxes', -2, { topics: ['economy'] }),
   pc('p_cut_lunch', 'want', 'to cancel school lunch', -2, { topics: ['children'] }),
   pc('p_silence', 'want', 'to silence free speech', -2, { topics: ['freedom'] }),
   pc('p_worship', 'worship', 'Satan', -3), // generic smear → Name-Calling only (jackass via map)
   pc('p_ignore_vets', 'ignore', 'our veterans', -2, { topics: ['security'] }),
-  pi('p_cant_trust', "can't be trusted", -2),
-  pi('p_say_anything', 'will say anything to get elected', -2),
-  pi('p_destroy_country', 'will destroy this country', -3),
-  pi('p_ashamed', 'should be ashamed', -2),
+  pi('p_cant_trust', "can't be trusted", -1),
+  pi('p_say_anything', 'will say anything to get elected', -1),
+  pi('p_destroy_country', 'will destroy this country', -2),
+  pi('p_ashamed', 'should be ashamed', -1),
   pc('p_tax_christmas', 'want', 'to tax your Christmas presents', -2, { topics: ['economy', 'children'] }),
-  pc('p_tollbooth', 'want', 'to put a toll booth on your driveway', -2, { topics: ['economy'] }),
-  pc('p_freedom_subscription', 'believe', 'that freedom should have a monthly subscription', -2, { topics: ['freedom'] }),
-  pc('p_naps', 'nap', 'through every important meeting', -2),
+  pc('p_tollbooth', 'want', 'to put a toll booth on your driveway', -3, { topics: ['economy'] }),
+  pc('p_freedom_subscription', 'believe', 'that freedom should have a monthly subscription', -3, { topics: ['freedom'] }),
+  pc('p_naps', 'nap', 'through every important meeting', -3),
 ].map((c) => ({ ...c, topics: [...new Set([...(c.topics ?? []), 'jackass', 'opponent'])] }));
 
 // SIGNATURE predicates — punchy, characterful zingers found ONLY in private decks
@@ -235,8 +235,8 @@ export const SIG_PANDER: Card[] = [
   pc('p_highfive', 'high-five', 'every single voter personally', 2, { topics: ['pander'] }),
   pi('p_christmas3', 'will add three more Christmases to the national calendar', 3, { topics: ['pander'] }),
   pi('p_birthday', 'will fight to ensure that every birthday feels special', 3, { topics: ['pander'] }),
-  pi('p_naphour', 'will establish a national nap hour for hardworking Americans', 2, { topics: ['pander'] }),
-  pc('p_wakeup', 'wake', 'up every morning thinking about you, specifically', 2, { topics: ['pander'] }),
+  pi('p_naphour', 'will establish a national nap hour for hardworking Americans', 3, { topics: ['pander'] }),
+  pc('p_wakeup', 'wake', 'up every morning thinking about you, specifically', 3, { topics: ['pander'] }),
   pi('p_monday', 'will make Monday a second Saturday', 3, { topics: ['pander'] }),
   pi('p_refund', 'will personally refund your last parking ticket', 2, { topics: ['pander'] }),
   pc('p_dmv', 'promise', 'shorter lines at the DMV, forever', 2, { topics: ['pander'] }),
@@ -381,7 +381,6 @@ export const POWERUPS: Card[] = [
   { id: 'pw_search', role: 'powerup', effect: 'search', text: '📋 Search Notes — draw 5 cards' },
   { id: 'pw_typo', role: 'powerup', effect: 'typo', text: "🎤 Teleprompter Typo — REPLACE their last word with yours" },
   { id: 'pw_forgot', role: 'powerup', effect: 'forgot', text: "🧠 Forgot My Line — DELETE their last word" },
-  { id: 'pw_soundbite', role: 'powerup', effect: 'soundbite', text: '👏 Soundbite — your next statement ×1.5' },
   { id: 'pw_plant', role: 'powerup', effect: 'plant', text: '🕵️ Plant in the Audience — reveal the crowd' },
   { id: 'pw_hotmic', role: 'powerup', effect: 'hotmic', text: '🎙️ Hot Mic — see their hand, steal a card' },
   { id: 'pw_filibuster', role: 'powerup', effect: 'filibuster', text: '🗣️ Filibuster — stock up on connectors' },
@@ -402,6 +401,10 @@ export const INTENSIFIERS: Card[] = [
   { id: 'x_history', role: 'intensifier', text: 'and history will prove me right', factor: 1.5 },
   { id: 'x_writedown', role: 'intensifier', text: 'write that down', factor: 1.4 },
   { id: 'x_comeon', role: 'intensifier', text: 'come on, man', factor: 1.4 }, // playtester suggestion — folksy exasperated closer
+  { id: 'x_brave', role: 'intensifier', text: "and I'm the only one brave enough to say it!", factor: 1.5 },
+  { id: 'x_thankme', role: 'intensifier', text: 'and history will thank me for saying it!', factor: 1.5 },
+  { id: 'x_micdrop', role: 'intensifier', text: 'Checkmate. Boom. Mic drop.', factor: 1.5 }, // renders as its own sentence (no leading "and")
+  { id: 'x_oughtto', role: 'intensifier', text: "and if that isn't true, then it damn sure ought to be!", factor: 1.4 },
 ];
 
 // --- topics -----------------------------------------------------------------
@@ -563,10 +566,12 @@ export const REWARDS: Card[] = [
   pc('r_goldtoilet', 'bill', 'the taxpayer for a solid-gold toilet', -4, { pre: 'secretly', topics: ['jackass', 'opponent'], ceiling: 4 }),
   pi('r_popupads', 'personally invented the pop-up ad', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
   pc('r_coinslot', 'want', 'to put a coin slot on the Statue of Liberty', -4, { topics: ['jackass', 'opponent', 'freedom'], ceiling: 4 }),
+  pi('r_rubber_chicken', 'will personally slap every voter in this audience across the face with a rubber chicken', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
   pi('r_inventweekend', 'single-handedly invented the weekend', 4, { ceiling: 4 }),
   pc('r_eagle', 'bench-press', 'a full-grown bald eagle before breakfast', 4, { ceiling: 4 }),
   pi('r_everylaw', 'wrote every good law you have ever actually benefited from', 4, { ceiling: 4 }),
   NP('r_weird_opp', 'My deeply weird, poll-tested opponent', 'opponent', -2, { intensity: 1.6, ceiling: 3 }),
+  NP('r_scumbag_opp', 'My treasonous and perverted scumbag of an opponent', 'opponent', -2, { intensity: 1.6, ceiling: 3 }),
   NP('r_grill_patriots', 'The hardest-working patriots ever to fire up a backyard grill', 'audience', 2, { topics: ['pander'], intensity: 1.6, ceiling: 3, number: 'plural' }),
 
   // PRIVATE finishers — premium: a guaranteed ×factor you OWN (can't be out-raced in the shared
@@ -575,11 +580,12 @@ export const REWARDS: Card[] = [
   { id: 'r_x_pipe', role: 'intensifier', text: 'put that in your pipe and smoke it', factor: 1.5 },
   { id: 'r_x_idiot', role: 'intensifier', text: 'and anyone who disagrees with that is an idiot', factor: 1.4 },
   { id: 'r_x_votemany', role: 'intensifier', text: 'which is why you should vote for me, as many times as possible', factor: 1.5 },
+  { id: 'r_x_science', role: 'intensifier', text: 'and that, my friends, is just basic science', factor: 1.5 },
+  { id: 'r_x_polls', role: 'intensifier', text: 'and I have the tremendous poll numbers to prove it', factor: 1.5 },
 
-  // Drafted ACTION cards reusing existing effects (ride run.bonus → private deck → played from
+  // Drafted ACTION card reusing an existing effect (rides run.bonus → private deck → played from
   // hand like any power-up). A privately-owned Typo can't be out-raced in the pool.
   { id: 'r_typo', role: 'powerup', effect: 'typo', text: '🎤 Teleprompter Typo — REPLACE their last word with yours' },
-  { id: 'r_soundbite', role: 'powerup', effect: 'soundbite', text: '👏 Soundbite — your next statement ×1.5' },
 ];
 
 export const ALL: Card[] = [

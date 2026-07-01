@@ -200,10 +200,6 @@ export function chooseMove(state: GameState, opts: AiOptions = {}): Move {
   if (!opts.restrainPower && hotmic && state.player.hand.some((c) => c.role === 'powerup')) {
     return { kind: 'power', cardId: hotmic.id }; // steal the player's power-up (auto-target)
   }
-  const soundbite = power('soundbite');
-  if (!opts.gaffing && soundbite && line.length === 0 && best && best.delta >= 5) {
-    return { kind: 'power', cardId: soundbite.id }; // arm before a strong statement
-  }
   const search = power('search');
   if (search && line.length === 0 && (!best || best.delta < 2.5)) {
     return { kind: 'power', cardId: search.id }; // draw into a better hand

@@ -23,6 +23,8 @@ export interface GameOptions {
   crowdId?: string;
   /** Reward cards (base defs) carried from the run, added to the player's deck. */
   playerBonus?: Card[];
+  /** Base ids the player cut from their deck via the Debate Consultant. */
+  removedCards?: string[];
   /** First-debate onboarding (guaranteed first hand + simple opponent on Q1). */
   tutorial?: boolean;
 }
@@ -110,7 +112,13 @@ function dealRound(state: GameState): void {
     if (p.deck.length === 0 && p.hand.length === 0 && p.discard.length === 0) {
       // The player's earned reward cards (fresh instances) are shuffled in too.
       const bonus = p.id === 'player' ? (state.playerBonus ?? []).flatMap((c) => instances(c, 1)) : [];
-      p.deck = shuffle([...buildPrivateDeck(style), ...bonus], rng).map((c) => ({ ...c, priv: true }));
+      let built = [...buildPrivateDeck(style), ...bonus];
+      // Debate Consultant: the player has cut some cards from their deck (by base id).
+      if (p.id === 'player' && state.removedCards?.length) {
+        const cut = new Set(state.removedCards);
+        built = built.filter((c) => !cut.has(c.id.split('#')[0]));
+      }
+      p.deck = shuffle(built, rng).map((c) => ({ ...c, priv: true }));
     } else {
       // Recycle last question's unplayed PRIVATE hand cards back into the draw pile.
       // Non-priv injections (Filibuster's bonus connectors) are one-shot — they don't
@@ -256,7 +264,9 @@ function capPoolRole(state: GameState, is: (c: Card) => boolean, max: number): v
   for (let k = idxs.length - 1; k >= max; k--) {
     const i = idxs[k]; // keep the first `max`; evict the rest
     const evicted = state.pool[i];
-    const repl = state.sharedDeck.findIndex((c) => !is(c));
+    // Replace with a card that is neither capped role (finisher/modifier), so cap passes can't
+    // undo each other — e.g. capping modifiers must not pull a finisher back past its own cap.
+    const repl = state.sharedDeck.findIndex((c) => c.role !== 'intensifier' && c.role !== 'modifier');
     if (repl === -1) {
       state.pool.splice(i, 1); // no replacement available — just drop the extra
     } else {
@@ -299,6 +309,7 @@ export function createGame(opts: GameOptions = {}): GameState {
     OPPONENTS.find((o) => o.id === opts.opponentId) ?? OPPONENTS[Math.floor(rng() * OPPONENTS.length)];
   state.crowd = CROWDS.find((c) => c.id === opts.crowdId) ?? CROWDS[Math.floor(rng() * CROWDS.length)];
   state.playerBonus = opts.playerBonus ?? [];
+  state.removedCards = opts.removedCards ?? [];
   state.tutorial = opts.tutorial ?? false;
   dealRound(state);
   return state;
@@ -384,11 +395,10 @@ function resolveStatement(state: GameState, p: PlayerState): void {
   // (A finisher, if played, is already the last token of p.line — playing it both
   // appends the flourish and ends the statement; see the intensifier branch of applyMove.)
   // The crowd's hidden taste is applied here, at resolution — the AI never sees it.
-  const reaction = scoreStatement(p.line, { topicId: state.topic?.id, crowd: state.crowd });
-  // A Soundbite armed this statement: amplify, then spend it.
-  if (p.nextMultiplier && p.nextMultiplier !== 1) {
-    reaction.delta = Math.round(reaction.delta * p.nextMultiplier * 10) / 10;
-  }
+  // A Soundbite (if armed) amplifies BEFORE the cap — threaded into scoreStatement so it can't
+  // bypass the statement cap (that was a knockout-blow bug). Then spend it.
+  const mult = p.nextMultiplier && p.nextMultiplier !== 1 ? p.nextMultiplier : 1;
+  const reaction = scoreStatement(p.line, { topicId: state.topic?.id, crowd: state.crowd, multiplier: mult });
   p.nextMultiplier = undefined;
   p.lastReaction = reaction;
   p.done = true;

@@ -1,6 +1,7 @@
 import './style.css';
 import type { Card, Category, GameState, Move, Reaction } from '../engine/types';
 import { createGame, applyMove, canEnd, nextQuestion } from '../engine/game';
+import { buildPrivateDeck } from '../engine/deck';
 import { aiTurn } from '../engine/ai';
 import { displayWords, cardLabel } from '../engine/morphology';
 import { isComplete, canAppend } from '../engine/grammar';
@@ -26,9 +27,19 @@ let pendingHotMic: string | null = null; // a Hot Mic awaiting the card to steal
 let ackedSabotage: GameState['lastSabotage'] = undefined; // sabotage the player has dismissed
 
 // --- campaign run (Slay-the-Spire-style ladder) ---
-let run = { rung: 0, bonus: [] as Card[], character: null as string | null }; // rung + earned cards + chosen candidate
-let runScreen: 'tutorial' | 'select' | 'map' | 'result' | 'reward' | 'awardhint' | 'defeat' | 'victory' | null = null;
+let run = { rung: 0, bonus: [] as Card[], character: null as string | null, removed: [] as string[] }; // rung + earned cards + chosen candidate + cut card ids
+let runScreen: 'tutorial' | 'select' | 'map' | 'result' | 'reward' | 'awardhint' | 'consultant' | 'defeat' | 'victory' | null = null;
 let awardHintSeen = false; // one-time-ever: after the FIRST card award, teach the player to hunt for more
+
+// Debate Consultant — a between-debate deck-refinement waypoint: cut N cards (any cards, your
+// choice) in exchange for drafting M powerful new ones. A leaner deck draws its best cards more
+// often. Gated to a couple of rungs (after debates 2 and 4) so early decks stay default.
+const CONSULTANT_WAYPOINTS: Record<number, { cut: number; draft: number }> = {
+  2: { cut: 5, draft: 1 }, // before debate 3
+  4: { cut: 8, draft: 2 }, // before debate 5
+};
+let consultant: { cut: number; draft: number } | null = null; // active consultant (cut stage)
+let consultantSel = new Set<string>(); // base ids the player has selected to cut this session
 
 // The player's selectable candidates (cosmetic for now — portrait + name; art in src/ui/art/portraits).
 const PLAYER_CHARACTERS = [
@@ -42,7 +53,7 @@ const PLAYER_CHARACTERS = [
 type AwardSpec = { title: string; body: string }; // a headline; choices are rolled at display time
 type RewardOffer = AwardSpec & { choices: Card[] };
 let rewardQueue: RewardOffer[] = [];
-let rewardMode: 'post' | 'mid' = 'post';
+let rewardMode: 'post' | 'mid' | 'consultant' = 'post';
 // Mid-debate award headlines earned by the just-resolved statement, shown after its FX at the
 // round-summary pause — or folded into the win draft if the statement also ended the debate.
 // Choices are rolled (deduped vs owned + the rest of the series) only when actually shown.
@@ -84,6 +95,7 @@ function startDebate(): GameState {
     maxRounds: 8,
     opponentId: rung.opponentId,
     playerBonus: run.bonus,
+    removedCards: run.removed, // cards cut at a Debate Consultant waypoint
     tutorial: run.rung === 0, // first debate: guaranteed combo-friendly Q1 hand + simple opponent
   });
 }
@@ -91,7 +103,9 @@ function startDebate(): GameState {
 let game = startDebate();
 
 function newRun(): void {
-  run = { rung: 0, bonus: [], character: null };
+  run = { rung: 0, bonus: [], character: null, removed: [] };
+  consultant = null;
+  consultantSel = new Set();
   tutorialIntroSeen = false; // show the welcome modal again on a fresh run
   lastHintText = null;
   pendingQuestionCard = false;
@@ -145,6 +159,13 @@ function rollSeries(specs: AwardSpec[]): RewardOffer[] {
     choices.forEach((c) => exclude.add(c.id));
     return { title: s.title, body: s.body, choices };
   });
+}
+
+/** The player's current deck as base defs (for the Debate Consultant cut UI): the default private
+ *  deck (1 copy of each) + earned bonus cards, minus anything already cut. */
+function playerDeckDefs(): Card[] {
+  const base = buildPrivateDeck(undefined).map((c) => ({ ...c, id: c.id.split('#')[0] }));
+  return [...base, ...run.bonus].filter((c) => !run.removed.includes(c.id));
 }
 
 /** The reward headline for a debate win — flavored by how decisive it was. */
@@ -240,15 +261,57 @@ function maybeShowMidAwards(): boolean {
 }
 
 /** After the reward queue (and the one-time hint) drains: a post-debate draft advances the rung
- *  to the next debate; a mid-debate draft just resumes the current debate. */
+ *  (and may open the Debate Consultant); a mid-debate draft resumes the current debate; a
+ *  consultant draft finishes the refinement and heads to the next debate. */
 function finishRewards(): void {
-  if (rewardMode === 'post') {
-    run.rung += 1;
+  if (rewardMode === 'mid') {
+    runScreen = null; // back to the held round summary; the debate continues
+    render();
+    return;
+  }
+  if (rewardMode === 'consultant') {
+    consultant = null;
+    consultantSel = new Set();
+    game = startDebate(); // rebuild with the cut cards + drafted cards
+    runScreen = 'map';
+    render();
+    return;
+  }
+  // post: a debate win — advance the rung, then maybe open the Consultant before the map.
+  run.rung += 1;
+  const wp = CONSULTANT_WAYPOINTS[run.rung];
+  if (wp) {
+    consultant = { ...wp };
+    consultantSel = new Set();
+    runScreen = 'consultant'; // refine the deck; startDebate is deferred until it finishes
+  } else {
     game = startDebate();
     runScreen = 'map'; // show the ladder + next opponent before the next debate
-  } else {
-    runScreen = null; // back to the held round summary; the debate continues
   }
+  render();
+}
+
+/** Commit the selected cuts and move to the draft stage (reuses the reward modal/queue). */
+function consultantConfirmCuts(): void {
+  if (!consultant || consultantSel.size !== consultant.cut) return;
+  run.removed.push(...consultantSel);
+  rewardMode = 'consultant';
+  rewardQueue = rollSeries(
+    Array.from({ length: consultant.draft }, () => ({
+      title: '🎩 Sharpen Your Message',
+      body: 'Your deck is leaner — now draft a powerful new card to build around.',
+    })),
+  );
+  runScreen = 'reward';
+  render();
+}
+
+/** Decline the Consultant — keep the deck as-is, forfeit the draft, on to the next debate. */
+function consultantSkip(): void {
+  consultant = null;
+  consultantSel = new Set();
+  game = startDebate();
+  runScreen = 'map';
   render();
 }
 
@@ -811,11 +874,35 @@ function runModalHtml(): string {
       <button class="action" id="awardHintGot">Got it ▶</button>
     </div></div>`;
   }
+  if (runScreen === 'consultant' && consultant) {
+    const need = consultant.cut;
+    const sel = consultantSel.size;
+    const cards = playerDeckDefs()
+      .map((c) => {
+        const cutting = consultantSel.has(c.id) ? ' cutting' : '';
+        const cls = c.role === 'powerup' ? `power fx-${c.effect}` : `role-${c.role}`;
+        return `<button class="card consultant-card ${cls}${cutting}" data-cut="${c.id}">${cardFace(c)}</button>`;
+      })
+      .join('');
+    return `<div class="modal-backdrop"><div class="modal consultant-modal">
+      <div class="modal-title" style="color:var(--gold)">🎩 Debate Consultant</div>
+      <p><b>Sharpen your message.</b> Trade in <b>${need}</b> card${need === 1 ? '' : 's'} from your deck — a
+      leaner deck means your best lines come up more often. In exchange you'll draft
+      <b>${consultant.draft}</b> powerful new card${consultant.draft === 1 ? '' : 's'}.</p>
+      <div class="consultant-count">Select ${sel} / ${need}</div>
+      <div class="cards consultant-grid">${cards}</div>
+      <div class="consultant-actions">
+        <button class="action" id="consultantConfirm" ${sel === need ? '' : 'disabled'}>Select ${need} cards to trade in</button>
+        <button class="ghost" id="consultantSkip">Skip — keep my deck</button>
+      </div>
+    </div></div>`;
+  }
   if (runScreen === 'victory') {
     return `<div class="modal-backdrop"><div class="modal">
       <div class="modal-title" style="color:var(--gold)">🎉 You won the whole campaign!</div>
       <p>You bested all ${LADDER.length} opponents — the nomination is yours.</p>
       <button class="action" id="newrun">Start a new run</button>
+      <button class="ghost" id="dumplogEnd"><span class="btn-ico">🐞</span>Download this debate's log</button>
     </div></div>`;
   }
   if (runScreen === 'defeat') {
@@ -824,6 +911,7 @@ function runModalHtml(): string {
       <p>Your run ends at debate ${run.rung + 1} of ${LADDER.length}. Your earned cards are lost —
       start a fresh run with the default deck.</p>
       <button class="action" id="newrun">Start a new run</button>
+      <button class="ghost" id="dumplogEnd"><span class="btn-ico">🐞</span>Download this debate's log</button>
     </div></div>`;
   }
   return '';
@@ -1043,6 +1131,20 @@ function render(): void {
 
   app.querySelectorAll<HTMLButtonElement>('.card').forEach((btn) => {
     btn.addEventListener('click', () => {
+      // Debate Consultant: toggle a card for cutting (capped at the cut count). Update the DOM in
+      // place rather than re-render() — a full render rebuilds innerHTML and scrolls the grid to top.
+      if (btn.dataset.cut) {
+        const id = btn.dataset.cut;
+        if (consultantSel.has(id)) consultantSel.delete(id);
+        else if (consultant && consultantSel.size < consultant.cut) consultantSel.add(id);
+        const need = consultant?.cut ?? 0;
+        btn.classList.toggle('cutting', consultantSel.has(id));
+        const countEl = app.querySelector('.consultant-count');
+        if (countEl) countEl.textContent = `Select ${consultantSel.size} / ${need}`;
+        const confirm = app.querySelector<HTMLButtonElement>('#consultantConfirm');
+        if (confirm) confirm.disabled = consultantSel.size !== need;
+        return;
+      }
       // Picking a reward card (a win draft, a stacked achievement, or a mid-debate award).
       if (btn.dataset.reward) {
         const card = REWARDS.find((c) => c.id === btn.dataset.reward);
@@ -1154,8 +1256,11 @@ function render(): void {
     render();
   });
   app.querySelector<HTMLButtonElement>('#awardHintGot')?.addEventListener('click', finishRewards);
+  app.querySelector<HTMLButtonElement>('#consultantConfirm')?.addEventListener('click', consultantConfirmCuts);
+  app.querySelector<HTMLButtonElement>('#consultantSkip')?.addEventListener('click', consultantSkip);
   app.querySelector<HTMLButtonElement>('#restart')?.addEventListener('click', newRun);
   app.querySelector<HTMLButtonElement>('#dumplog')?.addEventListener('click', downloadDebugLog);
+  app.querySelector<HTMLButtonElement>('#dumplogEnd')?.addEventListener('click', downloadDebugLog);
   app.querySelector<HTMLButtonElement>('#newrun')?.addEventListener('click', newRun);
   app.querySelector<HTMLButtonElement>('#beginTutorial')?.addEventListener('click', () => {
     runScreen = 'select'; // tutorial dismissed — choose a candidate, then the ladder
