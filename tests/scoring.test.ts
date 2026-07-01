@@ -20,7 +20,7 @@ describe('scoring — chunk predicates', () => {
   });
 
   it('pandering to the audience is strongly positive', () => {
-    expect(delta('s_people', 'p_love_fd')).toBeGreaterThan(8);
+    expect(delta('s_people', 'p_deliver')).toBeGreaterThan(8); // a +3 pander on the crowd (×1.3 weight)
   });
 
   it('insulting the opponent helps the speaker', () => {
@@ -76,9 +76,9 @@ describe('scoring — heroes & villains (neutral subjects)', () => {
 
   it('no "thing" noun is inert: championing a cause scores AND reacts to the crowd', () => {
     // A positive thematic noun plays as an applause line, not a dead neutral.
-    const base = delta('o_freedom', 'p_patriot'); // "freedom and democracy is a true patriot"
+    const base = delta('o_freedom', 'p_deliver'); // "freedom and democracy delivers blue skies and happiness"
     expect(base).toBeGreaterThan(8); // on par with praising the audience, not a weak 0.6 play
-    const loved = scoreStatement(cards('o_freedom', 'p_patriot'), {
+    const loved = scoreStatement(cards('o_freedom', 'p_deliver'), {
       crowd: { id: 'c', loves: 'pander_aud', boost: 1.5 },
     }).delta;
     expect(loved).toBeGreaterThan(base); // a patriot-loving crowd cheers it
@@ -271,7 +271,7 @@ describe('scoring — headliners (per-card + chain ceiling)', () => {
 
   it('combo-chaining alone raises the cap for a plain (no-ceiling) deck', () => {
     // A long plain combo + finisher: chain headroom (one per junction) lifts it past the old 50.
-    const d = delta('s_opp', 'p_kick_pup', 'c_and', 'p_lie', 'c_and', 'p_weak', 'c_and', 'p_naps', 'c_and', 'p_jackass', 'x_guarantee');
+    const d = delta('s_opp', 'p_kick_pup', 'c_and', 'p_tollbooth', 'c_and', 'p_lie', 'c_and', 'p_disgrace', 'c_and', 'p_jackass', 'x_guarantee');
     expect(d).toBeGreaterThan(50);
   });
 

@@ -112,19 +112,19 @@ export const SUBJECTS: Card[] = [
   NP('s_children', 'Our children', 'audience', 2, { number: 'plural', topics: ['children'] }),
   NP('s_nation', 'This great nation', 'audience', 2, { topics: ['freedom'], animate: false }),
   // Flavor variants (score like their plain counterparts; funnier wording).
-  NP('s_admin_normal', 'My totally normal administration', 'self', 1, { animate: false }),
-  NP('s_campaign_legal', 'My beautiful and completely legal campaign', 'self', 1, { animate: false }),
-  NP('s_opp_team', "My opponent's team of untrustworthy weirdos", 'opponent', -1),
+  NP('s_admin_normal', 'My totally normal administration', 'self', 1, { animate: false, intensity: 1.3 }),
+  NP('s_campaign_legal', 'My beautiful and completely legal campaign', 'self', 1, { animate: false, intensity: 1.3 }),
+  NP('s_opp_team', "My opponent's team of untrustworthy weirdos", 'opponent', -1, { intensity: 1.3 }),
   NP('s_people_brave', 'The brave people watching this debate', 'audience', 2, { number: 'plural', topics: ['pander'] }),
-  NP('s_people_normal', 'The deeply normal and not-at-all-angry people of this country', 'audience', 2, { number: 'plural', topics: ['pander'] }),
-  NP('s_children_screen', 'Our screen-addicted but still precious children', 'audience', 2, { number: 'plural', topics: ['children'] }),
+  NP('s_people_normal', 'The deeply normal and not-at-all-angry people of this country', 'audience', 2, { number: 'plural', topics: ['pander'], intensity: 1.3 }),
+  NP('s_children_screen', 'Our screen-addicted but still precious children', 'audience', 2, { number: 'plural', topics: ['children'], intensity: 1.3 }),
   NP('s_handshake', 'My famously firm handshake', 'self', 1, { animate: false }),
   NP('s_commonsense', 'My award-winning common sense', 'self', 1, { animate: false }),
-  NP('s_opp_friends', "My opponent's mysterious offshore friends", 'opponent', -1, { number: 'plural' }),
+  NP('s_opp_friends', "My opponent's mysterious offshore friends", 'opponent', -1, { number: 'plural', intensity: 1.3 }),
   NP('s_opp_list', "My opponent's entirely imaginary list of accomplishments", 'opponent', -1, { animate: false }),
-  NP('s_goodpeople', 'The good people who actually showed up tonight', 'audience', 2, { number: 'plural', topics: ['pander'] }),
+  NP('s_goodpeople', 'The good people who actually showed up tonight', 'audience', 2, { number: 'plural', topics: ['pander'], intensity: 1.3 }),
   NP('s_smalltowns', 'Our tired but unbeaten small towns', 'audience', 2, { number: 'plural', topics: ['pander'], animate: false }),
-  NP('s_country_flaws', 'This beautiful country, flaws and all', 'audience', 2, { topics: ['freedom'], animate: false }),
+  NP('s_country_flaws', 'This beautiful country, flaws and all', 'audience', 2, { topics: ['freedom'], animate: false, intensity: 1.3 }),
 ];
 
 // --- objects (noun phrases that fill an open predicate's slot) --------------
@@ -158,14 +158,14 @@ export const OBJECTS: Card[] = [
 // (contested) pool. Mild and serviceable; everyone fights over them.
 export const COMMON_PRAISE: Card[] = [
   pc('p_deliver', 'deliver', 'blue skies and happiness', 3),
-  pc('p_love_fd', 'love', 'freedom and democracy', 3, { topics: ['freedom'] }),
-  pc('p_patriot', 'be', 'a true patriot', 3),
+  pc('p_love_fd', 'love', 'freedom and democracy', 2, { topics: ['freedom'] }),
+  pc('p_patriot', 'be', 'a true patriot', 2),
   pc('p_strong', 'be', 'strong and decisive', 2),
   pc('p_standup', 'stand', 'up for the little guy', 2, { topics: ['pander'] }),
-  pc('p_protect_vets', 'protect', 'our veterans', 3, { topics: ['security'] }),
+  pc('p_protect_vets', 'protect', 'our veterans', 2, { topics: ['security'] }),
   pc('p_cut_taxes', 'cut', 'taxes for working families', 2, { topics: ['economy'] }),
-  pi('p_fund_schools', 'will fully fund our schools', 3, { topics: ['children'] }),
-  pi('p_defend_liberty', 'will defend our liberty', 3, { topics: ['freedom'] }),
+  pi('p_fund_schools', 'will fully fund our schools', 2, { topics: ['children'] }),
+  pi('p_defend_liberty', 'will defend our liberty', 2, { topics: ['freedom'] }),
   pi('p_fight_for_you', 'will always fight for you', 2, { topics: ['pander'] }),
   pi('p_have_back', 'will always have your back', 2, { topics: ['pander'] }),
   pi('p_keep_safe', 'will keep this country safe', 3, { topics: ['security'] }),
@@ -177,7 +177,6 @@ export const COMMON_PRAISE: Card[] = [
 // below; de-duped so a topical insult like p_raise_taxes keeps 'economy' too.)
 export const COMMON_INSULTS: Card[] = [
   pc('p_kick_pup', 'kick', 'puppies', -3),
-  pc('p_eat_babies', 'eat', 'babies', -3, { pre: 'secretly', topics: ['children'] }), // a child-harm, like cancelling school lunch
   pc('p_lie', 'lie', 'to your face', -2),
   pc('p_disgrace', 'be', 'a national disgrace', -2),
   pc('p_weak', 'be', 'weak and out of touch', -1),
@@ -185,7 +184,7 @@ export const COMMON_INSULTS: Card[] = [
   pc('p_raise_taxes', 'want', 'to raise your taxes', -2, { topics: ['economy'] }),
   pc('p_cut_lunch', 'want', 'to cancel school lunch', -2, { topics: ['children'] }),
   pc('p_silence', 'want', 'to silence free speech', -2, { topics: ['freedom'] }),
-  pc('p_worship', 'worship', 'Satan', -3), // generic smear → Name-Calling only (jackass via map)
+  pc('p_worship', 'worship', 'Satan', -2), // generic smear → Name-Calling only (jackass via map)
   pc('p_ignore_vets', 'ignore', 'our veterans', -2, { topics: ['security'] }),
   pi('p_cant_trust', "can't be trusted", -1),
   pi('p_say_anything', 'will say anything to get elected', -1),
@@ -193,8 +192,7 @@ export const COMMON_INSULTS: Card[] = [
   pi('p_ashamed', 'should be ashamed', -1),
   pc('p_tax_christmas', 'want', 'to tax your Christmas presents', -2, { topics: ['economy', 'children'] }),
   pc('p_tollbooth', 'want', 'to put a toll booth on your driveway', -3, { topics: ['economy'] }),
-  pc('p_freedom_subscription', 'believe', 'that freedom should have a monthly subscription', -3, { topics: ['freedom'] }),
-  pc('p_naps', 'nap', 'through every important meeting', -3),
+  pc('p_naps', 'nap', 'through every important meeting', -2),
 ].map((c) => ({ ...c, topics: [...new Set([...(c.topics ?? []), 'jackass', 'opponent'])] }));
 
 // SIGNATURE predicates — punchy, characterful zingers found ONLY in private decks
@@ -211,21 +209,21 @@ export const SIG_BRAG: Card[] = [
   pi('p_battery', "will direct our nation's scientists to make the last 10% of a phone battery last longer", 3),
   pi('p_hurricane', 'once talked a hurricane into changing course', 3),
   pi('p_wallet', 'personally returned a lost wallet on live television', 3),
+  pc('p_oncegen', 'be', 'a once-in-a-generation genius', 2), // demoted from a reward — too generic for the top tier
 ];
 
 export const SIG_ATTACK: Card[] = [
   pc('p_microchip', 'want', 'to put a microchip in your flu shot', -3),
-  pc('p_llama', 'run', 'a secret llama-grooming cartel', -3, { pre: 'secretly' }),
+  pc('p_llama', 'run', 'an underground llama-grooming cartel', -3, { pre: 'secretly' }),
   pc('p_moon', 'think', 'the moon landing was filmed in a Denny’s', -3),
   pc('p_crayons', 'eat', 'crayons at cabinet meetings', -3),
   pc('p_handshake', 'have', 'a secret handshake with the deep state', -3),
-  pi('p_timeshare', 'will sell this country to a Florida timeshare scheme', -3),
   pi('p_sell_constitution', 'would sell the Constitution for airline miles', -3, { topics: ['freedom'] }),
   pc('p_dubstep_anthem', 'want', 'to replace the national anthem with screechy dubstep noises', -3),
   pc('p_big_kale', 'take', 'marching orders from Big Kale', -3),
   pc('p_magic_eightball', 'want', 'to replace the Supreme Court with a Magic Eight Ball', -3),
-  pc('p_ban_happiness', 'have', 'a secret plan to make happiness illegal', -3),
-  pi('p_find_economy', "couldn't find the economy with both hands and a map", -3, { topics: ['economy'] }),
+  pc('p_shrimp_buffet', 'have', 'the moral compass of a casino shrimp buffet', -3),
+  pi('p_find_economy', "couldn't find the economy with both hands and a map", -2, { topics: ['economy'] }),
 ].map((c) => ({ ...c, topics: [...new Set([...(c.topics ?? []), 'jackass', 'opponent'])] })); // smears answer Name-Calling + Your Opponent
 
 export const SIG_PANDER: Card[] = [
@@ -245,17 +243,16 @@ export const SIG_PANDER: Card[] = [
   // actually live), not bare nouns. Playtester suggestions.
   pi('p_city_hill', 'will build a shining city on a hill', 3, { topics: ['freedom'] }),
   pi('p_points_light', 'will light a thousand points of light across this great land', 3, { topics: ['pander'] }),
-  pi('p_got_ending', 'will fix the ending of Game of Thrones in a way that satisfies everyone', 3, { topics: ['pander'] }),
 ];
 
 // SIGNATURE noun phrases — flavorful openers/objects, private decks only.
 export const SIG_SUBJ_BRAG: Card[] = [
   NP('s_position', 'My position, which is the best position believe me,', 'self', 1, { intensity: 1.3 }),
-  NP('s_genius', 'A stable genius such as myself', 'self', 1, { intensity: 1.3 }),
-  NP('s_brain', 'My beautiful brain, which many people say is the best brain', 'self', 1, { intensity: 1.3, animate: false }),
   NP('s_campaign_transparent', 'My incredibly well-organized and financially transparent campaign', 'self', 1, { intensity: 1.3, animate: false }),
   NP('s_plan', 'My plan, which fits neatly on a single index card', 'self', 1, { animate: false }),
   NP('s_gut', 'My gut, which has frankly never once been wrong', 'self', 1, { intensity: 1.3, animate: false }),
+  NP('s_plan_spellcheck', 'My beautiful, patriotic, and mostly spell-checked plan', 'self', 1, { intensity: 1.3, animate: false }),
+  NP('s_admin_unhaunted', 'My administration, which has never once been haunted', 'self', 1, { intensity: 1.3, animate: false }),
 ];
 export const SIG_SUBJ_ATTACK: Card[] = [
   NP('s_idiot_opp', 'My idiot freedom-hating opponent', 'opponent', -2, { intensity: 1.3 }),
@@ -310,13 +307,13 @@ export const PREDICATES: Card[] = [
 // effect flips with who you attach it to, so they carry no side.
 export const MODIFIERS: Card[] = [
   md('m_ugly', 'ugly, just very ugly', -2, { rel: 'who' }),
-  md('m_crook', 'as crooked as the day is long', -2, { rel: 'who' }),
+  md('m_crook', 'as crooked as the day is long', -3, { rel: 'who' }),
   md('m_liar', 'constantly', -2, { lead: 'lie', rel: 'who' }), // "who lies constantly"
   md('m_disaster', 'a total disaster', -3, { rel: 'which' }),
   md('m_treasure', 'frankly a national treasure', 3, { rel: 'who' }),
   md('m_genius', 'an absolute genius', 3, { rel: 'who' }),
   md('m_loves_country', 'this country', 2, { lead: 'love', rel: 'who' }), // "who loves this country"
-  md('m_blessing', 'a blessing to us all', 3, { rel: 'which' }),
+  md('m_blessing', 'a blessing to us all', 2, { rel: 'which' }),
   md('m_stupidest', 'among the stupidest humans to ever walk the Earth', -3, { rel: 'who' }),
   md('m_smells', 'even worse than expected', -2, { lead: 'smell', pre: 'somehow', rel: 'who' }), // "who somehow smells…"
   md('m_lostit', 'who, and I say this with love, has completely lost it', -2, { invariant: true }),
@@ -538,7 +535,6 @@ export const REWARDS: Card[] = [
   pc('r_greatest', 'be', 'the greatest leader in human history', 4, { ceiling: 4 }),
   pi('r_cured', 'personally cured a deadly disease last Tuesday', 4, { ceiling: 4 }),
   pi('r_pony', 'will give every citizen a pony and a tax cut', 4, { ceiling: 4 }),
-  pc('r_oncegen', 'be', 'a once-in-a-generation genius', 4, { ceiling: 4 }),
   pc('r_never_truth', 'have', 'never once told the truth, not even by accident', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
   NP('r_treason_opp', 'My crooked, treasonous opponent', 'opponent', -2, { intensity: 1.6, ceiling: 3 }),
   NP('r_blessed_nation', 'This blessed and chosen nation', 'audience', 2, { topics: ['freedom'], intensity: 1.6, animate: false, ceiling: 3 }),
@@ -573,6 +569,26 @@ export const REWARDS: Card[] = [
   NP('r_weird_opp', 'My deeply weird, poll-tested opponent', 'opponent', -2, { intensity: 1.6, ceiling: 3 }),
   NP('r_scumbag_opp', 'My treasonous and perverted scumbag of an opponent', 'opponent', -2, { intensity: 1.6, ceiling: 3 }),
   NP('r_grill_patriots', 'The hardest-working patriots ever to fire up a backyard grill', 'audience', 2, { topics: ['pander'], intensity: 1.6, ceiling: 3, number: 'plural' }),
+
+  // Promoted to reward-tier (top strength = drafted-only): these were base-pool cards a playtest
+  // rated as rank-4 zingers. Moved here at ±4 with a ceiling so the base pool stays capped at ±3
+  // and the outrageous lines are something you EARN. (Ids keep their p_ prefix — no rename needed.)
+  pc('p_eat_babies', 'eat', 'babies', -4, { pre: 'secretly', topics: ['jackass', 'opponent', 'children'], ceiling: 4 }),
+  pc('p_freedom_subscription', 'believe', 'that freedom should have a monthly subscription', -4, { topics: ['jackass', 'opponent', 'freedom'], ceiling: 4 }),
+  pi('p_timeshare', 'will sell this country to a Florida timeshare scheme', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
+  pc('p_ban_happiness', 'have', 'a secret plan to make happiness illegal', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
+  pi('p_got_ending', 'will fix the ending of Game of Thrones in a way that satisfies everyone', 4, { topics: ['pander'], ceiling: 4 }),
+  NP('s_brain', 'My beautiful brain, which many people say is the best brain', 'self', 1, { intensity: 1.6, animate: false, ceiling: 3 }),
+  NP('s_genius', 'A stable genius such as myself', 'self', 1, { intensity: 1.6, ceiling: 3 }),
+
+  // New reward-tier cards (playtester-rated rank 4 / most-loaded).
+  pc('r_haunted_bus', 'want', 'to replace every school bus with a haunted limousine', -4, { topics: ['jackass', 'opponent', 'children'], ceiling: 4 }),
+  pi('r_auction_bor', 'will auction off the Bill of Rights one amendment at a time', -4, { topics: ['jackass', 'opponent', 'freedom'], ceiling: 4 }),
+  pc('r_pledge_ads', 'want', 'to put ads in the Pledge of Allegiance', -4, { topics: ['jackass', 'opponent', 'freedom'], ceiling: 4 }),
+  pi('r_suplex_inflation', 'will personally suplex inflation through a folding table', 4, { topics: ['economy'], ceiling: 4 }),
+  NP('r_crowd_grillmasters', 'This proud nation of grill masters, coupon clippers, and quiet heroes', 'audience', 2, { topics: ['pander'], intensity: 1.6, ceiling: 3, animate: false }),
+  NP('r_crowd_ducttape', 'The exhausted patriots currently holding this country together with duct tape', 'audience', 2, { topics: ['pander'], intensity: 1.6, ceiling: 3, number: 'plural' }),
+  NP('r_crowd_toosmart', 'This audience of upstanding patriots, each one far too intelligent to be influenced by shameless flattery,', 'audience', 2, { topics: ['pander'], intensity: 1.6, ceiling: 3 }),
 
   // PRIVATE finishers — premium: a guaranteed ×factor you OWN (can't be out-raced in the shared
   // pool the way the pool finishers can). Phrasings author-supplied. (Rendered as a trailing
