@@ -8,17 +8,24 @@ import type { Card, Clause, Role, SentenceStructure } from './types';
 //
 //   TOP   -> S | S INT
 //   S     -> CLAUSE | S CCAND CLAUSE | S CJOIN CLAUSE | S CBEC CLAUSE | S CPERIOD CLAUSE
-//   CLAUSE-> NP PREDS
+//   CLAUSE-> SUBJ PREDS | SUBJ MODS PREDS
+//   SUBJ  -> NP | SUBJ CCAND NP | SUBJ MODS CCAND NP   (compound subject)
 //   PREDS -> PRED | PREDS CCAND PRED | PREDS CJOIN PRED
-//   PRED  -> PC | PO NP            (PC = closed predicate, PO = open predicate)
+//   PRED  -> PC | PO OBJ           (PC = closed predicate, PO = open predicate)
+//   OBJ   -> NP | OBJ CCAND NP                          (compound object)
 //
 // A coordinating conjunction (CCAND "and", or CJOIN "and therefore"/"but") followed by a
 // new subject (NP) opens a new clause; followed by a predicate it coordinates within the
 // clause, sharing the subject ("the swamp eats crayons and therefore will destroy this
-// country"). A *period* (CPERIOD) and *"because"* (CBEC) are clause-only: they can ONLY
-// open a new clause and so always need their own subject — "because" subordinates a full
-// clause and can't elide the subject ("…a jackass because *they* want to raise taxes"), so
-// it never strings bare predicates into fragments (CBEC is absent from the PREDS rules).
+// country"). Plain "and" (ONLY "and" — not but/because/therefore) can also coordinate
+// noun phrases: a compound subject ("Satan and the lobbyists want to silence free
+// speech") or a compound object ("…wants to destroy Main Street and our children");
+// the segmenter disambiguates object-coordination from a new clause by lookahead (an NP
+// followed by its own predicate/modifier opens a clause instead). A *period* (CPERIOD)
+// and *"because"* (CBEC) are clause-only: they can ONLY open a new clause and so always
+// need their own subject — "because" subordinates a full clause and can't elide the
+// subject ("…a jackass because *they* want to raise taxes"), so it never strings bare
+// predicates into fragments (CBEC is absent from the PREDS rules).
 
 type Term = 'NP' | 'MOD' | 'PC' | 'PO' | 'CCAND' | 'CJOIN' | 'CBEC' | 'CPERIOD' | 'INT';
 const TERMS = new Set<Term>(['NP', 'MOD', 'PC', 'PO', 'CCAND', 'CJOIN', 'CBEC', 'CPERIOD', 'INT']);
@@ -72,10 +79,14 @@ const GRAMMAR: Record<string, string[][]> = {
   TOP: [['S'], ['S', 'INT']],
   S: [['CLAUSE'], ['S', 'CCAND', 'CLAUSE'], ['S', 'CJOIN', 'CLAUSE'], ['S', 'CBEC', 'CLAUSE'], ['S', 'CPERIOD', 'CLAUSE']],
   // A subject may carry one or more post-nominal modifier asides before its predicates.
-  CLAUSE: [['NP', 'PREDS'], ['NP', 'MODS', 'PREDS']],
+  CLAUSE: [['SUBJ', 'PREDS'], ['SUBJ', 'MODS', 'PREDS']],
+  // "and" coordinates noun phrases into compound subjects/objects. The SUBJ MODS CCAND NP
+  // rule lets an aside sit mid-compound ("Satan, who is shady, and the lobbyists want…").
+  SUBJ: [['NP'], ['SUBJ', 'CCAND', 'NP'], ['SUBJ', 'MODS', 'CCAND', 'NP']],
   MODS: [['MOD'], ['MODS', 'MOD']],
   PREDS: [['PRED'], ['PREDS', 'CCAND', 'PRED'], ['PREDS', 'CJOIN', 'PRED']],
-  PRED: [['PC'], ['PO', 'NP']],
+  PRED: [['PC'], ['PO', 'OBJ']],
+  OBJ: [['NP'], ['OBJ', 'CCAND', 'NP']],
 };
 
 const isTerminal = (s: string): s is Term => TERMS.has(s as Term);
@@ -176,9 +187,18 @@ export type TokenRole = 'subject' | 'object' | 'mod' | 'pred' | 'conn' | 'int';
 
 type Conj = NonNullable<Card['conj']>;
 
+/** An extra NP coordinated onto a subject/object slot (`connIdx` = its "and" token;
+ * absent when a stray NP was jammed on with no connector — lenient intent-reading). */
+interface SegCoord {
+  npIdx: number;
+  connIdx?: number;
+}
+
 interface SegPred {
   predIdx: number;
   objIdx?: number;
+  /** Extra objects coordinated with "and" ("…destroy Main Street AND OUR CHILDREN"). */
+  coObj?: SegCoord[];
   /** The connector coordinating this predicate with the prior one in the clause
    * (undefined for a clause's first predicate). */
   joinedBy?: Conj;
@@ -188,6 +208,8 @@ interface SegPred {
 
 interface Seg {
   subjectIdx?: number;
+  /** Extra subjects coordinated with "and" ("Satan AND THE LOBBYISTS want…"). */
+  coSubj?: SegCoord[];
   /** Token indices of post-nominal modifier asides on this clause's subject. */
   mods: number[];
   preds: SegPred[];
@@ -205,6 +227,9 @@ export function segmentDetailed(tokens: Card[]): { clauses: Seg[]; roleAt: Token
   let open: SegPred | null = null; // predicate awaiting an object
   let pendingConn: Conj | undefined; // a connector awaiting the predicate it coordinates
   let pendingConnIdx: number | undefined; // its token index
+  // An "and" that coordinates noun phrases: the next NP extends the compound
+  // subject/object instead of opening a new clause.
+  let coordNext: { into: 'subj' | 'obj'; connIdx: number } | null = null;
   const push = () => {
     if (started) clauses.push(cur);
   };
@@ -213,7 +238,16 @@ export function segmentDetailed(tokens: Card[]): { clauses: Seg[]; roleAt: Token
     const t = tokens[i];
     switch (t.role) {
       case 'np':
-        if (open) {
+        if (coordNext) {
+          if (coordNext.into === 'subj') {
+            (cur.coSubj ??= []).push({ npIdx: i, connIdx: coordNext.connIdx });
+            roleAt[i] = 'subject';
+          } else {
+            (cur.preds[cur.preds.length - 1].coObj ??= []).push({ npIdx: i, connIdx: coordNext.connIdx });
+            roleAt[i] = 'object';
+          }
+          coordNext = null;
+        } else if (open) {
           open.objIdx = i;
           roleAt[i] = 'object';
           open = null;
@@ -222,7 +256,11 @@ export function segmentDetailed(tokens: Card[]): { clauses: Seg[]; roleAt: Token
           roleAt[i] = 'subject';
           started = true;
         } else {
-          // stray NP — attach as object to the last predicate if possible
+          // Stray NP (no "and" before it — that's handled by coordNext above): keep the
+          // lenient nearest-noun reading — attach as object to the last predicate, or
+          // replace the subject. NOT read as a compound: a connector-less jam is a parse
+          // artifact, and treating it as "you named the crowd" would let the blunder
+          // punch-through hammer word salad that never earned it.
           if (cur.preds.length > 0) {
             cur.preds[cur.preds.length - 1].objIdx = i;
             roleAt[i] = 'object';
@@ -280,6 +318,24 @@ export function segmentDetailed(tokens: Card[]): { clauses: Seg[]; roleAt: Token
         open = null;
         const conj = t.conj ?? 'and';
         const next = tokens[i + 1];
+        // Plain "and" followed by a noun phrase may coordinate NPs rather than open a
+        // new clause: pre-predicate it extends the SUBJECT ("Satan AND the lobbyists
+        // want…"); after an open predicate's object it extends the OBJECT ("…destroy
+        // Main Street AND our children") — unless that NP starts a clause of its own
+        // (it's followed by its own predicate/modifier: "…and our children suffer").
+        if (conj === 'and' && next && next.role === 'np') {
+          if (cur.subjectIdx !== undefined && cur.preds.length === 0) {
+            coordNext = { into: 'subj', connIdx: i };
+            break;
+          }
+          const last = cur.preds[cur.preds.length - 1];
+          const after = tokens[i + 2];
+          const opensClause = !!after && (after.role === 'predicate' || after.role === 'modifier');
+          if (last && last.objIdx !== undefined && !opensClause) {
+            coordNext = { into: 'obj', connIdx: i };
+            break;
+          }
+        }
         // A period and "because" are hard clause boundaries (always a new clause, always
         // needing their own subject). A coordinating conjunction opens a new clause only
         // when a fresh subject follows; otherwise it coordinates the next predicate under
@@ -307,9 +363,12 @@ export function segmentDetailed(tokens: Card[]): { clauses: Seg[]; roleAt: Token
 }
 
 export function parse(tokens: Card[]): SentenceStructure {
+  const co = (xs?: SegCoord[]) =>
+    xs?.map((x) => ({ card: tokens[x.npIdx], idx: x.npIdx, connIdx: x.connIdx }));
   const clauses: Clause[] = segmentDetailed(tokens).clauses.map((s) => ({
     subject: s.subjectIdx !== undefined ? tokens[s.subjectIdx] : undefined,
     subjectIdx: s.subjectIdx,
+    coSubjects: co(s.coSubj),
     mods: s.mods.length ? s.mods.map((i) => tokens[i]) : undefined,
     modIdxs: s.mods.length ? s.mods.slice() : undefined,
     joinedByPrev: s.joinedBy,
@@ -319,6 +378,7 @@ export function parse(tokens: Card[]): SentenceStructure {
       predIdx: p.predIdx,
       object: p.objIdx !== undefined ? tokens[p.objIdx] : undefined,
       objIdx: p.objIdx,
+      coObjects: co(p.coObj),
       joinedBy: p.joinedBy,
       connIdx: p.connIdx,
     })),

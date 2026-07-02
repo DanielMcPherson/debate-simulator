@@ -69,11 +69,27 @@ export function displayWords(line: Card[]): string[] {
   const words = line.map((c) => c.text ?? '');
 
   for (const clause of clauses) {
-    const subj = clause.subjectIdx !== undefined ? line[clause.subjectIdx] : undefined;
-    const person: Person = subj?.person ?? 3;
-    const number: GramNumber = subj?.number ?? 'sing';
-    // Modifier asides agree with the subject and are set off by commas.
-    for (const m of clause.mods) words[m] = `, ${modifierText(line[m], person, number, subj?.animate ?? true)},`;
+    const subjIdxs = [
+      ...(clause.subjectIdx !== undefined ? [clause.subjectIdx] : []),
+      ...(clause.coSubj ?? []).map((s) => s.npIdx),
+    ];
+    const subjs = subjIdxs.map((ix) => line[ix]);
+    // A compound subject conjugates PLURAL ("Satan and the lobbyists WANT…");
+    // person is the lowest present ("my opponent and I ARE…" — first person plural).
+    const person: Person = subjs.length ? (Math.min(...subjs.map((c) => c.person ?? 3)) as Person) : 3;
+    const number: GramNumber = subjs.length > 1 ? 'plural' : subjs[0]?.number ?? 'sing';
+    // Modifier asides agree with what they follow, set off by commas: mid-compound,
+    // with the nearest preceding noun ("Satan, who IS shady, and the lobbyists…");
+    // after the last subject, with the whole compound (plural).
+    for (const m of clause.mods) {
+      const before = subjIdxs.filter((ix) => ix < m);
+      const host = before.length ? line[before[before.length - 1]] : undefined;
+      const mid = subjIdxs.some((ix) => ix > m); // more subjects follow this aside
+      const mp = mid ? host?.person ?? 3 : person;
+      const mn = mid ? host?.number ?? 'sing' : number;
+      const anim = (mid ? host?.animate : subjs[subjs.length - 1]?.animate) ?? true;
+      words[m] = `, ${modifierText(line[m], mp, mn, anim)},`;
+    }
     for (const p of clause.preds) words[p.predIdx] = predicateText(line[p.predIdx], person, number);
   }
 

@@ -388,6 +388,49 @@ describe('scoring — modifier asides', () => {
   });
 });
 
+describe('scoring — noun-phrase coordination ("and" between NPs)', () => {
+  it('a compound subject lands the predicate on each villain — stronger than one, weaker than two', () => {
+    // "Satan and shady lobbyists want to silence free speech" — the flagship player example
+    const single = delta('o_satan', 'p_silence');
+    const compound = delta('o_satan', 'c_and', 'o_lobbyists', 'p_silence');
+    expect(scoreStatement(cards('o_satan', 'c_and', 'o_lobbyists', 'p_silence')).grammatical).toBe(true);
+    expect(compound).toBeGreaterThan(single);
+    // Same side + same predicate → the extras decay-stack; naming more villains is
+    // a bump, never a 2× farm (drawing a second verb still beats listing nouns).
+    expect(compound).toBeLessThan(2 * single);
+  });
+
+  it('distinct-side compound subjects genuinely combo on the "and" junction', () => {
+    // "I and the American people are true patriots" — self-praise + pander, both good
+    const r = scoreStatement(cards('s_i', 'c_and', 's_people', 'p_patriot'));
+    expect(r.combo).toEqual({ kind: 'and', mult: 1.25 });
+    expect(r.comboChips).toEqual([{ tokenIdx: 1, kind: 'and' }]); // the chip sits on the "and"
+  });
+
+  it('a compound object scores each object by its own sentiment — bump, not farm', () => {
+    // "My opponent wants to destroy Main Street and our children"
+    const single = delta('s_opp', 'p_destroy', 'o_mainstreet');
+    const compound = delta('s_opp', 'p_destroy', 'o_mainstreet', 'c_and', 's_children');
+    expect(scoreStatement(cards('s_opp', 'p_destroy', 'o_mainstreet', 'c_and', 's_children')).grammatical).toBe(true);
+    expect(compound).toBeGreaterThan(single);
+    expect(compound).toBeLessThan(2 * single);
+  });
+
+  it('naming the crowd inside a compound subject still insults them', () => {
+    // "My opponent and our children kick puppies" — the attack half doesn't excuse it
+    const r = scoreStatement(cards('s_opp', 'c_and', 's_children', 'p_kick_pup'));
+    expect(r.audienceInsulted).toBe(true);
+    expect(r.delta).toBeLessThan(0);
+  });
+
+  it('a long villain list is one sentence, not rambling', () => {
+    const r = scoreStatement(cards('o_satan', 'c_and', 'o_lobbyists', 'c_and', 'o_swamp', 'c_and', 'o_inflation', 'p_silence'));
+    expect(r.grammatical).toBe(true);
+    expect(r.rambling).toBeUndefined();
+    expect(r.delta).toBeGreaterThan(delta('o_satan', 'p_silence')); // still a (flattening) bump
+  });
+});
+
 describe('scoring — hidden crowd preference', () => {
   it('a crowd amplifies statements of the type it loves', () => {
     const line = cards('s_opp', 'p_kick_pup'); // an attack on the opponent

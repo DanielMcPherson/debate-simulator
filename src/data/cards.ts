@@ -229,7 +229,7 @@ export const SIG_ATTACK: Card[] = [
   // Petty-crimes-against-society tier (2026-07): small, vivid, damning.
   pc('p_shoppingcart', 'have', 'never once returned a shopping cart', -3),
   pc('p_microwavefish', 'microwave', 'fish in the office breakroom', -3),
-  pc('p_milkfirst', 'put', 'the milk in before the cereal', -3),
+  pc('p_fridgelunch', 'eat', "other people's lunches out of the office fridge", -3),
 ].map((c) => ({ ...c, topics: [...new Set([...(c.topics ?? []), 'jackass', 'opponent'])] })); // smears answer Name-Calling + Your Opponent
 
 export const SIG_PANDER: Card[] = [

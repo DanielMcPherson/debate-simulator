@@ -70,8 +70,12 @@ A debate is a series of **questions**. Each question:
   fill-in slot ("is in bed with ___", "wants to destroy ___"), **objects** to
   fill those slots, and **connectors** ("and", "but", "because", "which is why",
   "and frankly"). `and` coordinates predicates under one subject; the others open
-  a new clause. Predicates auto-conjugate to the subject ("My opponent **kicks**"
-  vs "Our children **kick**", "is/are a national disgrace").
+  a new clause. `and` can also join **nouns** into a compound subject or object —
+  "**Satan and the lobbyists** want to silence free speech", "…wants to destroy
+  **Main Street and our children**" — naming a second target adds a bit more
+  punch (and two *different* kinds of target can even combo). Predicates
+  auto-conjugate to the subject ("My opponent **kicks**" vs "Our children
+  **kick**", "Satan and the lobbyists **want**…").
 - **Modifier** asides slot in right after a subject — "My opponent, **who is ugly,
   just very ugly,** eats kittens" / "Our Constitution, **which is a national
   treasure,** defends freedom." They **intensify** the clause (their score folds into

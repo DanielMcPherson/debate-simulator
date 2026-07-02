@@ -109,11 +109,21 @@ Cards are **chunks**, not single words. `Card.role`:
   bigger line before cashing it in risks the opponent grabbing it first.
 - `powerup` — one-shot action card (`effect`), never part of the sentence.
 
-Grammar: `TOP→S [INT]; S→CLAUSE | S (CCAND|CJOIN|CBEC|CPERIOD) CLAUSE; CLAUSE→NP [MODS] PREDS;
-MODS→MOD | MODS MOD; PREDS→PRED | PREDS (CCAND|CJOIN) PRED; PRED→PC | PO NP`. Terms: `and`→CCAND,
+Grammar: `TOP→S [INT]; S→CLAUSE | S (CCAND|CJOIN|CBEC|CPERIOD) CLAUSE; CLAUSE→SUBJ [MODS] PREDS;
+SUBJ→NP | SUBJ CCAND NP | SUBJ MODS CCAND NP; MODS→MOD | MODS MOD; PREDS→PRED | PREDS (CCAND|CJOIN)
+PRED; PRED→PC | PO OBJ; OBJ→NP | OBJ CCAND NP`. Terms: `and`→CCAND,
 `and therefore`/`but`→CJOIN (both can also coordinate bare predicates via the PREDS rules),
 `because`→**CBEC** and `period`→CPERIOD (clause-ONLY — absent from PREDS, so each needs its own
-subject). Validity depends only on the **role sequence**, so `grammar.ts`
+subject). **NP coordination (2026-07):** plain `and` (ONLY `and`) also joins noun phrases into a
+**compound subject** ("Satan and the lobbyists want to silence free speech" — conjugates PLURAL,
+person = lowest present so "my opponent and I are…") or a **compound object** ("…wants to destroy
+Main Street and our children") — both were natural player builds that used to score "confused". The
+segmenter (`coordNext` in `segmentDetailed`) disambiguates object-coordination from a new clause by
+lookahead: an `and`-NP followed by its own predicate/modifier opens a clause ("…and our children
+kick puppies" stays two clauses). Coordinated NPs land in `Clause.coSubjects` /
+`PredInstance.coObjects` (`CoordNP {card, idx, connIdx}`); a connector-LESS second NP is still a
+stray (nearest-noun fallback, NOT a compound — else the blunder punch-through would hammer word
+salad as a crowd insult the player never made). Validity depends only on the **role sequence**, so `grammar.ts`
 recognizes over term-sets and memoizes (keeps the AI's deep search fast). Play is freeform (any
 card any time, no POS labels); the grammar judges the *result* — ungrammatical lines score
 "confused". The clause segmenter stamps each clause's `joinedByPrev` connector (for scoring).
@@ -132,7 +142,17 @@ get a ×1.6 blunder multiplier.** A clause's **modifier** asides score by the sa
 `signed(P)` path (subject side/weight + blunder mult); GOOD-direction ones **fold into the clause's
 first contribution** (intensify + ride its combo), BLUNDER-direction ones (`aside`) are added at
 full strength outside combos/decay. **An audience insult anywhere zeroes the statement's positives**
-(no pandering-your-way-back); a **self-own aside reads as `confused`** when net ≤0. **Combos are connector-fit** (`aggregate()` in scoring.ts):
+(no pandering-your-way-back); a **self-own aside reads as `confused`** when net ≤0. **Coordinated
+NPs (2026-07) each contribute:** a compound subject asserts the clause's FIRST predicate of every
+subject on its OWN target (so "my opponent and our children kick puppies" still fires `insult_aud`
+and poisons the line); a compound object scores the predicate once per object by that object's own
+sentiment. Each extra NP is a contribution `joinedByPrev:'and'` (+ junction `connIdx`), so genuinely
+distinct sides that both help you can combo on the "and" ("I and the American people are true
+patriots" ⚡), while a same-side pile-on ("Satan and the lobbyists and…") just decay-stacks (~1.3×
+one subject — a bump, never a 2× farm; drawing a second verb still beats listing nouns). Coord
+contributions are flagged `Contrib.coord` and excluded from `residualCount`, so a one-sentence
+villain list can't trip RAMBLING. Modifier asides still score against the PRIMARY subject
+(documented simplification; rendering agrees with the noun the aside follows). **Combos are connector-fit** (`aggregate()` in scoring.ts):
 contributions joined by a *correctly-used* conjunction bind into a combo group (summed full, then
 ×mult) — `and` 1.25 / `because`/`and therefore` 1.30 / `but` 1.40 (pivot: them-bad→you-good,
 different sides). `and`/`because` need both clauses good & **distinct** (by side or predicate base

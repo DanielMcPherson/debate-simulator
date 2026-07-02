@@ -152,6 +152,18 @@ export interface Card {
 /** A card instance placed in a player's building line, in order. */
 export type Statement = Card[];
 
+/** An extra noun phrase coordinated onto a subject or object with "and"
+ * ("Satan AND THE LOBBYISTS want…", "…destroy Main Street AND OUR CHILDREN").
+ * `connIdx` is the token index of its "and" junction (absent when a stray NP was
+ * jammed on with no connector — the lenient segmenter still reads the intent). */
+export interface CoordNP {
+  card: Card;
+  /** Token index of the coordinated NP. */
+  idx: number;
+  /** Token index of the "and" that joined it, if any. */
+  connIdx?: number;
+}
+
 /** A predicate together with the object filling its slot (if any). */
 export interface PredInstance {
   card: Card;
@@ -160,6 +172,8 @@ export interface PredInstance {
   object?: Card;
   /** Token index of the object NP, if any (extends the highlight span). */
   objIdx?: number;
+  /** Extra objects coordinated with "and" — each scores by its own sentiment. */
+  coObjects?: CoordNP[];
   /** The connector coordinating this predicate with the prior one in its clause
    * (e.g. "and", or an elided "and therefore"); undefined for a clause's first. */
   joinedBy?: NonNullable<Card['conj']>;
@@ -172,6 +186,9 @@ export interface Clause {
   subject?: Card;
   /** Token index of the subject NP (for highlighting the phrase). */
   subjectIdx?: number;
+  /** Extra subjects coordinated with "and" (compound subject) — the clause's first
+   * predicate is asserted of each, landing on each subject's own target. */
+  coSubjects?: CoordNP[];
   /** Post-nominal modifier asides attached to the subject ("who is ugly"). Their
    * score folds into the clause's first predicate contribution. */
   mods?: Card[];

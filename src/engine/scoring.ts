@@ -106,6 +106,10 @@ interface Contrib {
    * scored at full strength OUTSIDE the combo/decay machinery so same-clause praise
    * can't quietly net it away. (Good-direction modifiers fold into the clause instead.) */
   aside?: boolean;
+  /** An extra coordinated NP's contribution ("Satan AND THE LOBBYISTS…"): it decays like
+   * a residual but is one *sentence-internal* list item, not an extra sentence — so it
+   * doesn't count toward the rambling limit. */
+  coord?: boolean;
   /** Token indices for highlighting this phrase in the resolution animation. */
   subjectIdx?: number;
   predIdx?: number;
@@ -127,16 +131,20 @@ function contributions(structure: SentenceStructure): Contrib[] {
   const out: Contrib[] = [];
   structure.clauses.forEach((clause) => {
     const side: Side = effectiveSide(clause.subject);
-    const t = targetFor(clause.subject);
-    // Signed delta + category for a polarity P on this clause's subject — shared by
-    // predicates and modifier asides, so misuse blunders the same way for both.
-    const signed = (P: number): { delta: number; category: Category } => {
-      const category = predCategory(side, P);
+    // Signed delta + category for a polarity P landing on a given subject — each
+    // coordinated subject of a compound uses its OWN side/weight.
+    const signedFor = (subject: Card | undefined, P: number): { delta: number; category: Category; side: Side } => {
+      const s = effectiveSide(subject);
+      const t = targetFor(subject);
+      const category = predCategory(s, P);
       let delta = t.sign * P * t.weight * SCALE;
       // Blunders sting extra: owning yourself or insulting the audience.
       if (category === 'self_own' || category === 'insult_aud') delta *= BLUNDER_MULT;
-      return { delta, category };
+      return { delta, category, side: s };
     };
+    // On the clause's primary subject — shared by predicates and modifier asides, so
+    // misuse blunders the same way for both.
+    const signed = (P: number) => signedFor(clause.subject, P);
 
     // Split the clause's modifier asides by direction:
     //  - GOOD ones (help the clause: attack an opponent, praise yourself/the crowd) FOLD
@@ -161,18 +169,47 @@ function contributions(structure: SentenceStructure): Contrib[] {
       }
     });
 
-    const clauseContribs: Contrib[] = clause.preds.map((p, pi) => {
+    const clauseContribs: Contrib[] = [];
+    clause.preds.forEach((p, pi) => {
       const { delta, category } = signed(predP(p));
       // The connector before this contribution: within a clause it's the
       // predicate's coordinating connector; for a clause's first predicate it's
       // the clause-join from the previous clause.
       const joinedByPrev = pi > 0 ? p.joinedBy : clause.joinedByPrev;
       const connIdx = pi > 0 ? p.connIdx : clause.connIdx;
-      return {
+      clauseContribs.push({
         delta, category, side, predBase: p.card.id.split('#')[0], joinedByPrev, connIdx,
         subjectIdx: clause.subjectIdx, predIdx: p.predIdx, objIdx: p.objIdx,
-      };
+      });
+      // Coordinated extra objects ("…destroy Main Street AND OUR CHILDREN"): one
+      // contribution per object, each valued by its OWN sentiment. Same subject and
+      // predicate → never `distinct`, so a noun list stacks with diminishing returns
+      // rather than comboing (no farm from enumerating beloved things).
+      for (const o of p.coObjects ?? []) {
+        const r = signed(predP({ card: p.card, object: o.card }));
+        clauseContribs.push({
+          delta: r.delta, category: r.category, side, predBase: p.card.id.split('#')[0],
+          joinedByPrev: o.connIdx !== undefined ? 'and' : undefined, connIdx: o.connIdx, coord: true,
+          subjectIdx: clause.subjectIdx, predIdx: p.predIdx, objIdx: o.idx,
+        });
+      }
     });
+    // Coordinated extra subjects ("SATAN AND THE LOBBYISTS want to silence free
+    // speech"): the clause's first predicate is asserted of each subject, landing on
+    // each one's OWN target — so a compound that names the crowd still insults the
+    // crowd. Joined by its "and": genuinely distinct sides that both help you can
+    // combo; a same-side villain pile-on just stacks with diminishing returns.
+    const p0 = clause.preds[0];
+    if (p0) {
+      for (const s of clause.coSubjects ?? []) {
+        const r = signedFor(s.card, predP(p0));
+        clauseContribs.push({
+          delta: r.delta, category: r.category, side: r.side, predBase: p0.card.id.split('#')[0],
+          joinedByPrev: s.connIdx !== undefined ? 'and' : undefined, connIdx: s.connIdx, coord: true,
+          subjectIdx: s.idx, predIdx: p0.predIdx, objIdx: p0.objIdx,
+        });
+      }
+    }
 
     if (clauseContribs.length > 0) {
       // Fold good-direction asides into the clause's first contribution to INTENSIFY it — but
@@ -328,8 +365,12 @@ function aggregate(cs: Contrib[]): Aggregated {
   }
 
   // Residual — singletons & period-joined clauses stack with diminishing returns.
-  const residual = cs.filter((_, i) => !used[i] && !inGroup[i]).map((c) => c.delta);
+  const residualIdxs = cs.map((_, i) => i).filter((i) => !used[i] && !inGroup[i]);
+  const residual = residualIdxs.map((i) => cs[i].delta);
   const total = comboTotal + decayAggregate(residual) + mitigatedTotal;
+  // Coordinated-NP extras decay like residuals but are list items inside ONE
+  // sentence, not extra sentences — they don't count toward the rambling limit.
+  const residualCount = residualIdxs.filter((i) => !cs[i].coord).length;
 
   // A chip per connector that formed a combo, each tagged with ITS OWN tier (so
   // "A and B because C" paints the "and" as COMBO and the "because" as CHAIN).
@@ -340,7 +381,7 @@ function aggregate(cs: Contrib[]): Aggregated {
     const idx = cs[i].connIdx;
     if (idx !== undefined) chips.push({ tokenIdx: idx, kind: TIER_KIND[t] });
   }
-  return { total, combo: best, mitigated, residualCount: residual.length, chips };
+  return { total, combo: best, mitigated, residualCount, chips };
 }
 
 export interface ScoreOptions {

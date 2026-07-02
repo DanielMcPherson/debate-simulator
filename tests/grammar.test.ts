@@ -140,6 +140,91 @@ describe('morphology — predicate conjugation & casing', () => {
   });
 });
 
+describe('grammar — noun-phrase coordination ("and" between NPs)', () => {
+  it('coordinates subjects: "Satan and the lobbyists … want to silence free speech"', () => {
+    const line = cards('o_satan', 'c_and', 's_opp_speechwriters', 'p_silence');
+    expect(isComplete(line)).toBe(true);
+    const clauses = parse(line).clauses;
+    expect(clauses).toHaveLength(1); // ONE clause with a compound subject, not two
+    expect(clauses[0].subject?.id).toBe('o_satan');
+    expect(clauses[0].coSubjects?.map((s) => s.card.id)).toEqual(['s_opp_speechwriters']);
+    expect(clauses[0].coSubjects?.[0].connIdx).toBe(1); // the "and" junction
+    expect(clauses[0].preds).toHaveLength(1);
+  });
+
+  it('coordinates objects: "…wants to destroy Main Street and our children"', () => {
+    const line = cards('s_opp', 'p_destroy', 'o_mainstreet', 'c_and', 's_children');
+    expect(isComplete(line)).toBe(true);
+    const clauses = parse(line).clauses;
+    expect(clauses).toHaveLength(1);
+    expect(clauses[0].preds[0].object?.id).toBe('o_mainstreet');
+    expect(clauses[0].preds[0].coObjects?.map((o) => o.card.id)).toEqual(['s_children']);
+  });
+
+  it('chains three coordinated subjects', () => {
+    const line = cards('o_satan', 'c_and', 'o_lobbyists', 'c_and', 'o_swamp', 'p_silence');
+    expect(isComplete(line)).toBe(true);
+    expect(parse(line).clauses[0].coSubjects).toHaveLength(2);
+  });
+
+  it('a compound subject alone is a valid but incomplete prefix', () => {
+    expect(isValidPrefix(cards('o_satan', 'c_and', 's_opp_speechwriters'))).toBe(true);
+    expect(isComplete(cards('o_satan', 'c_and', 's_opp_speechwriters'))).toBe(false);
+  });
+
+  it('an "and"-NP followed by its own predicate still opens a NEW clause (lookahead)', () => {
+    // "…destroy Main Street and our children kick puppies" — children is a new subject
+    const line = cards('s_opp', 'p_destroy', 'o_mainstreet', 'c_and', 's_children', 'p_kick_pup');
+    expect(isComplete(line)).toBe(true);
+    const clauses = parse(line).clauses;
+    expect(clauses).toHaveLength(2);
+    expect(clauses[0].preds[0].coObjects).toBeUndefined();
+    expect(clauses[1].subject?.id).toBe('s_children');
+  });
+
+  it('only plain "and" coordinates noun phrases — but/because do not', () => {
+    expect(isComplete(cards('o_satan', 'c_but', 's_opp_speechwriters', 'p_silence'))).toBe(false);
+    expect(isComplete(cards('o_satan', 'c_because', 's_opp_speechwriters', 'p_silence'))).toBe(false);
+  });
+
+  it('allows a modifier aside mid-compound ("Satan, who is ugly, and the lobbyists want…")', () => {
+    const line = cards('o_satan', 'm_ugly', 'c_and', 'o_lobbyists', 'p_silence');
+    expect(isComplete(line)).toBe(true);
+    expect(parse(line).clauses).toHaveLength(1);
+  });
+
+  it('a connector-less second NP is still a stray (no silent compound)', () => {
+    // "Satan the lobbyists want…" — missing the "and"; still breaks at the second NP
+    expect(firstInvalidIndex(cards('o_satan', 'o_lobbyists', 'p_silence'))).toBe(1);
+  });
+});
+
+describe('morphology — noun-phrase coordination', () => {
+  it('a compound subject conjugates PLURAL (the flagship player example)', () => {
+    expect(renderSentence(cards('o_satan', 'c_and', 's_opp_speechwriters', 'p_silence'))).toBe(
+      "Satan and the lobbyists who write my opponent's speeches want to silence free speech.",
+    );
+  });
+
+  it('renders a compound object, lower-casing the mid-sentence NP', () => {
+    expect(renderSentence(cards('s_opp', 'p_destroy', 'o_mainstreet', 'c_and', 's_children'))).toBe(
+      'My opponent wants to destroy Main Street and our children.',
+    );
+  });
+
+  it('"my opponent and I" takes first-person-plural agreement', () => {
+    expect(renderSentence(cards('s_opp', 'c_and', 's_i', 'p_disgrace'))).toBe(
+      'My opponent and I are a national disgrace.',
+    );
+  });
+
+  it('a mid-compound aside agrees with the noun it follows, not the compound', () => {
+    expect(renderSentence(cards('o_satan', 'm_ugly', 'c_and', 'o_lobbyists', 'p_silence'))).toBe(
+      'Satan, who is ugly, just very ugly, and shady lobbyists want to silence free speech.',
+    );
+  });
+});
+
 describe('grammar — modifier asides', () => {
   it('accepts subject + modifier + predicate', () => {
     expect(isComplete(cards('s_opp_wife', 'm_ugly', 'p_eat_babies'))).toBe(true);
