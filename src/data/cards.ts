@@ -321,9 +321,13 @@ export const MODIFIERS: Card[] = [
   md('m_better', 'frankly never looked better', 2, { lead: 'have', rel: 'who' }), // "who has frankly never looked better"
   md('m_winning', 'winning by every available metric', 2, { rel: 'who' }),
   md('m_triumph', 'which the experts are reportedly calling a triumph', 2, { invariant: true }),
+  md('m_humility', 'whose sparkling humility is praised by everyone who matters', 3, { invariant: true }),
+  md('m_ff_proud', 'who would truly make our founding fathers proud', 2, { invariant: true }),
   // bad
   md('m_catbox', 'like a goat vomited into an overfilled catbox', -3, { lead: 'smell', pre: 'frankly', rel: 'which' }),
   md('m_park', 'who cannot parallel park to save their life', -2, { invariant: true }),
+  md('m_lowiq', 'a very low IQ, believe me', -2, { lead: 'have', rel: 'who' }), // "who has a very low IQ, believe me"
+  md('m_drunk', 'probably drunk right now', -3, { rel: 'who' }), // "who is probably drunk right now"
   // neutral (0): pure flavor + a waiting move; never angers the crowd, never helps the score
   md('m_tape', 'which is, between us, mostly held together with tape', 0, { invariant: true }),
   // Dual-role coordinating parentheticals: a subject aside ("My opponent, and I'm not making
@@ -589,6 +593,11 @@ export const REWARDS: Card[] = [
   NP('r_crowd_grillmasters', 'This proud nation of grill masters, coupon clippers, and quiet heroes', 'audience', 2, { topics: ['pander'], intensity: 1.6, ceiling: 3, animate: false }),
   NP('r_crowd_ducttape', 'The exhausted patriots currently holding this country together with duct tape', 'audience', 2, { topics: ['pander'], intensity: 1.6, ceiling: 3, number: 'plural' }),
   NP('r_crowd_toosmart', 'This audience of upstanding patriots, each one far too intelligent to be influenced by shameless flattery,', 'audience', 2, { topics: ['pander'], intensity: 1.6, ceiling: 3 }),
+
+  // Reward-tier ASIDE — a folded-in modifier is worth ~a bonus attack/brag and rides the combo, so a
+  // −4 aside (with a ceiling) is a strong, flexible draft (attaches to any subject; direction flips
+  // with whom you play it on). The first reward aside — base asides cap at ±3.
+  md('r_ff_vomit', 'whose political opinions would make our founding fathers vomit into a house plant', -4, { invariant: true, ceiling: 4 }),
 
   // PRIVATE finishers — premium: a guaranteed ×factor you OWN (can't be out-raced in the shared
   // pool the way the pool finishers can). Phrasings author-supplied. (Rendered as a trailing
