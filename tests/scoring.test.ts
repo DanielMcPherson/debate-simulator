@@ -20,7 +20,7 @@ describe('scoring — chunk predicates', () => {
   });
 
   it('pandering to the audience is strongly positive', () => {
-    expect(delta('s_people', 'p_deliver')).toBeGreaterThan(8); // a +3 pander on the crowd (×1.3 weight)
+    expect(delta('s_people', 'p_free_icecream')).toBeGreaterThan(8); // a +3 pander on the crowd (×1.3 weight)
   });
 
   it('insulting the opponent helps the speaker', () => {
@@ -76,9 +76,9 @@ describe('scoring — heroes & villains (neutral subjects)', () => {
 
   it('no "thing" noun is inert: championing a cause scores AND reacts to the crowd', () => {
     // A positive thematic noun plays as an applause line, not a dead neutral.
-    const base = delta('o_freedom', 'p_deliver'); // "freedom and democracy delivers blue skies and happiness"
+    const base = delta('o_freedom', 'p_free_icecream'); // a +3 promise pinned on a beloved cause
     expect(base).toBeGreaterThan(8); // on par with praising the audience, not a weak 0.6 play
-    const loved = scoreStatement(cards('o_freedom', 'p_deliver'), {
+    const loved = scoreStatement(cards('o_freedom', 'p_free_icecream'), {
       crowd: { id: 'c', loves: 'pander_aud', boost: 1.5 },
     }).delta;
     expect(loved).toBeGreaterThan(base); // a patriot-loving crowd cheers it
@@ -100,7 +100,7 @@ describe('scoring — heroes & villains (neutral subjects)', () => {
   });
 
   it('reward cards hit harder than common ones', () => {
-    expect(Math.abs(delta('s_opp', 'r_traitor'))).toBeGreaterThan(Math.abs(delta('s_opp', 'p_disgrace')));
+    expect(Math.abs(delta('s_opp', 'r_lizard'))).toBeGreaterThan(Math.abs(delta('s_opp', 'p_disgrace')));
   });
 });
 
@@ -256,15 +256,15 @@ describe('scoring — headliners (per-card + chain ceiling)', () => {
   // (soft ≤50 / hard ≤65) so no single statement is a knockout. See scoring.ts HEADROOM_MAX.
 
   it('ceiling cards let a strong combo break the old ±35 base cap', () => {
-    // "My opponent is a traitor … and is secretly a lizard person … and has never told the truth"
-    // — three ±4 headliner attacks (ceiling 4 each) bound into one combo.
-    const d = delta('s_opp', 'r_traitor', 'c_and', 'r_lizard', 'c_and', 'r_never_truth');
+    // "My opponent wants to cancel Christmas … and is secretly a lizard person … and has never
+    // told the truth" — three ±4 headliner attacks (ceiling 4 each) bound into one combo.
+    const d = delta('s_opp', 'r_christmas', 'c_and', 'r_lizard', 'c_and', 'r_never_truth');
     expect(d).toBeGreaterThan(35); // would have clamped to 35 before headliners
     expect(d).toBeLessThanOrEqual(50); // …but still within the soft cap
   });
 
   it('a finisher on a ceiling line breaks the old ±50 hard cap', () => {
-    const d = delta('s_opp', 'r_traitor', 'c_and', 'r_lizard', 'c_and', 'r_never_truth', 'x_guarantee');
+    const d = delta('s_opp', 'r_christmas', 'c_and', 'r_lizard', 'c_and', 'r_never_truth', 'x_guarantee');
     expect(d).toBeGreaterThan(50); // ×factor on a 35+ base used to re-clamp at 50
     expect(d).toBeLessThanOrEqual(65); // bounded by the hard cap
   });
@@ -277,21 +277,21 @@ describe('scoring — headliners (per-card + chain ceiling)', () => {
 
   it('headroom is bounded: soft cap never exceeds 50, hard cap never exceeds 65', () => {
     // Pile far more ceiling than +15 of headroom; the soft cap still clamps at 50.
-    const soft = delta('s_opp', 'r_traitor', 'c_and', 'r_lizard', 'c_and', 'r_never_truth', 'c_and', 'r_eatpup', 'c_and', 'r_christmas');
+    const soft = delta('s_opp', 'r_goldtoilet', 'c_and', 'r_lizard', 'c_and', 'r_never_truth', 'c_and', 'r_popupads', 'c_and', 'r_christmas');
     expect(soft).toBe(50);
     // …and with a finisher on top, the hard cap clamps at 65.
-    const hard = delta('s_opp', 'r_traitor', 'c_and', 'r_lizard', 'c_and', 'r_never_truth', 'c_and', 'r_eatpup', 'x_guarantee');
+    const hard = delta('s_opp', 'r_goldtoilet', 'c_and', 'r_lizard', 'c_and', 'r_never_truth', 'c_and', 'r_popupads', 'x_guarantee');
     expect(hard).toBe(65);
   });
 
   it('sub-cap statements are unchanged (raising a clamp cannot move a value below it)', () => {
-    expect(delta('s_i', 'p_deliver')).toBe(7.5); // single clause
+    expect(delta('s_i', 'p_deliver')).toBe(5); // single clause (p_deliver retiered 3→2, 2026-07)
     expect(delta('s_opp', 'p_lie', 'c_and', 'p_raise_taxes')).toBe(12.5); // simple 1-combo of two −2 attacks
   });
 
   it('ceiling cards do NOT lift the confused/ungrammatical path', () => {
     // Two headliner predicates with no verb structure → scrambled; still capped at ±35, tiny.
-    const r = scoreStatement(cards('r_traitor', 'r_lizard', 's_opp'));
+    const r = scoreStatement(cards('r_christmas', 'r_lizard', 's_opp'));
     expect(r.label).toBe('confused');
     expect(Math.abs(r.delta)).toBeLessThanOrEqual(35);
   });

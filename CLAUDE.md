@@ -99,7 +99,9 @@ Cards are **chunks**, not single words. `Card.role`:
   `invariant: true` bakes the full phrase incl. its own pronoun (for relative clauses that can't
   conjugate to the subject, e.g. "which the experts are calling a triumph", "and trust me, …").
   A **`conj` on a modifier** makes it **dual-role** — a subject aside OR a clause-joining coordinating
-  conjunction mid-line (see the "Dual-role parenthetical asides" DONE note); `m_trustme`/`m_notmakingup`.
+  conjunction mid-line (see the "Dual-role parenthetical asides" DONE note); `m_trustme`/`m_notmakingup`
+  (**reward-only since 2026-07** — an aside + ×1.25-connector in one slot dominated plain "and" when
+  face-up in the shared pool, so they moved to `REWARDS`; the mechanic itself is deck-agnostic).
 - `intensifier` — sentence-final finisher (`factor` multiplies the whole statement). It is an
   **end-move**: only offered/legal when the line is already a complete sentence (grammar `S → INT`),
   and playing it (a `take`) appends the flourish, resolves, and ends the turn — there is **no held
@@ -444,7 +446,9 @@ disambiguates by **position** — a `conj` modifier with `cur.preds.length > 0` 
 slot) is segmented as a connector, else as a normal aside. It combos like "and" (CCAND, reinforce) and
 renders comma-set (morphology.ts). Tests in scoring.test.ts ("dual-role parenthetical"). To add more,
 just give an invariant coordinating aside a `conj`. (The roadmap's "author as two separate cards"
-alternative was avoided — one card serves both, which is what the player expects.)
+alternative was avoided — one card serves both, which is what the player expects.) **2026-07:** both
+cards moved from `MODIFIERS` (shared pool) to `REWARDS` — dual-role strictly dominates plain "and"
+head-to-head, so it's now a drafted privilege; nothing engine-side cares which deck they live in.
 
 **P2 · medium — "Setup" predicate-prefix cards that demand a completion (e.g. "is a corrupt jackass
 who ___").** A new shape that's intensifier-like in that it **requires another card to finish** the
@@ -501,6 +505,10 @@ the `PowerEffect` union (types.ts), a def in `POWERUPS` (cards.ts), a `case` in 
   it gives the player **agency on defense** — right now you can only out-build, never blunt an incoming hit.
   ("Come on, man!" also exists as a **finisher** today — `x_comeon` — so the phrase is dual-purpose; if built,
   reserve "That's a lie!" for the rebuttal and keep "Come on, man!" as the finisher, or fork the wording.)
+  Related design idea once this exists (web-Fable card review, 2026-07): a **self-own finisher subtype** —
+  finishers that read as accidental self-owns ("and that's coming from me, so you know it's true",
+  currently `r_x_comingfromme`, shipped as a plain finisher): high base factor, but a smart opponent's
+  rebuttal punishes it. Gives optimal AI counterplay against player finishers without contesting the cards.
 These are the first **power-up rewards**; good fit for the deferred **shop** (price ∝ power) alongside the
 PRIVATE-finishers note above.
 
@@ -557,7 +565,8 @@ animating the opponent "thinking" stage; the broader per-tier reaction-phrasing 
 teaches the core loop with animated glows, paired with the resolution juice:
 - **Engine:** `dealRound` curates the Q1 **shared pool** (`buildTutorialPool` in game.ts) into a
   randomized "me-good AND opponent-bad (+ finisher)" toolkit — 2 self subjects, 2 opponent subjects,
-  2 closed positive ("brag") verbs, 2 closed negative ("attack") verbs, an `and`, and one finisher
+  2 closed positive ("brag") verbs, 2 closed negative ("attack") verbs (**both |sentiment| ≥ 2**,
+  2026-07 — a ±1 filler verb scores under COMBO_MIN and breaks the "your combo wins" lesson), an `and`, and one finisher
   (verbs/subjects vary each game for replay variety; the connector & finisher are safe because the Q1
   opponent never plays them, and 2-of-each avoids a dead-end if the AI grabs one). The hand is NOT
   replaced — the player builds from the POOL (teaches pool use, not a private gift) — but **power-ups

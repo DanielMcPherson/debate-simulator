@@ -157,7 +157,7 @@ export const OBJECTS: Card[] = [
 // COMMON predicates — generic "stump speech" material, found only in the shared
 // (contested) pool. Mild and serviceable; everyone fights over them.
 export const COMMON_PRAISE: Card[] = [
-  pc('p_deliver', 'deliver', 'blue skies and happiness', 3),
+  pc('p_deliver', 'deliver', 'blue skies and happiness', 2),
   pc('p_love_fd', 'love', 'freedom and democracy', 2, { topics: ['freedom'] }),
   pc('p_patriot', 'be', 'a true patriot', 2),
   pc('p_strong', 'be', 'strong and decisive', 2),
@@ -168,7 +168,7 @@ export const COMMON_PRAISE: Card[] = [
   pi('p_defend_liberty', 'will defend our liberty', 2, { topics: ['freedom'] }),
   pi('p_fight_for_you', 'will always fight for you', 2, { topics: ['pander'] }),
   pi('p_have_back', 'will always have your back', 2, { topics: ['pander'] }),
-  pi('p_keep_safe', 'will keep this country safe', 3, { topics: ['security'] }),
+  pi('p_keep_safe', 'will keep this country safe', 2, { topics: ['security'] }),
   pc('p_read_constitution', 'have', 'read every single word of the Constitution and loved all of it', 3, { topics: ['freedom'] }),
 ];
 
@@ -190,7 +190,7 @@ export const COMMON_INSULTS: Card[] = [
   pi('p_say_anything', 'will say anything to get elected', -1),
   pi('p_destroy_country', 'will destroy this country', -2),
   pi('p_ashamed', 'should be ashamed', -1),
-  pc('p_tax_christmas', 'want', 'to tax your Christmas presents', -2, { topics: ['economy', 'children'] }),
+  pc('p_tax_christmas', 'want', 'to tax your Christmas presents', -3, { topics: ['economy', 'children'] }),
   pc('p_tollbooth', 'want', 'to put a toll booth on your driveway', -3, { topics: ['economy'] }),
   pc('p_naps', 'nap', 'through every important meeting', -2),
 ].map((c) => ({ ...c, topics: [...new Set([...(c.topics ?? []), 'jackass', 'opponent'])] }));
@@ -203,13 +203,15 @@ export const SIG_BRAG: Card[] = [
   pc('p_lift_boats', 'bench-press', 'small fishing boats before breakfast', 3),
   pi('p_phonecall', 'could fix the whole economy with a single phone call', 3, { topics: ['economy'] }),
   pc('p_neverwrong', 'be', 'never wrong about anything, ever', 3),
-  pc('p_treasure', 'be', 'frankly a national treasure', 3),
+  // (p_treasure cut 2026-07 — duplicated the m_treasure aside; the aside misfiring next to
+  // the wrong subject is the funnier failure mode, so the aside version stays.)
   pc('p_handshake_hair', 'have', 'the handshake of a champion and the hair of a statesman', 3),
   pc('p_courage', 'have', 'the courage of ten senators and the humility of eleven', 3),
   pi('p_battery', "will direct our nation's scientists to make the last 10% of a phone battery last longer", 3),
   pi('p_hurricane', 'once talked a hurricane into changing course', 3),
   pi('p_wallet', 'personally returned a lost wallet on live television', 3),
   pc('p_oncegen', 'be', 'a once-in-a-generation genius', 2), // demoted from a reward — too generic for the top tier
+  pi('p_zipcodes', 'memorized every ZIP code in this country, out of respect', 3),
 ];
 
 export const SIG_ATTACK: Card[] = [
@@ -224,6 +226,10 @@ export const SIG_ATTACK: Card[] = [
   pc('p_magic_eightball', 'want', 'to replace the Supreme Court with a Magic Eight Ball', -3),
   pc('p_shrimp_buffet', 'have', 'the moral compass of a casino shrimp buffet', -3),
   pi('p_find_economy', "couldn't find the economy with both hands and a map", -2, { topics: ['economy'] }),
+  // Petty-crimes-against-society tier (2026-07): small, vivid, damning.
+  pc('p_shoppingcart', 'have', 'never once returned a shopping cart', -3),
+  pc('p_microwavefish', 'microwave', 'fish in the office breakroom', -3),
+  pc('p_milkfirst', 'put', 'the milk in before the cereal', -3),
 ].map((c) => ({ ...c, topics: [...new Set([...(c.topics ?? []), 'jackass', 'opponent'])] })); // smears answer Name-Calling + Your Opponent
 
 export const SIG_PANDER: Card[] = [
@@ -236,18 +242,20 @@ export const SIG_PANDER: Card[] = [
   pi('p_naphour', 'will establish a national nap hour for hardworking Americans', 3, { topics: ['pander'] }),
   pc('p_wakeup', 'wake', 'up every morning thinking about you, specifically', 3, { topics: ['pander'] }),
   pi('p_monday', 'will make Monday a second Saturday', 3, { topics: ['pander'] }),
-  pi('p_refund', 'will personally refund your last parking ticket', 2, { topics: ['pander'] }),
-  pc('p_dmv', 'promise', 'shorter lines at the DMV, forever', 2, { topics: ['pander'] }),
+  pi('p_refund', 'will personally refund your last parking ticket', 3, { topics: ['pander'] }),
+  pc('p_dmv', 'promise', 'shorter lines at the DMV, forever', 3, { topics: ['pander'] }),
   pi('p_coffeeshop', 'will put a coffee shop on every single corner', 2, { topics: ['pander'] }),
   // Recognizable presidential rhetoric — baked into a promise (where these phrases
   // actually live), not bare nouns. Playtester suggestions.
   pi('p_city_hill', 'will build a shining city on a hill', 3, { topics: ['freedom'] }),
   pi('p_points_light', 'will light a thousand points of light across this great land', 3, { topics: ['pander'] }),
+  pi('p_anthemkey', 'will put the national anthem in a key normal people can actually sing', 3, { topics: ['pander'] }),
+  pi('p_noupdates', 'will ban software updates during business hours', 3, { topics: ['pander'] }),
 ];
 
 // SIGNATURE noun phrases — flavorful openers/objects, private decks only.
 export const SIG_SUBJ_BRAG: Card[] = [
-  NP('s_position', 'My position, which is the best position believe me,', 'self', 1, { intensity: 1.3 }),
+  NP('s_position', 'My position, which is the best position, believe me,', 'self', 1, { intensity: 1.3 }),
   NP('s_campaign_transparent', 'My incredibly well-organized and financially transparent campaign', 'self', 1, { intensity: 1.3, animate: false }),
   NP('s_plan', 'My plan, which fits neatly on a single index card', 'self', 1, { animate: false }),
   NP('s_gut', 'My gut, which has frankly never once been wrong', 'self', 1, { intensity: 1.3, animate: false }),
@@ -309,14 +317,14 @@ export const MODIFIERS: Card[] = [
   md('m_ugly', 'ugly, just very ugly', -2, { rel: 'who' }),
   md('m_crook', 'as crooked as the day is long', -3, { rel: 'who' }),
   md('m_liar', 'constantly', -2, { lead: 'lie', rel: 'who' }), // "who lies constantly"
-  md('m_disaster', 'a total disaster', -3, { rel: 'which' }),
+  md('m_disaster', 'a total disaster', -2, { rel: 'which' }),
   md('m_treasure', 'frankly a national treasure', 3, { rel: 'who' }),
   md('m_genius', 'an absolute genius', 3, { rel: 'who' }),
   md('m_loves_country', 'this country', 2, { lead: 'love', rel: 'who' }), // "who loves this country"
   md('m_blessing', 'a blessing to us all', 2, { rel: 'which' }),
   md('m_stupidest', 'among the stupidest humans to ever walk the Earth', -3, { rel: 'who' }),
   md('m_smells', 'even worse than expected', -2, { lead: 'smell', pre: 'somehow', rel: 'who' }), // "who somehow smells…"
-  md('m_lostit', 'who, and I say this with love, has completely lost it', -2, { invariant: true }),
+  md('m_lostit', 'who, and I say this with love, has completely lost it', -3, { invariant: true }), // the fake mid-sentence tenderness earns the tier
   // good
   md('m_better', 'frankly never looked better', 2, { lead: 'have', rel: 'who' }), // "who has frankly never looked better"
   md('m_winning', 'winning by every available metric', 2, { rel: 'who' }),
@@ -330,12 +338,11 @@ export const MODIFIERS: Card[] = [
   md('m_drunk', 'probably drunk right now', -3, { rel: 'who' }), // "who is probably drunk right now"
   // neutral (0): pure flavor + a waiting move; never angers the crowd, never helps the score
   md('m_tape', 'which is, between us, mostly held together with tape', 0, { invariant: true }),
-  // Dual-role coordinating parentheticals: a subject aside ("My opponent, and I'm not making
-  // this up, naps…") that can ALSO drop between clauses as a coordinating conjunction
-  // ("…fight a bear, and I'm not making this up, my opponent naps…"). `conj: 'and'` gives them
-  // the connector reading too (see grammar termsAt / segmentDetailed).
-  md('m_trustme', "and trust me, what I'm about to say is absolutely true", 0, { invariant: true, conj: 'and' }),
-  md('m_notmakingup', "and I'm not making this up", 0, { invariant: true, conj: 'and' }),
+  md('m_pollswell', 'which polls very well among people I invented', 3, { invariant: true }),
+  md('m_dmvpolls', "whose approval rating recently fell below the DMV's", -3, { invariant: true }),
+  // (The dual-role coordinating parentheticals m_trustme/m_notmakingup moved to REWARDS
+  // 2026-07 — an aside + ×1.25-connector in one slot strictly dominated plain "and" when
+  // face-up in the shared pool. The dual-role mechanic is deck-agnostic; see REWARDS.)
 ];
 
 // --- connectors -------------------------------------------------------------
@@ -346,7 +353,8 @@ export const CONNECTORS: Card[] = [
   { id: 'c_because', role: 'connector', text: 'because', conj: 'because' },
   { id: 'c_therefore', role: 'connector', text: 'and therefore', conj: 'and therefore' },
   { id: 'c_which', role: 'connector', text: 'which is why', conj: 'and therefore' },
-  { id: 'c_frankly', role: 'connector', text: 'and frankly', conj: 'and therefore' },
+  { id: 'c_frankly', role: 'connector', text: 'and frankly', conj: 'and' }, // retiered 2026-07 — reads as "and" with an adverb, didn't earn the ×1.30 logic tier
+  { id: 'c_seeing', role: 'connector', text: 'seeing as how', conj: 'because' }, // second clause-only teacher (CBEC needs a full clause after it)
   // Flavor variants (map to existing conj behaviors) — more connector words to chain
   // longer compound sentences. Playtester wanted to ramble; these are the sanctioned
   // way to do it (period stays disabled; jamming two thoughts with no connector = run-on).
@@ -406,6 +414,8 @@ export const INTENSIFIERS: Card[] = [
   { id: 'x_thankme', role: 'intensifier', text: 'and history will thank me for saying it!', factor: 1.5 },
   { id: 'x_micdrop', role: 'intensifier', text: 'Checkmate. Boom. Mic drop.', factor: 1.5 }, // renders as its own sentence (no leading "and")
   { id: 'x_oughtto', role: 'intensifier', text: "and if that isn't true, then it damn sure ought to be!", factor: 1.4 },
+  { id: 'x_saidwhatisaid', role: 'intensifier', text: 'I said what I said.', factor: 1.4 }, // renders as its own sentence
+  { id: 'x_blessmic', role: 'intensifier', text: 'God bless this microphone', factor: 1.4 }, // renders as its own sentence
 ];
 
 // --- topics -----------------------------------------------------------------
@@ -532,10 +542,11 @@ export const CROWDS: Crowd[] = [
 export const REWARDS: Card[] = [
   // Headliners: these powerful cards also raise the statement's score cap (`ceiling`) so they
   // break past the base ±35 instead of clipping. ±4 predicates → +4, loaded subjects → +3.
-  pc('r_traitor', 'be', 'a traitor to this very nation', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
+  // (r_traitor + r_eatpup cut 2026-07: "traitor to this very nation" was pure extremity with
+  // no comedic transformation — the weakest ★ — and three creature-consumption attacks was
+  // one too many; "secretly eats babies" keeps the crown.)
   pc('r_lizard', 'be', 'secretly a lizard person', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
   pi('r_christmas', 'wants to cancel Christmas forever', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
-  pc('r_eatpup', 'eat', 'live puppies on national television', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
   pc('r_greatest', 'be', 'the greatest leader in human history', 4, { ceiling: 4 }),
   pi('r_cured', 'personally cured a deadly disease last Tuesday', 4, { ceiling: 4 }),
   pi('r_pony', 'will give every citizen a pony and a tax cut', 4, { ceiling: 4 }),
@@ -554,6 +565,24 @@ export const REWARDS: Card[] = [
   // Clause-only (conj 'because' → CBEC): must be followed by a full noun–verb clause, e.g.
   // "…is a lizard person which conclusively explains why my opponent naps through meetings".
   { id: 'r_conj_conclusively', role: 'connector', text: 'which conclusively explains why', conj: 'because' },
+  // More verbose-wording reward connectors (2026-07) — the flourish is the reward, the
+  // multiplier stays tier-matched to the plain conj.
+  { id: 'r_conj_writethisdown', role: 'connector', text: 'and — write this down —', conj: 'and' },
+  { id: 'r_conj_quotemyself', role: 'connector', text: 'and, if I may quote myself,', conj: 'and' },
+  { id: 'r_conj_nightfollows', role: 'connector', text: 'and it therefore follows, as night follows the glorious day, that', conj: 'and therefore' },
+  { id: 'r_conj_precisely', role: 'connector', text: 'which is exactly, precisely, and specifically why', conj: 'and therefore' },
+  { id: 'r_conj_heartstudy', role: 'connector', text: 'because, according to a study I commissioned in my heart,', conj: 'because' },
+  { id: 'r_conj_grandmother', role: 'connector', text: 'because, as my sainted grandmother always screamed,', conj: 'because' },
+  { id: 'r_conj_mainstream', role: 'connector', text: "but here's what the mainstream media refuses to print:", conj: 'but' },
+  { id: 'r_conj_countryilove', role: 'connector', text: 'but in this country — the country I love —', conj: 'but' },
+  { id: 'r_conj_unlikecertain', role: 'connector', text: 'but unlike certain people on this stage,', conj: 'but' },
+  { id: 'r_conj_humblest', role: 'connector', text: 'but — and I say this as the humblest person on this stage —', conj: 'but' },
+  // Dual-role coordinating parentheticals (moved here from MODIFIERS 2026-07): a subject
+  // aside ("My opponent, and I'm not making this up, naps…") that ALSO works as a clause
+  // connector. An aside + ×1.25-connector in one slot dominates plain "and", so it's a
+  // drafted privilege now, not a shared-pool freebie.
+  md('m_trustme', "and trust me, what I'm about to say is absolutely true", 0, { invariant: true, conj: 'and' }),
+  md('m_notmakingup', "and I'm not making this up", 0, { invariant: true, conj: 'and' }),
 
   // Drafted ACTION card (NOT in the default deck — only ever earned as a reward). A revival of
   // the removed "Call a Recess" button: re-deal the contested shared pool. As a one-shot drafted
@@ -569,7 +598,7 @@ export const REWARDS: Card[] = [
   pi('r_rubber_chicken', 'will personally slap every voter in this audience across the face with a rubber chicken', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
   pi('r_inventweekend', 'single-handedly invented the weekend', 4, { ceiling: 4 }),
   pc('r_eagle', 'bench-press', 'a full-grown bald eagle before breakfast', 4, { ceiling: 4 }),
-  pi('r_everylaw', 'wrote every good law you have ever actually benefited from', 4, { ceiling: 4 }),
+  pi('r_everylaw', "wrote every law you've ever actually benefited from", 4, { ceiling: 4 }),
   NP('r_weird_opp', 'My deeply weird, poll-tested opponent', 'opponent', -2, { intensity: 1.6, ceiling: 3 }),
   NP('r_scumbag_opp', 'My treasonous and perverted scumbag of an opponent', 'opponent', -2, { intensity: 1.6, ceiling: 3 }),
   NP('r_grill_patriots', 'The hardest-working patriots ever to fire up a backyard grill', 'audience', 2, { topics: ['pander'], intensity: 1.6, ceiling: 3, number: 'plural' }),
@@ -594,10 +623,33 @@ export const REWARDS: Card[] = [
   NP('r_crowd_ducttape', 'The exhausted patriots currently holding this country together with duct tape', 'audience', 2, { topics: ['pander'], intensity: 1.6, ceiling: 3, number: 'plural' }),
   NP('r_crowd_toosmart', 'This audience of upstanding patriots, each one far too intelligent to be influenced by shameless flattery,', 'audience', 2, { topics: ['pander'], intensity: 1.6, ceiling: 3 }),
 
+  // 2026-07 slate (web-Fable card review): everyday-grievance attacks + absurd-promise brags.
+  pc('r_warranty', 'call', "you during dinner about your car's extended warranty", -4, { pre: 'personally', topics: ['jackass', 'opponent'], ceiling: 4 }),
+  pi('r_passwords', 'will make every password in America expire daily', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
+  pc('r_aquariums', 'be', 'banned from three aquariums and will not say why', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
+  pi('r_pigeon', 'will replace the bald eagle with a pigeon that owes them money', -4, { topics: ['jackass', 'opponent', 'freedom'], ceiling: 4 }),
+  pi('r_middleseat', 'invented the middle airplane seat', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
+  pc('r_resortfee', 'charge', 'a resort fee on the American Dream', -4, { topics: ['jackass', 'opponent', 'economy'], ceiling: 4 }),
+  pi('r_printers', 'will sign an executive order forcing every printer in this nation to just work', 4, { topics: ['pander'], ceiling: 4 }),
+  pi('r_funeral', 'once received a standing ovation at a funeral', 4, { ceiling: 4 }),
+  pi('r_trafficlights', 'will personally time every traffic light to your commute, specifically', 4, { topics: ['pander'], ceiling: 4 }),
+  pi('r_badwheel', 'will hunt down and destroy every shopping cart with one bad wheel', 4, { topics: ['pander'], ceiling: 4 }),
+
+  // Reward-tier naming NPs (loaded openers; ×1.6 with a +3 ceiling like the ones above).
+  NP('r_raccoons_opp', 'My opponent, who is legally three raccoons in a suit,', 'opponent', -2, { intensity: 1.6, ceiling: 3 }),
+  NP('r_coconspirator_opp', 'My unindicted co-conspirator of an opponent', 'opponent', -2, { intensity: 1.6, ceiling: 3 }),
+  NP('r_onlycrime_self', 'I, whose only crime is loving this country too much,', 'self', 1, { person: 1, intensity: 1.6, ceiling: 3 }),
+  NP('r_campaign_relatives', 'My campaign, staffed entirely by my most loyal relatives,', 'self', 1, { animate: false, intensity: 1.6, ceiling: 3 }),
+  NP('r_crowd_turnsignals', 'The last brave patriots in this country who still use their turn signals', 'audience', 2, { number: 'plural', topics: ['pander'], intensity: 1.6, ceiling: 3 }),
+  NP('r_crowd_onhold', 'Everyone here who has ever been placed on hold, which is everyone,', 'audience', 2, { topics: ['pander'], intensity: 1.6, ceiling: 3 }),
+
   // Reward-tier ASIDE — a folded-in modifier is worth ~a bonus attack/brag and rides the combo, so a
   // −4 aside (with a ceiling) is a strong, flexible draft (attaches to any subject; direction flips
   // with whom you play it on). The first reward aside — base asides cap at ±3.
   md('r_ff_vomit', 'whose political opinions would make our founding fathers vomit into a house plant', -4, { invariant: true, ceiling: 4 }),
+  md('r_m_lawyer', 'whose lawyer is watching this broadcast and quietly weeping', -4, { invariant: true, ceiling: 4 }),
+  md('r_m_morse', "who blinks in Morse code and it spells 'help'", -4, { invariant: true, ceiling: 4 }),
+  md('r_m_allegedly', "which I am legally required to describe as 'allegedly'", -4, { invariant: true, ceiling: 4 }),
 
   // PRIVATE finishers — premium: a guaranteed ×factor you OWN (can't be out-raced in the shared
   // pool the way the pool finishers can). Phrasings author-supplied. (Rendered as a trailing
@@ -607,6 +659,10 @@ export const REWARDS: Card[] = [
   { id: 'r_x_votemany', role: 'intensifier', text: 'which is why you should vote for me, as many times as possible', factor: 1.5 },
   { id: 'r_x_science', role: 'intensifier', text: 'and that, my friends, is just basic science', factor: 1.5 },
   { id: 'r_x_polls', role: 'intensifier', text: 'and I have the tremendous poll numbers to prove it', factor: 1.5 },
+  { id: 'r_x_nofurther', role: 'intensifier', text: 'No further questions. There were no questions.', factor: 1.5 }, // own-sentence render
+  { id: 'r_x_eternal', role: 'intensifier', text: 'My time is up, but my truth is eternal.', factor: 1.5 }, // own-sentence render
+  { id: 'r_x_comingfromme', role: 'intensifier', text: "and that's coming from me, so you know it's true", factor: 1.4 },
+  { id: 'r_x_sheeple', role: 'intensifier', text: 'Wake up, sheeple. Respectfully.', factor: 1.5 }, // own-sentence render
 
   // Drafted ACTION card reusing an existing effect (rides run.bonus → private deck → played from
   // hand like any power-up). A privately-owned Typo can't be out-raced in the pool.

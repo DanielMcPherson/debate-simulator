@@ -166,11 +166,11 @@ describe('resource model — chunk cards, no replenish, must-finish', () => {
   });
 
   it('reward cards carried by the run land in the player deck only', () => {
-    const reward = findDef('r_traitor')!;
+    const reward = findDef('r_lizard')!;
     const g = createGame({ seed: 1, playerBonus: [reward] });
     const base = (c: { id: string }) => c.id.split('#')[0];
-    expect([...g.player.deck, ...g.player.hand].some((c) => base(c) === 'r_traitor')).toBe(true);
-    expect([...g.ai.deck, ...g.ai.hand].some((c) => base(c) === 'r_traitor')).toBe(false);
+    expect([...g.player.deck, ...g.player.hand].some((c) => base(c) === 'r_lizard')).toBe(true);
+    expect([...g.ai.deck, ...g.ai.hand].some((c) => base(c) === 'r_lizard')).toBe(false);
   });
 
   it('Filibuster stocks your hand with connectors (free action)', () => {

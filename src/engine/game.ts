@@ -43,8 +43,10 @@ function pickDistinct<T>(arr: T[], n: number, rng: () => number): T[] {
  * Q1 opponent (tutorialSimple) never plays them. Two of each contested type avoids a dead-end
  * if the AI grabs one. Played on the forced 'jackass' topic so the attack clause is on-topic. */
 function buildTutorialPool(rng: () => number): Card[] {
+  // Only combo-strength verbs (|sentiment| ≥ 2): a ±1 filler verb scores under COMBO_MIN and
+  // would break the "your combo clearly wins" lesson the Q1 toolkit exists to teach.
   const closedPred = (sign: number) =>
-    ALL.filter((c) => c.role === 'predicate' && !c.open && Math.sign(c.sentiment ?? 0) === sign);
+    ALL.filter((c) => c.role === 'predicate' && !c.open && Math.sign(c.sentiment ?? 0) === sign && Math.abs(c.sentiment ?? 0) >= 2);
   const blocks: Card[] = [
     ...pickDistinct(ALL.filter((c) => c.role === 'np' && c.side === 'self'), 2, rng), // brag subjects
     ...pickDistinct(ALL.filter((c) => c.role === 'np' && c.side === 'opponent'), 2, rng), // attack subjects
