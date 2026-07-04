@@ -2,7 +2,7 @@ import type { Card, GameEvent, GameState, Move, PlayerId, PlayerState } from './
 import { isComplete, canAppend } from './grammar';
 import { scoreStatement } from './scoring';
 import { renderSentence, cardLabel } from './morphology';
-import { TOPICS, OPPONENTS, CROWDS, ALL, findDef, PERIOD, PERIOD_ENABLED } from '../data/cards';
+import { TOPICS, OPPONENTS, CROWDS, ALL, findDef, resolveTier, PERIOD, PERIOD_ENABLED } from '../data/cards';
 import {
   buildPrivateDeck,
   buildSharedDeck,
@@ -25,6 +25,8 @@ export interface GameOptions {
   playerBonus?: Card[];
   /** Base ids the player cut from their deck via the Debate Consultant. */
   removedCards?: string[];
+  /** Original base id → tier the player upgraded it to (Punch Up the Zingers). */
+  upgrades?: Record<string, number>;
   /** First-debate onboarding (guaranteed first hand + simple opponent on Q1). */
   tutorial?: boolean;
 }
@@ -120,6 +122,16 @@ function dealRound(state: GameState): void {
         const cut = new Set(state.removedCards);
         built = built.filter((c) => !cut.has(c.id.split('#')[0]));
       }
+      // Punch Up the Zingers: map each built card through its upgrade chain (player
+      // only — the AI plays base decks; relax this guard for future boss deck quality).
+      if (p.id === 'player' && state.upgrades) {
+        built = built.map((c) => {
+          const [base, inst] = c.id.split('#');
+          const t = state.upgrades![base];
+          const def = t ? resolveTier(base, t) : undefined;
+          return def && def.id !== base ? { ...def, id: `${def.id}#${inst ?? '0'}` } : c;
+        });
+      }
       p.deck = shuffle(built, rng).map((c) => ({ ...c, priv: true }));
     } else {
       // Recycle last question's unplayed PRIVATE hand cards back into the draw pile.
@@ -148,6 +160,7 @@ function dealRound(state: GameState): void {
     p.gaffing = false;
     p.nextMultiplier = undefined;
     p.knowsOppHand = false; // Hot Mic reveal lasts only the question it's played
+    p.underOath = false; // the Under Oath compulsion lasts only the question it's played
     p.done = false;
     p.lastReaction = undefined;
     // knowsCrowd persists for the whole debate (Plant reveals it once).
@@ -312,6 +325,7 @@ export function createGame(opts: GameOptions = {}): GameState {
   state.crowd = CROWDS.find((c) => c.id === opts.crowdId) ?? CROWDS[Math.floor(rng() * CROWDS.length)];
   state.playerBonus = opts.playerBonus ?? [];
   state.removedCards = opts.removedCards ?? [];
+  state.upgrades = opts.upgrades ?? {};
   state.tutorial = opts.tutorial ?? false;
   dealRound(state);
   return state;
@@ -418,13 +432,16 @@ function resolveStatement(state: GameState, p: PlayerState): void {
     grammatical: reaction.grammatical,
     combo: reaction.combo?.kind,
     gaffe: p.id === 'ai' ? !!p.gaffing : undefined,
+    underOath: p.id === 'ai' ? !!p.underOath : undefined,
     bar: Math.round(state.bar), // resulting audience bar (+player / −ai)
   });
   // A flustered opponent that actually flubbed reacts (the lightweight stand-in for
-  // the embarrassed-face / inner-monologue we'll add with graphics).
-  if (p.id === 'ai' && p.gaffing && reaction.delta < 0) {
+  // the embarrassed-face / inner-monologue we'll add with graphics). A compelled
+  // (Under Oath) confession gets its own tell and wins over a rolled gaffe's.
+  if (p.id === 'ai' && (p.underOath || p.gaffing) && reaction.delta < 0) {
     const name = state.opponent?.name ?? 'Your opponent';
-    const tell = GAFFE_TELLS[Math.floor(rngFor.get(state)!() * GAFFE_TELLS.length)];
+    const pool = p.underOath ? OATH_TELLS : GAFFE_TELLS;
+    const tell = pool[Math.floor(rngFor.get(state)!() * pool.length)];
     state.log.push(tell.replace('%n', name));
   }
   p.gaffing = false;
@@ -439,6 +456,13 @@ const GAFFE_TELLS = [
   '%n turns pale and loosens their collar.',
   '%n forces a panicked, sweaty smile.',
   '%n looks like they want the floor to swallow them.',
+];
+
+const OATH_TELLS = [
+  '%n claps a hand over their mouth — too late. The oath holds.',
+  '%n stares at the mic in horror: "…why am I still talking?!"',
+  '%n mouths "I cannot lie" and visibly dies inside.',
+  '%n tries to stop mid-sentence, but the truth keeps coming.',
 ];
 
 function endRoundIfDone(state: GameState): void {
@@ -531,6 +555,20 @@ function applyPowerup(state: GameState, p: PlayerState, move: { cardId: string; 
     case 'plant': // reveal the crowd's hidden taste (for the rest of the debate)
       p.knowsCrowd = true;
       break;
+    case 'oath': {
+      // Under Oath — this question, the opponent cannot lie: compelled to build the most
+      // self-damaging statement reachable (ai.ts plans objective 'confess' while the flag
+      // is set). Wasted on an opponent who already resolved (the UI disables it then).
+      // Costs the turn (free stays false).
+      const opp = state[other(p.id)];
+      if (!opp.done) {
+        opp.underOath = true;
+        const who = p.id === 'player' ? 'You put' : `${state.opponent?.name ?? 'Opponent'} puts`;
+        const them = p.id === 'player' ? state.opponent?.name ?? 'your opponent' : 'you';
+        state.log.push(`⚖️ ${who} ${them} under oath — this question, they cannot lie!`);
+      }
+      break;
+    }
     case 'redeal': {
       // Call a Recess — re-deal the SHARED POOL fresh (your private hand is untouched).
       // Reshuffle the current pool back into the remaining shared deck so already-played
@@ -563,7 +601,9 @@ function applyPowerup(state: GameState, p: PlayerState, move: { cardId: string; 
         }
         if (!steal) {
           // auto (AI): grab their most valuable card — a power-up first, else the punchiest.
-          const rank = (c: Card) => (c.role === 'powerup' ? 100 : Math.abs(c.sentiment ?? 0));
+          // Never Under Oath: the AI can't use it (a human can't be compelled) and stealing
+          // the scripted pre-boss story card would just delete it from the run.
+          const rank = (c: Card) => (c.effect === 'oath' ? -1 : c.role === 'powerup' ? 100 : Math.abs(c.sentiment ?? 0));
           let bi = 0;
           for (let i = 1; i < opp.hand.length; i++) if (rank(opp.hand[i]) > rank(opp.hand[bi])) bi = i;
           steal = opp.hand.splice(bi, 1)[0];

@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "catalog": "vite-node scripts/gen-catalog.ts",
+    "upgrades": "vite-node scripts/gen-upgrades.ts",
     "genart": "node scripts/genart.mjs"
   },
   "devDependencies": {

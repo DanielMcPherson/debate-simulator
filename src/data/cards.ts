@@ -212,6 +212,7 @@ export const SIG_BRAG: Card[] = [
   pi('p_wallet', 'personally returned a lost wallet on live television', 3),
   pc('p_oncegen', 'be', 'a once-in-a-generation genius', 2), // demoted from a reward — too generic for the top tier
   pi('p_zipcodes', 'memorized every ZIP code in this country, out of respect', 3),
+  pc('p_ikea', 'assemble', 'IKEA furniture with no leftover screws, on the first try', 3), // authored WITH its upgrade chain (Daniel, 2026-07)
 ];
 
 export const SIG_ATTACK: Card[] = [
@@ -394,6 +395,16 @@ export const POWERUPS: Card[] = [
   { id: 'pw_hotmic', role: 'powerup', effect: 'hotmic', text: '🎙️ Hot Mic — see their hand, steal a card' },
   { id: 'pw_filibuster', role: 'powerup', effect: 'filibuster', text: '🗣️ Filibuster — stock up on connectors' },
 ];
+
+// The scripted pre-boss story card. STANDALONE on purpose: not in POWERUPS (which seeds every
+// default deck), not in REWARDS (random drafts), not in ALL (tutorial-pool sampling) — the only
+// way in is the guaranteed award after debate 4 (UNDER_OATH_RUNG in ui/main.ts) → run.bonus.
+export const UNDER_OATH: Card = {
+  id: 'pw_underoath',
+  role: 'powerup',
+  effect: 'oath',
+  text: '⚖️ Under Oath — this question, your opponent cannot lie',
+};
 
 export const INTENSIFIERS: Card[] = [
   { id: 'x_guarantee', role: 'intensifier', text: 'and I personally guarantee it', factor: 1.5 },
@@ -596,9 +607,9 @@ export const REWARDS: Card[] = [
   pi('r_popupads', 'personally invented the pop-up ad', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
   pc('r_coinslot', 'want', 'to put a coin slot on the Statue of Liberty', -4, { topics: ['jackass', 'opponent', 'freedom'], ceiling: 4 }),
   pi('r_rubber_chicken', 'will personally slap every voter in this audience across the face with a rubber chicken', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
-  pi('r_inventweekend', 'single-handedly invented the weekend', 4, { ceiling: 4 }),
+  // (r_inventweekend + r_everylaw cut 2026-07 by Daniel's upgrade pass — flat bragging with
+  // no comic image; the pass also cut r_m_morse, r_onlycrime_self, r_raccoons_opp, r_crowd_onhold.)
   pc('r_eagle', 'bench-press', 'a full-grown bald eagle before breakfast', 4, { ceiling: 4 }),
-  pi('r_everylaw', "wrote every law you've ever actually benefited from", 4, { ceiling: 4 }),
   NP('r_weird_opp', 'My deeply weird, poll-tested opponent', 'opponent', -2, { intensity: 1.6, ceiling: 3 }),
   NP('r_scumbag_opp', 'My treasonous and perverted scumbag of an opponent', 'opponent', -2, { intensity: 1.6, ceiling: 3 }),
   NP('r_grill_patriots', 'The hardest-working patriots ever to fire up a backyard grill', 'audience', 2, { topics: ['pander'], intensity: 1.6, ceiling: 3, number: 'plural' }),
@@ -636,19 +647,15 @@ export const REWARDS: Card[] = [
   pi('r_badwheel', 'will hunt down and destroy every shopping cart with one bad wheel', 4, { topics: ['pander'], ceiling: 4 }),
 
   // Reward-tier naming NPs (loaded openers; ×1.6 with a +3 ceiling like the ones above).
-  NP('r_raccoons_opp', 'My opponent, who is legally three raccoons in a suit,', 'opponent', -2, { intensity: 1.6, ceiling: 3 }),
   NP('r_coconspirator_opp', 'My unindicted co-conspirator of an opponent', 'opponent', -2, { intensity: 1.6, ceiling: 3 }),
-  NP('r_onlycrime_self', 'I, whose only crime is loving this country too much,', 'self', 1, { person: 1, intensity: 1.6, ceiling: 3 }),
   NP('r_campaign_relatives', 'My campaign, staffed entirely by my most loyal relatives,', 'self', 1, { animate: false, intensity: 1.6, ceiling: 3 }),
   NP('r_crowd_turnsignals', 'The last brave patriots in this country who still use their turn signals', 'audience', 2, { number: 'plural', topics: ['pander'], intensity: 1.6, ceiling: 3 }),
-  NP('r_crowd_onhold', 'Everyone here who has ever been placed on hold, which is everyone,', 'audience', 2, { topics: ['pander'], intensity: 1.6, ceiling: 3 }),
 
   // Reward-tier ASIDE — a folded-in modifier is worth ~a bonus attack/brag and rides the combo, so a
   // −4 aside (with a ceiling) is a strong, flexible draft (attaches to any subject; direction flips
   // with whom you play it on). The first reward aside — base asides cap at ±3.
   md('r_ff_vomit', 'whose political opinions would make our founding fathers vomit into a house plant', -4, { invariant: true, ceiling: 4 }),
   md('r_m_lawyer', 'whose lawyer is watching this broadcast and quietly weeping', -4, { invariant: true, ceiling: 4 }),
-  md('r_m_morse', "who blinks in Morse code and it spells 'help'", -4, { invariant: true, ceiling: 4 }),
   md('r_m_allegedly', "which I am legally required to describe as 'allegedly'", -4, { invariant: true, ceiling: 4 }),
 
   // PRIVATE finishers — premium: a guaranteed ×factor you OWN (can't be out-raced in the shared
@@ -669,6 +676,380 @@ export const REWARDS: Card[] = [
   { id: 'r_typo', role: 'powerup', effect: 'typo', text: '🎤 Teleprompter Typo — REPLACE their last word with yours' },
 ];
 
+// --- upgrade chains (Debate Consultant "Punch Up the Zingers") ----------------
+// Authored next-tier versions of deck cards. NEVER in decks/pools/REWARDS drafts —
+// reachable only by upgrading, so they must not be added to ALL (buildTutorialPool
+// samples ALL and super-cards would leak into the Q1 tutorial pool; findDef gets a
+// separate fallback instead). Key = current-tier id, value = the next-tier def, so
+// chains compose: UPGRADES['p_fight_bear'] → the _t1 def, UPGRADES['p_fight_bear_t1']
+// → the _t2 def. Ids are `<origId>_t1` / `<origId>_t2` — never reuse an existing id.
+//
+// Stat curve (text must get FUNNIER each tier — the upgrade is a strictly stronger NEW
+// joke in the same slot, never the old joke with more words):
+//   SIG predicate ±3        → t1 ±4, ceiling 4 (≈ reward tier) → t2 ±5, ceiling 6
+//   SIG subject int 1.3     → t1 int 1.6, ceiling 3            → t2 int 1.9, ceiling 5
+//   REWARDS pred ±4/ceil 4  → t1 ±5, ceiling 6 → t2 ±6, ceiling 8 (the super-card arc)
+//   REWARDS NPs/asides      → no chains yet (see the roadmap backlog note)
+// Ceiling is bounded by HEADROOM_MAX in scoring, so no chain can enable a knockout.
+// Not every card upgrades — the consultant dialog shows only cards WITH a chain.
+export const UPGRADES: Record<string, Card> = {};
+/** Register a chain: orig id → tier-1 def → tier-2 def…; stamps `Card.tier` from the
+ * position so the +/++ badge can't drift from the chain structure. */
+const chain = (origId: string, ...tiers: Card[]): void => {
+  let prev = origId;
+  for (let i = 0; i < tiers.length; i++) {
+    UPGRADES[prev] = { ...tiers[i], tier: i + 1 };
+    prev = tiers[i].id;
+  }
+};
+// Attack upgrades keep answering both attack topics, like every insult.
+const SMEAR = ['jackass', 'opponent'];
+
+// Chains authored by Daniel (daniel-upgrades.md, 2026-07). The upgrade rule: a strictly
+// STRONGER card in the same slot — a brand-new joke that punches harder, never the old
+// joke with more words. Cards without a chain simply don't appear in the upgrade dialog.
+
+// --- signature attacks (−3 → −4/ceil 4 → −5/ceil 6; the −2 runs −3 → −4/ceil 4) ---
+chain('p_microchip',
+  pc('p_microchip_t1', 'want', 'to replace your doctor with a QR code controlled by the deep state', -4, { topics: SMEAR, ceiling: 4 }),
+  pi('p_microchip_t2', 'will sell your medical history to three foreign governments and the highest-bidding cereal company', -5, { topics: SMEAR, ceiling: 6 }),
+);
+chain('p_llama',
+  pc('p_llama_t1', 'launder', 'money through a chain of counterfeit petting zoos', -4, { topics: SMEAR, ceiling: 4 }),
+  pc('p_llama_t2', 'be', 'the shadowy kingpin behind every rigged claw machine in America', -5, { topics: SMEAR, ceiling: 6 }),
+);
+chain('p_moon',
+  pc('p_moon_t1', 'think', 'that birds are a government conspiracy', -4, { topics: SMEAR, ceiling: 4 }),
+  pc('p_moon_t2', 'be', 'convinced that the world is flat and the moon is a glow-in-the-dark beach ball', -5, { topics: SMEAR, ceiling: 6 }),
+);
+chain('p_crayons',
+  pc('p_crayons_t1', 'bring', 'a juice box and a blankie to the Situation Room', -4, { topics: SMEAR, ceiling: 4 }),
+  pi('p_crayons_t2', 'lost the nuclear football in a ball pit', -5, { topics: SMEAR, ceiling: 6 }),
+);
+chain('p_handshake',
+  pc('p_handshake_t1', 'have', 'the deep state on speed dial', -4, { topics: SMEAR, ceiling: 4 }),
+  pc('p_handshake_t2', 'host', 'the annual Illuminati holiday party, paid for with your tax dollars', -5, { pre: 'personally', topics: SMEAR, ceiling: 6 }),
+);
+chain('p_sell_constitution',
+  pi('p_sell_constitution_t1', 'would pawn the Liberty Bell to pay off a bar tab', -4, { topics: ['freedom', ...SMEAR], ceiling: 4 }),
+  pi('p_sell_constitution_t2', 'once traded the nuclear launch codes to a Nigerian phone scammer in exchange for an expired gift card', -5, { topics: ['freedom', ...SMEAR], ceiling: 6 }),
+);
+chain('p_dubstep_anthem',
+  pc('p_dubstep_anthem_t1', 'want', 'Mount Rushmore recarved to look like their golf buddies', -4, { topics: SMEAR, ceiling: 4 }),
+  pi('p_dubstep_anthem_t2', 'will replace every church bell in this fine country with a car alarm', -5, { topics: SMEAR, ceiling: 6 }),
+);
+chain('p_big_kale',
+  pc('p_big_kale_t1', 'be', 'a wholly owned subsidiary of Big Everything', -4, { topics: SMEAR, ceiling: 4 }),
+  pc('p_big_kale_t2', 'be', 'controlled by the fake auto warranty scam email industry', -5, { topics: SMEAR, ceiling: 6 }),
+);
+chain('p_magic_eightball',
+  pi('p_magic_eightball_t1', 'would pick federal judges by eenie, meenie, minie, moe', -4, { topics: SMEAR, ceiling: 4 }),
+  pc('p_magic_eightball_t2', 'make', 'all policy decisions using a pair of dice and a bootleg version of ChatGPT 1.0', -5, { topics: SMEAR, ceiling: 6 }),
+);
+chain('p_shrimp_buffet',
+  pc('p_shrimp_buffet_t1', 'have', 'the scruples of a payday loan office inside a funeral home', -4, { topics: SMEAR, ceiling: 4 }),
+  pc('p_shrimp_buffet_t2', 'have', 'the moral compass of a getaway driver with diplomatic immunity', -5, { topics: SMEAR, ceiling: 6 }),
+);
+chain('p_find_economy',
+  pi('p_find_economy_t1', "couldn't balance a checkbook with a calculator and divine intervention", -3, { topics: ['economy', ...SMEAR] }),
+  pi('p_find_economy_t2', 'once got lost in a revolving door for an entire afternoon', -4, { topics: SMEAR, ceiling: 4 }),
+);
+chain('p_shoppingcart',
+  pc('p_shoppingcart_t1', 'park', 'diagonally across two spaces, on purpose', -4, { topics: SMEAR, ceiling: 4 }),
+  pc('p_shoppingcart_t2', 'take', 'phone calls on speakerphone in movie theaters', -5, { topics: SMEAR, ceiling: 6 }),
+);
+chain('p_microwavefish',
+  pc('p_microwavefish_t1', 'steal', 'coins out of mall fountains', -4, { topics: SMEAR, ceiling: 4 }),
+  // ("replies-all" can't conjugate as a lead — "hits reply-all" keeps the joke and inflects cleanly)
+  pc('p_microwavefish_t2', 'hit', '"reply all" on company-wide emails just to say "thanks"', -5, { topics: SMEAR, ceiling: 6 }),
+);
+chain('p_fridgelunch',
+  // (participle instead of a second conjugated verb so first-person self-owns still read right)
+  pc('p_fridgelunch_t1', 'take', 'the last cup of coffee, leaving the empty pot on the burner', -4, { topics: SMEAR, ceiling: 4 }),
+  pi('p_fridgelunch_t2', 'once stole the office birthday cake and returned the used candles', -5, { topics: SMEAR, ceiling: 6 }),
+);
+
+// --- signature brags (+3 → +4/ceil 4 → +5/ceil 6; the +2 runs +3 → +4/ceil 4) ---
+chain('p_fight_bear',
+  pi('p_fight_bear_t1', 'will personally suplex a grizzly bear to protect our democracy', 4, { ceiling: 4 }),
+  pi('p_fight_bear_t2', 'will personally fistfight an asteroid to protect this nation', 5, { ceiling: 6 }),
+);
+chain('p_lift_boats',
+  pc('p_lift_boats_t1', 'deadlift', 'small cars as a warmup', 4, { ceiling: 4 }),
+  pi('p_lift_boats_t2', 'once towed a cruise ship into harbor with a jump rope', 5, { ceiling: 6 }),
+);
+chain('p_phonecall',
+  pi('p_phonecall_t1', 'could balance the federal budget on a napkin at Waffle House', 4, { topics: ['economy'], ceiling: 4 }),
+  pi('p_phonecall_t2', 'once fixed a recession by glaring at it', 5, { topics: ['economy'], ceiling: 6 }),
+);
+chain('p_neverwrong',
+  pc('p_neverwrong_t1', 'have', 'never lost an argument, a bet, or a game of rock-paper-scissors', 4, { ceiling: 4 }),
+  pc('p_neverwrong_t2', 'have', 'been correct about every issue, including several that have not happened yet', 5, { ceiling: 6 }),
+);
+chain('p_handshake_hair',
+  pc('p_handshake_hair_t1', 'have', 'a jawline that has been declared a national landmark', 4, { ceiling: 4 }),
+  pc('p_handshake_hair_t2', 'have', 'the handshake of a president, the jawline of a monument, and approval ratings of free pizza on a snow day', 5, { ceiling: 6 }),
+);
+chain('p_courage',
+  pc('p_courage_t1', 'have', 'the courage of a thousand soldiers and the humility to mention it only constantly', 4, { ceiling: 4 }),
+  pc('p_courage_t2', 'have', 'the bravery of a warrior and a humility so heroic it should be carved into a mountain', 5, { ceiling: 6 }),
+);
+chain('p_battery',
+  pi('p_battery_t1', 'will direct NASA to make the stars brighter and your cell phone service 20% faster', 4, { ceiling: 4 }),
+  pi('p_battery_t2', "will direct our nation's scientists to invent a time machine, travel back to 1984, and convince Van Halen to record a Christmas album", 5, { ceiling: 6 }),
+);
+chain('p_hurricane',
+  pi('p_hurricane_t1', 'once negotiated a ceasefire between two tornadoes', 4, { ceiling: 4 }),
+  pi('p_hurricane_t2', 'once ended a drought with a single stern warning', 5, { ceiling: 6 }),
+);
+chain('p_wallet',
+  pi('p_wallet_t1', 'helped an old lady cross eight consecutive streets', 4, { ceiling: 4 }),
+  pc('p_wallet_t2', 'have', 'rescued more kittens than a dozen fire departments', 5, { ceiling: 6 }),
+);
+chain('p_oncegen',
+  pc('p_oncegen_t1', 'be', 'the smartest human being currently permitted by law', 3),
+  pi('p_oncegen_t2', 'once finished the Sunday crossword in pen, in the rain, in four minutes', 4, { ceiling: 4 }),
+);
+chain('p_zipcodes',
+  pc('p_zipcodes_t1', 'know', "every American's name, birthday, and preferred barbecue sauce", 4, { ceiling: 4 }),
+  pc('p_zipcodes_t2', 'be', 'on a first name basis with every bald eagle in the country', 5, { ceiling: 6 }),
+);
+chain('p_ikea',
+  pi('p_ikea_t1', 'once untangled a box of Christmas lights in a single pull', 4, { ceiling: 4 }),
+  pc('p_ikea_t2', 'have', 'successfully folded a fitted sheet on more than one occasion', 5, { ceiling: 6 }),
+);
+
+// --- signature pander (+3 → +4/ceil 4 → +5/ceil 6; the +2s run +3 → +4/ceil 4) ---
+chain('p_free_icecream',
+  pi('p_free_icecream_t1', 'will install a soft-serve machine in every home', 4, { topics: ['pander'], ceiling: 4 }),
+  pi('p_free_icecream_t2', 'will make every meal come with free dessert and no calories', 5, { topics: ['pander'], ceiling: 6 }),
+);
+chain('p_tuck_vets',
+  pi('p_tuck_vets_t1', 'will hand-write a thank-you note to every teacher in America', 4, { topics: ['pander'], ceiling: 4 }),
+  pi('p_tuck_vets_t2', 'will personally carry every sleeping child in from the car, forever', 5, { topics: ['children'], ceiling: 6 }),
+);
+chain('p_golden',
+  pi('p_golden_t1', 'will give every household a hot tub and a guy to maintain it', 4, { topics: ['pander'], ceiling: 4 }),
+  pi('p_golden_t2', 'will give every American a beach house, and the beach', 5, { topics: ['pander'], ceiling: 6 }),
+);
+chain('p_highfive',
+  // (participle instead of a second conjugated verb so first-person still reads right)
+  pc('p_highfive_t1', 'attend', "every American's little-league game, cheering the loudest", 3, { topics: ['pander'] }),
+  pc('p_highfive_t2', 'bake', 'a fresh batch of chocolate chip cookies for every voter at least once a month', 4, { topics: ['pander'], ceiling: 4 }),
+);
+chain('p_christmas3',
+  pi('p_christmas3_t1', 'will make Christmas a three-day weekend, four times a year', 4, { topics: ['pander'], ceiling: 4 }),
+  pi('p_christmas3_t2', 'will add a secret bonus month of paid vacation between July and August', 5, { topics: ['pander'], ceiling: 6 }),
+);
+chain('p_birthday',
+  pi('p_birthday_t1', 'will make your birthday a federal holiday', 4, { topics: ['pander'], ceiling: 4 }),
+  pi('p_birthday_t2', 'will guarantee every American one flawless hair day per week', 5, { topics: ['pander'], ceiling: 6 }),
+);
+chain('p_naphour',
+  pi('p_naphour_t1', 'will mandate hammocks in every workplace', 4, { topics: ['pander'], ceiling: 4 }),
+  pi('p_naphour_t2', 'will make snoozing your alarm a protected constitutional right', 5, { topics: ['pander'], ceiling: 6 }),
+);
+chain('p_wakeup',
+  pi('p_wakeup_t1', 'will answer your texts personally, immediately, with punctuation', 4, { topics: ['pander'], ceiling: 4 }),
+  pi('p_wakeup_t2', 'will help you move, including the couch, and bring the truck', 5, { topics: ['pander'], ceiling: 6 }),
+);
+chain('p_monday',
+  pi('p_monday_t1', 'will replace Monday and Wednesday with extra Saturdays', 4, { topics: ['pander'], ceiling: 4 }),
+  pi('p_monday_t2', 'will abolish Monday and replace it with National Weekly Pancake Day', 5, { topics: ['pander'], ceiling: 6 }),
+);
+chain('p_refund',
+  pi('p_refund_t1', "will erase every late fee you've ever been charged, with interest", 4, { topics: ['pander'], ceiling: 4 }),
+  pi('p_refund_t2', 'will give every citizen three wishes and a government-certified loophole', 5, { topics: ['pander'], ceiling: 6 }),
+);
+chain('p_dmv',
+  pi('p_dmv_t1', 'will make every government form fit on one page, front only', 4, { topics: ['pander'], ceiling: 4 }),
+  pi('p_dmv_t2', 'will abolish hold music and replace it with a polite and well-spoken human who answers immediately', 5, { topics: ['pander'], ceiling: 6 }),
+);
+chain('p_coffeeshop',
+  pi('p_coffeeshop_t1', 'will install a personal barista in every kitchen', 3, { topics: ['pander'] }),
+  pi('p_coffeeshop_t2', 'will make refills free everywhere, forever', 4, { topics: ['pander'], ceiling: 4 }),
+);
+chain('p_city_hill',
+  pi('p_city_hill_t1', 'will build a shining city on every hill', 4, { topics: ['freedom'], ceiling: 4 }),
+  pi('p_city_hill_t2', 'will build so many shining cities on so many hills that our great nation will be visible from outer space', 5, { topics: ['freedom'], ceiling: 6 }),
+);
+chain('p_points_light',
+  pi('p_points_light_t1', 'will add a second moon and fourteen more stars to the night sky', 4, { topics: ['pander'], ceiling: 4 }),
+  pi('p_points_light_t2', 'will give this nation a second proudly shining sun, just like Tatooine', 5, { topics: ['pander'], ceiling: 6 }),
+);
+chain('p_anthemkey',
+  pi('p_anthemkey_t1', 'will add an extra verse to the national anthem where America wins even harder', 4, { topics: ['pander'], ceiling: 4 }),
+  pi('p_anthemkey_t2', 'will make it illegal for weirdo pop stars to add showoff extra notes to the national anthem', 5, { topics: ['pander'], ceiling: 6 }),
+);
+chain('p_noupdates',
+  pi('p_noupdates_t1', 'will make every crosswalk button actually do something', 4, { topics: ['pander'], ceiling: 4 }),
+  pi('p_noupdates_t2', 'will require every "unsubscribe" button to actually work, the first time', 5, { topics: ['pander'], ceiling: 6 }),
+);
+
+// --- signature subjects (×1.3 → ×1.6/ceil 3 → ×1.9/ceil 5; unloaded → ×1.3 → ×1.6/ceil 3) ---
+chain('s_position',
+  NP('s_position_t1', 'My position, which is the best position in recorded history,', 'self', 1, { intensity: 1.6, ceiling: 3 }),
+);
+chain('s_campaign_transparent',
+  // (Daniel's line said "My position…" — adapted to the campaign it upgrades; flag for review)
+  NP('s_campaign_transparent_t1', 'My campaign, which is objectively perfect and legally beyond criticism,', 'self', 1, { intensity: 1.6, ceiling: 3, animate: false }),
+);
+chain('s_plan',
+  NP('s_plan_t1', 'My plan, which fits on one index card in large, confident letters,', 'self', 1, { intensity: 1.3, animate: false }),
+  NP('s_plan_t2', 'My foolproof plan, which history has already endorsed unanimously,', 'self', 1, { intensity: 1.6, ceiling: 3, animate: false }),
+);
+chain('s_gut',
+  NP('s_gut_t1', 'My gut, which outperforms every think tank in this country,', 'self', 1, { intensity: 1.6, ceiling: 3, animate: false }),
+  NP('s_gut_t2', 'My flawless instincts, which have repeatedly overruled experts and reality,', 'self', 1, { number: 'plural', intensity: 1.9, ceiling: 5, animate: false }),
+);
+chain('s_plan_spellcheck',
+  NP('s_plan_spellcheck_t1', 'My gorgeous, flag-scented, fully spell-checked plan', 'self', 1, { intensity: 1.6, ceiling: 3, animate: false }),
+  NP('s_plan_spellcheck_t2', 'My magnificent, airtight, patriotic, Nobel-prize-ready plan', 'self', 1, { intensity: 1.9, ceiling: 5, animate: false }),
+);
+chain('s_admin_unhaunted',
+  NP('s_admin_unhaunted_t1', 'My administration, which is free of all blemishes, demonic-possession, and acne,', 'self', 1, { intensity: 1.6, ceiling: 3, animate: false }),
+  NP('s_admin_unhaunted_t2', 'My administration, certified to be fresh, vibrant, devoid of all blemishes, and 60% scandal-free,', 'self', 1, { intensity: 1.9, ceiling: 5, animate: false }),
+);
+chain('s_idiot_opp',
+  NP('s_idiot_opp_t1', 'My drooling, liberty-despising cretin of an opponent', 'opponent', -2, { intensity: 1.6, ceiling: 3 }),
+  NP('s_idiot_opp_t2', 'My brain-dead, flag-burning, malodorous nincompoop of an opponent', 'opponent', -2, { intensity: 1.9, ceiling: 5 }),
+);
+chain('s_crook_opp',
+  NP('s_crook_opp_t1', 'My corrupt and sexually deviant opponent', 'opponent', -2, { intensity: 1.6, ceiling: 3 }),
+  NP('s_crook_opp_t2', 'My morally bankrupt, perverted, and foul-smelling opponent', 'opponent', -2, { intensity: 1.9, ceiling: 5 }),
+);
+chain('s_opp_buffoons',
+  NP('s_opp_buffoons_t1', "The treasonous sewer mutants bankrolling my opponent's campaign", 'opponent', -2, { number: 'plural', intensity: 1.6, ceiling: 3 }),
+  NP('s_opp_buffoons_t2', 'The writhing nest of grifters, buffoons, and drug-addled miscreants that fund my opponent', 'opponent', -2, { intensity: 1.9, ceiling: 5 }),
+);
+chain('s_opp_army',
+  NP('s_opp_army_t1', "My opponent's jackbooted army of hall monitors and tattletales", 'opponent', -2, { intensity: 1.6, ceiling: 3 }),
+  NP('s_opp_army_t2', "My opponent's smug, acne-ridden militia of basement-dwelling reddit moderators", 'opponent', -2, { intensity: 1.9, ceiling: 5 }),
+);
+chain('s_opp_speechwriters',
+  NP('s_opp_speechwriters_t1', "The lobbyists who write my opponent's speeches on the back of donation checks", 'opponent', -2, { number: 'plural', intensity: 1.6, ceiling: 3 }),
+  NP('s_opp_speechwriters_t2', 'The corporate parasites remotely operating my opponent like a humanoid disinformation drone', 'opponent', -2, { number: 'plural', intensity: 1.9, ceiling: 5 }),
+);
+chain('s_opp_personality',
+  NP('s_opp_personality_t1', "My opponent's lab-grown personality, assembled entirely from polling data,", 'opponent', -2, { intensity: 1.6, ceiling: 3, animate: false }),
+  NP('s_opp_personality_t2', "My opponent's committee-designed, focus-tested, and overly Photoshopped personality", 'opponent', -2, { intensity: 1.9, ceiling: 5, animate: false }),
+);
+chain('s_proud_nation',
+  NP('s_proud_nation_t1', 'This great, proud, undefeated nation', 'audience', 2, { topics: ['freedom'], intensity: 1.6, ceiling: 3, animate: false }),
+  NP('s_proud_nation_t2', 'This sacred nation of heroes, legends, and people just like you', 'audience', 2, { topics: ['freedom'], intensity: 1.9, ceiling: 5, animate: false }),
+);
+chain('s_wonderful_people',
+  NP('s_wonderful_people_t1', 'The wonderful, beautiful, criminally underappreciated people of this country', 'audience', 2, { number: 'plural', topics: ['pander'], intensity: 1.6, ceiling: 3 }),
+  NP('s_wonderful_people_t2', "The wisest, bravest, best-looking voters on God's green earth", 'audience', 2, { number: 'plural', topics: ['pander'], intensity: 1.9, ceiling: 5 }),
+);
+
+// --- signature objects (what open predicates multiply: −2 → −3 → −4/ceil 3; ±3 → ±4/ceil 3 → ±5/ceil 5) ---
+chain('o_radical',
+  NP('o_radical_t1', 'the treasonous lunatic fringe', 'neutral', -3),
+  NP('o_radical_t2', 'the mentally unstable lowlifes on the radical fringe', 'neutral', -4, { number: 'plural', ceiling: 3 }),
+);
+chain('o_communists',
+  NP('o_communists_t1', 'foreign-funded traitors to freedom', 'neutral', -4, { number: 'plural', ceiling: 3 }),
+  NP('o_communists_t2', 'corrupt traitorous enemies embedded to destroy this nation from within', 'neutral', -5, { number: 'plural', ceiling: 5 }),
+);
+chain('o_patriots',
+  NP('o_patriots_t1', 'hardworking, flag-waving patriots', 'neutral', 4, { number: 'plural', ceiling: 3 }),
+  NP('o_patriots_t2', 'the finest, hardest-working patriots God ever made', 'neutral', 5, { number: 'plural', ceiling: 5 }),
+);
+
+// --- default-deck staples (every deck opens with these) ---
+chain('s_opp',
+  NP('s_opp_t1', 'My spineless, scheming opponent', 'opponent', -2, { intensity: 1.3 }),
+  NP('s_opp_t2', 'My treasonous, weasel-hearted disgrace of an opponent', 'opponent', -2, { intensity: 1.6, ceiling: 3 }),
+);
+chain('s_i',
+  NP('s_i_t1', 'I, a humble titan of public service,', 'self', 1, { person: 1, intensity: 1.3 }),
+  NP('s_i_t2', 'I, the last honest person alive,', 'self', 1, { person: 1, intensity: 1.6, ceiling: 3 }),
+);
+chain('o_satan',
+  { ...NP('o_satan_t1', 'Satan and all his minions', 'neutral', -4, { number: 'plural', ceiling: 3 }), proper: true },
+  { ...NP('o_satan_t2', 'Satan, his minions, and the infernal creature Satan calls for moral guidance', 'neutral', -5, { number: 'plural', ceiling: 5 }), proper: true },
+);
+chain('o_freedom',
+  NP('o_freedom_t1', 'freedom, democracy, and the right to grill', 'neutral', 4, { topics: ['freedom'], ceiling: 3, animate: false }),
+  NP('o_freedom_t2', 'freedom, democracy, apple pie, and everything else worth defending', 'neutral', 5, { topics: ['freedom'], ceiling: 5, animate: false }),
+);
+
+// --- reward predicates (−4/ceil 4 → −5/ceil 6 → −6/ceil 8 — the super-card arc). The
+// remaining reward predicates + all reward subjects/asides have NO chains yet (Daniel ran
+// out of steam authoring them — see the roadmap backlog note). ---
+chain('r_lizard',
+  pc('r_lizard_t1', 'be', 'a space alien sent to destroy our nation from within', -5, { topics: SMEAR, ceiling: 6 }),
+  pc('r_lizard_t2', 'be', 'a soulless lizard-centipede hybrid merely disguised as human to trick our fair nation into self-destruction', -6, { topics: SMEAR, ceiling: 8 }),
+);
+chain('r_christmas',
+  pc('r_christmas_t1', 'want', 'to replace Christmas morning with a mandatory tax audit', -5, { topics: SMEAR, ceiling: 6 }),
+  pc('r_christmas_t2', 'want', 'to replace Christmas and snow days with tax audits, standardized testing, and boiled Brussels sprouts', -6, { topics: SMEAR, ceiling: 8 }),
+);
+chain('r_greatest',
+  pc('r_greatest_t1', 'be', 'the greatest leader in human history, including several histories yet to be written', 5, { ceiling: 6 }),
+  pc('r_greatest_t2', 'be', 'a leader great enough to be added to Mount Rushmore, replacing all four existing faces', 6, { ceiling: 8 }),
+);
+chain('r_cured',
+  pi('r_cured_t1', 'will cure hangnails and the common cold', 5, { ceiling: 6 }),
+  pi('r_cured_t2', 'will bring eternal health and happiness to everyone', 6, { ceiling: 8 }),
+);
+chain('r_pony',
+  pi('r_pony_t1', 'will make every citizen independently wealthy', 5, { ceiling: 6 }),
+  pi('r_pony_t2', 'will deliver wealth, happiness, and free snow cones to every citizen', 6, { ceiling: 8 }),
+);
+chain('r_never_truth',
+  pi('r_never_truth_t1', "couldn't tell the truth by reading it off a cue card", -5, { topics: SMEAR, ceiling: 6 }),
+  pc('r_never_truth_t2', 'be', 'deathly allergic to truth, courage, common decency, and returning shopping carts', -6, { topics: SMEAR, ceiling: 8 }),
+);
+chain('r_goldtoilet',
+  pc('r_goldtoilet_t1', 'use', 'taxpayer money to fly private jets to play mini-golf', -5, { topics: SMEAR, ceiling: 6 }),
+  pc('r_goldtoilet_t2', 'flush', 'taxpayer money down a solid-gold toilet while flying private jets to private billionaire-only disc golf tournaments', -6, { topics: SMEAR, ceiling: 8 }),
+);
+chain('r_popupads',
+  pc('r_popupads_t1', 'have', 'a plan to add a tip prompt to grocery store self-checkout stations', -5, { topics: SMEAR, ceiling: 6 }),
+  pc('r_popupads_t2', 'have', 'a secret scheme to add an unskippable ad break to the national anthem', -6, { topics: SMEAR, ceiling: 8 }),
+);
+chain('r_coinslot',
+  pi('r_coinslot_t1', 'will put a pop-up ad on the Statue of Liberty', -5, { topics: [...SMEAR, 'freedom'], ceiling: 6 }),
+  pi('r_coinslot_t2', "will replace the Statue of Liberty's torch with hamburger from whichever fast food restaurant pays the most bribe money", -6, { topics: [...SMEAR, 'freedom'], ceiling: 8 }),
+);
+chain('r_rubber_chicken',
+  pi('r_rubber_chicken_t1', 'will give a wedgie to every voter in this audience and then slap them across the face with a rubber chicken', -5, { topics: SMEAR, ceiling: 6 }),
+  pi('r_rubber_chicken_t2', 'will personally slap every voter across the face with a rubber chicken, make a rude hand gesture, and then fart in their general direction', -6, { topics: SMEAR, ceiling: 8 }),
+);
+chain('r_eagle',
+  pc('r_eagle_t1', 'bench-press', 'two full-grown bald eagles before breakfast', 5, { ceiling: 6 }),
+  pc('r_eagle_t2', 'bench-press', 'two full-grown bald eagles before breakfast, while they salute', 6, { ceiling: 8 }),
+);
+chain('p_freedom_subscription',
+  pi('p_freedom_subscription_t1', 'will make constitutional rights an in-app purchase', -5, { topics: [...SMEAR, 'freedom'], ceiling: 6 }),
+  pi('p_freedom_subscription_t2', 'will make the Bill of Rights available only as a part of a Disney+ premium subscription bundle', -6, { topics: [...SMEAR, 'freedom'], ceiling: 8 }),
+);
+chain('p_timeshare',
+  pi('p_timeshare_t1', 'will sell our national parks to a self-storage conglomerate', -5, { topics: SMEAR, ceiling: 6 }),
+  pi('p_timeshare_t2', "will replace the Statue of Liberty's torch with a rotating casino sign", -6, { topics: SMEAR, ceiling: 8 }),
+);
+chain('p_ban_happiness',
+  pc('p_ban_happiness_t1', 'want', 'to require a permit for birthday parties', -5, { topics: SMEAR, ceiling: 6 }),
+);
+chain('p_got_ending',
+  pi('p_got_ending_t1', 'will fix Daylight Saving Time and the ending of Game of Thrones in a way that satisfies everyone', 5, { topics: ['pander'], ceiling: 6 }),
+  pi('p_got_ending_t2', 'will reform Daylight Saving Time, fix the endings of Game of Thrones, Lost, and How I Met Your Mother in a way that satisfies everyone, and produce a new Star Wars trilogy that everyone agrees is awesome', 6, { topics: ['pander'], ceiling: 8 }),
+);
+
+export const UPGRADE_DEFS: Card[] = Object.values(UPGRADES);
+/** The next-tier def for a card id, if it has one (drives the upgrade UI). */
+export function upgradeOf(id: string): Card | undefined {
+  return UPGRADES[id];
+}
+/** Walk `tier` steps up the chain from an ORIGINAL base id (clamps at chain end). */
+export function resolveTier(origId: string, tier: number): Card | undefined {
+  let def = findDef(origId);
+  for (let i = 0; i < tier && def; i++) def = UPGRADES[def.id] ?? def;
+  return def;
+}
+
 export const ALL: Card[] = [
   ...SUBJECTS,
   ...OBJECTS,
@@ -682,7 +1063,12 @@ export const ALL: Card[] = [
   ...TOPICS.map((t) => t.card),
 ];
 
-/** Look up a base card definition by base id. */
+/** Look up a base card definition by base id (upgraded defs resolve too, but live
+ * outside ALL so they never leak into deck building or the tutorial pool). */
 export function findDef(baseId: string): Card | undefined {
-  return ALL.find((c) => c.id === baseId);
+  return (
+    ALL.find((c) => c.id === baseId) ??
+    UPGRADE_DEFS.find((c) => c.id === baseId) ??
+    (baseId === UNDER_OATH.id ? UNDER_OATH : undefined)
+  );
 }

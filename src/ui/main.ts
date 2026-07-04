@@ -5,7 +5,7 @@ import { buildPrivateDeck } from '../engine/deck';
 import { aiTurn } from '../engine/ai';
 import { displayWords, cardLabel } from '../engine/morphology';
 import { isComplete, canAppend } from '../engine/grammar';
-import { LADDER, REWARDS, OPPONENTS, PERIOD, PERIOD_ENABLED } from '../data/cards';
+import { LADDER, REWARDS, OPPONENTS, PERIOD, PERIOD_ENABLED, UNDER_OATH, upgradeOf, resolveTier } from '../data/cards';
 
 const app = document.getElementById('app')!;
 const AI_DELAY = 650;
@@ -32,19 +32,34 @@ let sabotageQueue: Sabotage[] = [];
 let seenSabotage: Sabotage | undefined; // the last game.lastSabotage already enqueued (dedup)
 
 // --- campaign run (Slay-the-Spire-style ladder) ---
-let run = { rung: 0, bonus: [] as Card[], character: null as string | null, removed: [] as string[] }; // rung + earned cards + chosen candidate + cut card ids
-let runScreen: 'tutorial' | 'select' | 'map' | 'result' | 'reward' | 'awardhint' | 'consultant' | 'defeat' | 'victory' | null = null;
+let run = {
+  rung: 0,
+  bonus: [] as Card[],
+  character: null as string | null,
+  removed: [] as string[],
+  upgrades: {} as Record<string, number>, // original base id → tier (Punch Up the Zingers)
+}; // rung + earned cards + chosen candidate + cut card ids + upgraded card tiers
+let runScreen: 'tutorial' | 'select' | 'map' | 'result' | 'reward' | 'awardhint' | 'consultant' | 'upgradereveal' | 'defeat' | 'victory' | null = null;
 let awardHintSeen = false; // one-time-ever: after the FIRST card award, teach the player to hunt for more
 
-// Debate Consultant — a between-debate deck-refinement waypoint: cut N cards (any cards, your
-// choice) in exchange for drafting M powerful new ones. A leaner deck draws its best cards more
-// often. Gated to a couple of rungs (after debates 2 and 4) so early decks stay default.
-const CONSULTANT_WAYPOINTS: Record<number, { cut: number; draft: number }> = {
-  2: { cut: 5, draft: 1 }, // before debate 3
-  4: { cut: 8, draft: 2 }, // before debate 5
+// Debate Consultant — a between-debate deck-refinement waypoint offering a MENU of services
+// (pick ONE per visit): Trim the Stump Speech (cut N cards → draft `draft` new ones — thinning
+// framed as a trade-in), New Talking Points (draft `newCards`, no cut), or Punch Up the Zingers
+// (upgrade `upgrades` cards to their next authored tier — see UPGRADES in cards.ts). Gated to
+// three rungs so early decks stay default; the last visit is boss prep.
+type ConsultantService = 'menu' | 'trim' | 'upgrade';
+const CONSULTANT_WAYPOINTS: Record<number, { cut: number; draft: number; newCards: number; upgrades: number }> = {
+  2: { cut: 5, draft: 1, newCards: 2, upgrades: 2 }, // before debate 3
+  4: { cut: 8, draft: 2, newCards: 3, upgrades: 3 }, // before debate 5
+  5: { cut: 6, draft: 2, newCards: 3, upgrades: 4 }, // before debate 6 — boss prep
 };
-let consultant: { cut: number; draft: number } | null = null; // active consultant (cut stage)
-let consultantSel = new Set<string>(); // base ids the player has selected to cut this session
+let consultant: { cut: number; draft: number; newCards: number; upgrades: number; service: ConsultantService } | null = null;
+let consultantSel = new Set<string>(); // ORIGINAL base ids selected to cut/upgrade this session
+
+// Winning THIS rung (0-indexed, checked pre-increment in checkDebateEnd — so 3 = debate 4)
+// unlocks the scripted Under Oath award: the guaranteed boss-cracker for the last two debates.
+// Re-point this at the 4-way debate's prize if/when that mid-ladder event ships.
+const UNDER_OATH_RUNG = 3;
 
 // The player's selectable candidates (cosmetic for now — portrait + name; art in src/ui/art/portraits).
 const PLAYER_CHARACTERS = [
@@ -56,9 +71,14 @@ const PLAYER_CHARACTERS = [
 // (base reward + several achievements) OR a single big play (multiple mid-debate awards) chain
 // into a series of draft dialogs. `rewardMode` decides what happens when the queue drains.
 type AwardSpec = { title: string; body: string }; // a headline; choices are rolled at display time
-type RewardOffer = AwardSpec & { choices: Card[] };
+// `upgrade` (sometimes on the base win offer): a "Punch up a random card" gamble replacing one of
+// the 3 choices — the target stays hidden until picked, then a before→after reveal shows it.
+type UpgradeOffer = { origId: string; from: Card; to: Card };
+type RewardOffer = AwardSpec & { choices: Card[]; upgrade?: UpgradeOffer };
 let rewardQueue: RewardOffer[] = [];
 let rewardMode: 'post' | 'mid' | 'consultant' = 'post';
+let upgradeReveal: UpgradeOffer | null = null; // showing the before→after of a picked random upgrade
+const UPGRADE_OFFER_CHANCE = 0.3; // how often the win draft carries the mystery-upgrade tile
 // Mid-debate award headlines earned by the just-resolved statement, shown after its FX at the
 // round-summary pause — or folded into the win draft if the statement also ended the debate.
 // Choices are rolled (deduped vs owned + the rest of the series) only when actually shown.
@@ -102,6 +122,7 @@ function startDebate(): GameState {
     opponentId: rung.opponentId,
     playerBonus: run.bonus,
     removedCards: run.removed, // cards cut at a Debate Consultant waypoint
+    upgrades: run.upgrades, // cards punched up at a Debate Consultant waypoint
     tutorial: run.rung === 0, // first debate: guaranteed combo-friendly Q1 hand + simple opponent
   });
 }
@@ -109,7 +130,7 @@ function startDebate(): GameState {
 let game = startDebate();
 
 function newRun(): void {
-  run = { rung: 0, bonus: [], character: null, removed: [] };
+  run = { rung: 0, bonus: [], character: null, removed: [], upgrades: {} };
   consultant = null;
   consultantSel = new Set();
   tutorialIntroSeen = false; // show the welcome modal again on a fresh run
@@ -128,6 +149,7 @@ function downloadDebugLog(): void {
     debate: run.rung + 1,
     opponent: game.opponent?.id,
     earnedCards: run.bonus.map((c) => c.id),
+    upgrades: run.upgrades,
     question: game.round,
     bar: Math.round(game.bar),
     winner: game.winner,
@@ -167,11 +189,15 @@ function rollSeries(specs: AwardSpec[]): RewardOffer[] {
   });
 }
 
-/** The player's current deck as base defs (for the Debate Consultant cut UI): the default private
- *  deck (1 copy of each) + earned bonus cards, minus anything already cut. */
-function playerDeckDefs(): Card[] {
+/** The player's current deck for the Debate Consultant UIs: the default private deck (1 copy of
+ *  each) + earned bonus cards, minus anything already cut, each resolved to its CURRENT upgrade
+ *  tier for display. `origId` is the as-authored base id — the key that `run.removed`,
+ *  `run.upgrades`, and `consultantSel` all use, even when the face shows an upgraded card. */
+function playerDeckDefs(): { def: Card; origId: string }[] {
   const base = buildPrivateDeck(undefined).map((c) => ({ ...c, id: c.id.split('#')[0] }));
-  return [...base, ...run.bonus].filter((c) => !run.removed.includes(c.id));
+  return [...base, ...run.bonus]
+    .filter((c) => !run.removed.includes(c.id))
+    .map((c) => ({ def: resolveTier(c.id, run.upgrades[c.id] ?? 0) ?? c, origId: c.id }));
 }
 
 /** The reward headline for a debate win — flavored by how decisive it was. */
@@ -220,6 +246,29 @@ function checkDebateEnd(): void {
     rewardMode = 'post';
     rewardQueue = rollSeries([debateWinPrompt(), ...postAwardSpecs(), ...pendingMid]);
     pendingMid = [];
+    // Sometimes the base win offer gambles one of its choices on "upgrade a random card".
+    if (Math.random() < UPGRADE_OFFER_CHANCE) {
+      const upgradeable = playerDeckDefs().filter(({ def }) => upgradeOf(def.id));
+      if (upgradeable.length) {
+        const pick = upgradeable[Math.floor(Math.random() * upgradeable.length)];
+        rewardQueue[0].upgrade = { origId: pick.origId, from: pick.def, to: upgradeOf(pick.def.id)! };
+        rewardQueue[0].choices.splice(Math.floor(Math.random() * rewardQueue[0].choices.length), 1);
+      }
+    }
+    // The scripted pre-boss story award: winning debate 4 (rung is PRE-increment here —
+    // finishRewards bumps it after the queue drains) unlocks Under Oath, guaranteed, so
+    // every player holds the boss-cracker for the last two debates. Unshifted AFTER the
+    // upgrade-gamble block above, which mutates rewardQueue[0] and splices a choice out —
+    // running first, it could delete the lone Under Oath tile. (A loss wipes bonus AND
+    // rung together, so re-earning it on the next run is automatic; the guard only stops
+    // a double grant within one run.)
+    if (run.rung === UNDER_OATH_RUNG && !run.bonus.some((c) => c.id === UNDER_OATH.id)) {
+      rewardQueue.unshift({
+        title: '⚖️ Special card unlocked!',
+        body: `<b>Under Oath</b> — played on a question, your opponent <b>cannot lie</b>: they take the stage and confess to the worst of it. You're going to need it!`,
+        choices: [UNDER_OATH],
+      });
+    }
     runScreen = 'result';
   } else {
     runScreen = 'defeat'; // a loss or tie ends the run
@@ -295,7 +344,7 @@ function finishRewards(): void {
   run.rung += 1;
   const wp = CONSULTANT_WAYPOINTS[run.rung];
   if (wp) {
-    consultant = { ...wp };
+    consultant = { ...wp, service: 'menu' }; // pick ONE service this visit
     consultantSel = new Set();
     runScreen = 'consultant'; // refine the deck; startDebate is deferred until it finishes
   } else {
@@ -320,7 +369,32 @@ function consultantConfirmCuts(): void {
   render();
 }
 
-/** Decline the Consultant — keep the deck as-is, forfeit the draft, on to the next debate. */
+/** Consultant "New Talking Points": a draft-only service — straight to the reward modal. */
+function consultantNewTalkingPoints(): void {
+  if (!consultant) return;
+  rewardMode = 'consultant';
+  rewardQueue = rollSeries(
+    Array.from({ length: consultant.newCards }, () => ({
+      title: '🗣️ New Talking Points',
+      body: 'Your consultant hands you fresh material. Draft a card.',
+    })),
+  );
+  runScreen = 'reward';
+  render();
+}
+
+/** Commit the selected upgrades ("Punch Up the Zingers") and head to the next debate. */
+function consultantConfirmUpgrades(): void {
+  if (!consultant || consultantSel.size !== consultant.upgrades) return;
+  for (const id of consultantSel) run.upgrades[id] = (run.upgrades[id] ?? 0) + 1;
+  consultant = null;
+  consultantSel = new Set();
+  game = startDebate(); // rebuild with the punched-up deck
+  runScreen = 'map';
+  render();
+}
+
+/** Decline the Consultant — keep the deck as-is, forfeit the service, on to the next debate. */
 function consultantSkip(): void {
   consultant = null;
   consultantSel = new Set();
@@ -708,10 +782,13 @@ const ROLE_LABEL: Record<Card['role'], string> = {
 const DEBUG = new URLSearchParams(location.search).has('debug');
 
 /** A card's face: the phrase + a grammatical-role banner. No scoring numbers on cards.
- * `hint` puts a pointing-hand on the role banner during the first-question tutorial. */
+ * `hint` puts a pointing-hand on the role banner during the first-question tutorial.
+ * An upgraded card (Punch Up the Zingers) wears a small +/++ chip — every card surface
+ * (hand, pool, reward modal, consultant grids) funnels through here. */
 function cardFace(c: Card, hint = false): string {
   const hand = hint ? '<span class="hint-hand">👉</span>' : '';
-  return `<span class="ctext">${cardLabel(c)}</span><span class="banner">${hand}${ROLE_LABEL[c.role]}</span>`;
+  const tier = c.tier ? `<span class="tier-badge">${'+'.repeat(c.tier)}</span>` : '';
+  return `${tier}<span class="ctext">${cardLabel(c)}</span><span class="banner">${hand}${ROLE_LABEL[c.role]}</span>`;
 }
 
 // A flickable card rail: a side label badge, a scrollable card row (keeps its #id +
@@ -740,7 +817,10 @@ function cardHtml(c: Card, source: 'pool' | 'hand'): string {
     // Typo needs a live opponent statement to jam; Forgot needs one with a card to drop.
     const noTypoTarget = isTypo && (game.ai.done || game.ai.line.length === 0); // needs a last word to replace
     const noForgotTarget = c.effect === 'forgot' && (game.ai.done || game.ai.line.length === 0);
-    const disabled = !canPlay() || noTypoTarget || noForgotTarget ? 'disabled' : '';
+    // Under Oath compels the opponent's UPCOMING statement — dead once they've resolved
+    // this question (deliberately NO empty-line condition: valid before they speak).
+    const noOathTarget = c.effect === 'oath' && (game.ai.done || !!game.ai.underOath);
+    const disabled = !canPlay() || noTypoTarget || noForgotTarget || noOathTarget ? 'disabled' : '';
     const sel = pendingTypo === c.id || pendingHotMic === c.id ? ' selecting' : '';
     // fx-<effect> gives each power-up its own color so they aren't all "the purple card".
     return `<button class="card power fx-${c.effect}${sel}" data-id="${c.id}" data-power="1" data-effect="${c.effect}" ${disabled}>${cardFace(c)}</button>`;
@@ -873,11 +953,17 @@ function runModalHtml(): string {
         return `<button class="card reward ${cls}" data-reward="${c.id}">${cardFace(c)}</button>`;
       })
       .join('');
+    // The mystery-upgrade gamble tile (target hidden until picked — that's the fun).
+    const upgradeTile = head.upgrade
+      ? `<button class="card reward upgrade-mystery" data-upgradepick="1">
+          <span class="ctext">⚡ Punch up a random card in your deck</span><span class="banner">Upgrade</span>
+        </button>`
+      : '';
     const more = rewardQueue.length > 1 ? `<div class="reward-more">+${rewardQueue.length - 1} more reward${rewardQueue.length > 2 ? 's' : ''} to come…</div>` : '';
     return `<div class="modal-backdrop"><div class="modal reward-modal">
       <div class="modal-title" style="color:var(--gold)">${head.title}</div>
       <p>${head.body}</p>
-      <div class="cards" style="margin-top:8px">${choices}</div>
+      <div class="cards" style="margin-top:8px">${choices}${upgradeTile}</div>
       ${more}
     </div></div>`;
   }
@@ -889,26 +975,97 @@ function runModalHtml(): string {
     </div></div>`;
   }
   if (runScreen === 'consultant' && consultant) {
-    const need = consultant.cut;
+    const plural = (n: number) => (n === 1 ? '' : 's');
+    if (consultant.service === 'menu') {
+      return `<div class="modal-backdrop"><div class="modal consultant-modal">
+        <div class="modal-title" style="color:var(--gold)">🎩 Debate Consultant</div>
+        <p><b>"So, what are we working on today?"</b> Pick one service this visit.</p>
+        <div class="consultant-menu">
+          <button class="consultant-service" data-service="trim">
+            <span class="svc-title">✂️ Trim the Stump Speech</span>
+            <span class="svc-desc">Trade in <b>${consultant.cut}</b> cards, draft <b>${consultant.draft}</b> powerful
+            new card${plural(consultant.draft)}. A leaner deck means your best lines come up more often.</span>
+          </button>
+          <button class="consultant-service" data-service="newcards">
+            <span class="svc-title">🗣️ New Talking Points</span>
+            <span class="svc-desc">Draft <b>${consultant.newCards}</b> new card${plural(consultant.newCards)} — no trade-in.</span>
+          </button>
+          <button class="consultant-service" data-service="upgrade">
+            <span class="svc-title">⚡ Punch Up the Zingers</span>
+            <span class="svc-desc">Rewrite <b>${consultant.upgrades}</b> of your card${plural(consultant.upgrades)} into
+            their next, nastier draft. Same card, more punch.</span>
+          </button>
+        </div>
+        <div class="consultant-actions">
+          <button class="ghost" id="consultantSkip">Skip — keep my deck</button>
+        </div>
+      </div></div>`;
+    }
+    if (consultant.service === 'trim') {
+      const need = consultant.cut;
+      const sel = consultantSel.size;
+      const cards = playerDeckDefs()
+        // Under Oath is exempt from trimming (a bend of the cut-anything rule): the trim
+        // waypoint fires right after the scripted "you're going to need it!" award, and
+        // letting the player cut the boss key there is a trap, not agency.
+        .filter(({ origId }) => origId !== UNDER_OATH.id)
+        .map(({ def, origId }) => {
+          const cutting = consultantSel.has(origId) ? ' cutting' : '';
+          const cls = def.role === 'powerup' ? `power fx-${def.effect}` : `role-${def.role}`;
+          return `<button class="card consultant-card ${cls}${cutting}" data-cut="${origId}">${cardFace(def)}</button>`;
+        })
+        .join('');
+      return `<div class="modal-backdrop"><div class="modal consultant-modal">
+        <div class="modal-title" style="color:var(--gold)">✂️ Trim the Stump Speech</div>
+        <p>Trade in <b>${need}</b> card${plural(need)} from your deck — a leaner deck means your best
+        lines come up more often. In exchange you'll draft
+        <b>${consultant.draft}</b> powerful new card${plural(consultant.draft)}.</p>
+        <div class="consultant-count">Select ${sel} / ${need}</div>
+        <div class="cards consultant-grid">${cards}</div>
+        <div class="consultant-actions">
+          <button class="action" id="consultantConfirm" ${sel === need ? '' : 'disabled'}>Select ${need} cards to trade in</button>
+          <button class="ghost" id="consultantBack">◀ Back</button>
+        </div>
+      </div></div>`;
+    }
+    // service === 'upgrade' — Punch Up the Zingers. Only cards WITH an authored next tier
+    // appear (not every card upgrades; per Daniel, the dialog shows just the upgrade paths).
+    const need = consultant.upgrades;
     const sel = consultantSel.size;
     const cards = playerDeckDefs()
-      .map((c) => {
-        const cutting = consultantSel.has(c.id) ? ' cutting' : '';
-        const cls = c.role === 'powerup' ? `power fx-${c.effect}` : `role-${c.role}`;
-        return `<button class="card consultant-card ${cls}${cutting}" data-cut="${c.id}">${cardFace(c)}</button>`;
+      .flatMap(({ def, origId }) => {
+        const next = upgradeOf(def.id);
+        if (!next) return [];
+        const cls = def.role === 'powerup' ? `power fx-${def.effect}` : `role-${def.role}`;
+        const upgrading = consultantSel.has(origId) ? ' upgrading' : '';
+        return `<button class="card consultant-card upgradeable ${cls}${upgrading}" data-upg="${origId}">
+          ${cardFace(def)}<span class="upg-preview">⚡ "${cardLabel(next)}"</span>
+        </button>`;
       })
       .join('');
     return `<div class="modal-backdrop"><div class="modal consultant-modal">
-      <div class="modal-title" style="color:var(--gold)">🎩 Debate Consultant</div>
-      <p><b>Sharpen your message.</b> Trade in <b>${need}</b> card${need === 1 ? '' : 's'} from your deck — a
-      leaner deck means your best lines come up more often. In exchange you'll draft
-      <b>${consultant.draft}</b> powerful new card${consultant.draft === 1 ? '' : 's'}.</p>
+      <div class="modal-title" style="color:var(--gold)">⚡ Punch Up the Zingers</div>
+      <p>Pick <b>${need}</b> card${plural(need)} to rewrite into the sharper version shown on each card.
+      Upgrade the same card at the next visit to punch it up even further.</p>
       <div class="consultant-count">Select ${sel} / ${need}</div>
       <div class="cards consultant-grid">${cards}</div>
       <div class="consultant-actions">
-        <button class="action" id="consultantConfirm" ${sel === need ? '' : 'disabled'}>Select ${need} cards to trade in</button>
-        <button class="ghost" id="consultantSkip">Skip — keep my deck</button>
+        <button class="action" id="upgradeConfirm" ${sel === need ? '' : 'disabled'}>Select ${need} card${plural(need)} to punch up</button>
+        <button class="ghost" id="consultantBack">◀ Back</button>
       </div>
+    </div></div>`;
+  }
+  if (runScreen === 'upgradereveal' && upgradeReveal) {
+    const { from, to } = upgradeReveal;
+    return `<div class="modal-backdrop"><div class="modal reward-modal">
+      <div class="modal-title" style="color:var(--gold)">⚡ Punched Up!</div>
+      <p>Your consultant took a red pen to one of your lines:</p>
+      <div class="upgrade-reveal">
+        <div class="card reward role-${from.role}">${cardFace(from)}</div>
+        <div class="upgrade-arrow">⚡</div>
+        <div class="card reward role-${to.role}">${cardFace(to)}</div>
+      </div>
+      <button class="action" id="upgradeRevealGo">Beautiful ▶</button>
     </div></div>`;
   }
   if (runScreen === 'victory') {
@@ -986,6 +1143,9 @@ function render(): void {
   if (game.player.nextMultiplier) notes.push('👏 Soundbite armed — your next statement scores ×1.5.');
   if (game.player.knowsCrowd && game.crowd) {
     notes.push(`🕵️ Your plant reports: this crowd loves <b>${CROWD_LABEL[game.crowd.loves] ?? 'a good show'}</b>.`);
+  }
+  if (game.ai.underOath && !game.ai.done) {
+    notes.push(`⚖️ <b>${oppName} is under oath</b> — this question, they cannot lie.`);
   }
   const finisherNote = notes.map((n) => `<div class="held">${n}</div>`).join('');
 
@@ -1166,9 +1326,36 @@ function render(): void {
         if (confirm) confirm.disabled = consultantSel.size !== need;
         return;
       }
+      // Debate Consultant: toggle a card for upgrading (same in-place DOM update as cutting).
+      if (btn.dataset.upg) {
+        const id = btn.dataset.upg;
+        if (consultantSel.has(id)) consultantSel.delete(id);
+        else if (consultant && consultantSel.size < consultant.upgrades) consultantSel.add(id);
+        const need = consultant?.upgrades ?? 0;
+        btn.classList.toggle('upgrading', consultantSel.has(id));
+        const countEl = app.querySelector('.consultant-count');
+        if (countEl) countEl.textContent = `Select ${consultantSel.size} / ${need}`;
+        const confirm = app.querySelector<HTMLButtonElement>('#upgradeConfirm');
+        if (confirm) confirm.disabled = consultantSel.size !== need;
+        return;
+      }
+      // Picking the mystery-upgrade gamble: apply it, then reveal what got punched up.
+      if (btn.dataset.upgradepick) {
+        const up = rewardQueue[0]?.upgrade;
+        if (up) {
+          run.upgrades[up.origId] = (run.upgrades[up.origId] ?? 0) + 1;
+          upgradeReveal = up;
+          rewardQueue.shift();
+          runScreen = 'upgradereveal'; // Continue resumes the reward-queue drain
+          render();
+        }
+        return;
+      }
       // Picking a reward card (a win draft, a stacked achievement, or a mid-debate award).
       if (btn.dataset.reward) {
-        const card = REWARDS.find((c) => c.id === btn.dataset.reward);
+        // Resolve from the OFFER, not the REWARDS catalog — scripted offers (Under Oath)
+        // grant cards that deliberately live outside REWARDS.
+        const card = rewardQueue[0]?.choices.find((c) => c.id === btn.dataset.reward);
         if (card) {
           run.bonus.push(card); // carried into future debates (wiped on a loss — the win-gate)
           if (rewardMode === 'mid') {
@@ -1277,8 +1464,42 @@ function render(): void {
     render();
   });
   app.querySelector<HTMLButtonElement>('#awardHintGot')?.addEventListener('click', finishRewards);
+  app.querySelector<HTMLButtonElement>('#upgradeRevealGo')?.addEventListener('click', () => {
+    // Resume the reward-queue drain exactly like a card pick would.
+    upgradeReveal = null;
+    if (rewardQueue.length) {
+      runScreen = 'reward';
+      render();
+    } else if (!awardHintSeen) {
+      awardHintSeen = true;
+      runScreen = 'awardhint';
+      render();
+    } else {
+      finishRewards();
+    }
+  });
   app.querySelector<HTMLButtonElement>('#consultantConfirm')?.addEventListener('click', consultantConfirmCuts);
+  app.querySelector<HTMLButtonElement>('#upgradeConfirm')?.addEventListener('click', consultantConfirmUpgrades);
   app.querySelector<HTMLButtonElement>('#consultantSkip')?.addEventListener('click', consultantSkip);
+  app.querySelectorAll<HTMLButtonElement>('.consultant-service').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!consultant) return;
+      const svc = btn.dataset.service;
+      consultantSel = new Set();
+      if (svc === 'newcards') {
+        consultantNewTalkingPoints(); // no sub-screen — straight to the draft
+        return;
+      }
+      consultant.service = svc === 'upgrade' ? 'upgrade' : 'trim';
+      render();
+    });
+  });
+  app.querySelector<HTMLButtonElement>('#consultantBack')?.addEventListener('click', () => {
+    if (!consultant) return;
+    consultant.service = 'menu';
+    consultantSel = new Set();
+    render();
+  });
   app.querySelector<HTMLButtonElement>('#restart')?.addEventListener('click', newRun);
   app.querySelector<HTMLButtonElement>('#dumplog')?.addEventListener('click', downloadDebugLog);
   app.querySelector<HTMLButtonElement>('#dumplogEnd')?.addEventListener('click', downloadDebugLog);

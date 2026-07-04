@@ -280,7 +280,12 @@ the debate (built once; a played card like Plant won't recur). Shared deck is re
 Re-plans every turn: bounded DFS over reachable grammatical completions, scored by the real
 engine. **Deliberately handicapped** (`AiOptions.maxExtend`, default 4) so it's beatable.
 It's **blind to the crowd** (plans without it) and leans toward its opponent `style`
-(`STYLE_BONUS` via `dominantCategory`). Power-up heuristics: Teleprompter Typo **only** when
+(`STYLE_BONUS` via `dominantCategory`). Plan objectives: `'best'` (default), `'gaffe'` (nerves —
+the SHORTEST clear self-own, null if none reachable), and `'confess'` (Under Oath — MINIMIZE delta
+over ALL completions at full `maxExtend`, tie-break most-negative then LONGEST: a compelled
+confession is a long, spectacular unburdening, and deeper opponents — the boss — confess more
+eloquently; never rejects positive lines, so on a self-own-less board it degrades to the
+least-good statement instead of returning null). Power-up heuristics: Teleprompter Typo **only** when
 `bestTypoJam` finds a pool card that completes the player's line into a real self-own (never
 gibberish); Hot Mic to steal the player's power-up; Search situationally; never Plant.
 
@@ -292,6 +297,23 @@ self-own via `bestTypoJam`, which searches *replacements* of the victim's last c
 by tacking on another sentence — a `but` pivot helps most), Forgot My Line (pop the opponent's last line card — discarded, not returned;
 player just plays it, AI plays it to wreck a strong/long line the player is sitting on),
 Hot Mic (`knowsOppHand` reveals opp hand for the CURRENT QUESTION + steal a card permanently).
+**Under Oath (⚖️ `pw_underoath`, effect `oath`, 2026-07) — the scripted pre-boss story card:** "this
+question, your opponent cannot lie." Sets the OPPONENT's `PlayerState.underOath` for the CURRENT
+question (reset in `dealRound`; wasted/disabled once they've resolved — but VALID before they start
+speaking, so no empty-line gate). While set, `aiTurn` **skips the gaffe roll** (so the roll can't
+overwrite it — also bypasses the boss's `gaffeChance` 0, the whole point) and passes
+`compelled` to `chooseMove`, which plans objective **`'confess'`** and plays **no power-ups** (the
+`power()` helper returns undefined when compelled — required, not cosmetic: with no completion
+reachable `best` is null and Search would otherwise let it draw its way out). Costs the turn.
+**Standalone def** in cards.ts — NOT in `POWERUPS` (seeds every deck), `REWARDS` (random drafts), or
+`ALL` (tutorial-pool sampling); `findDef` has an explicit fallback for it. Granted ONLY by the
+**guaranteed scripted award after winning debate 4** (see Campaign run §). The AI never plays it
+(it only plays effects it explicitly checks — meaningless vs a human anyway), its Hot Mic **neither
+baits on it nor auto-steals it** (ai.ts bait check + the game.ts steal `rank` both exclude
+`effect:'oath'` — stealing the story card would delete it from the run), and the consultant **trim
+grid exempts it** (cutting the boss key right after "you're going to need it!" is a trap, not
+agency). A compelled negative resolution logs an `OATH_TELLS` line and stamps `underOath` on the
+resolve event. Tests: tests/oath.test.ts.
 Typo, Forgot, and Hot Mic all set `state.lastSabotage{victim,by,text,kind:'typo'|'forgot'|'hotmic'}`,
 which drives a must-dismiss modal (+ banner) when the player is the victim — so a stolen card is as
 visible as a typo'd word, not just a passing log line (the Hot Mic modal has no "your line now reads"
@@ -327,18 +349,38 @@ debates (after the reward pick). `startDebate` builds the next game eagerly, the
 overlays it; the Begin button clears the screen.
 Decision: path is a straight line (no branching) — too few opponents to make path choice meaningful.
 
-**Debate Consultant (2026-06) — between-debate deck refinement (the thinning slice of the deferred
-shop).** At waypoints (`CONSULTANT_WAYPOINTS` = after debates 2 and 4) the player **cuts N cards →
-drafts M** ("Sharpen your message"): #1 cut 5 → draft 1; #2 cut 8 → draft 2. The cut framing makes
-thinning the *reward path*, not a chore, and a leaner deck draws its best cards more often (the fix
-for the reward-dilution wall at opponents 4–5). Cut **any** cards (full agency, even rewards) — base
-ids go to `run.removed`, threaded via `createGame({removedCards})` → `dealRound` filters the player's
-private deck at build. Engine-safe: `ensureHandHasOpener` no-ops on a subjectless deck and the pool
-guarantees subjects, so aggressive cuts can't soft-lock. UI: `runScreen:'consultant'` (cut stage,
-`consultantSel` + `playerDeckDefs()`), then the draft reuses the reward modal with
-`rewardMode:'consultant'` (drains → `startDebate` rebuilds with the cuts, → `'map'`); skippable.
-`finishRewards` opens it from the post-win drain at a waypoint rung; `startDebate` is deferred until
-it finishes so the new deck reflects the cuts + draft.
+**Debate Consultant (2026-06, MENU 2026-07) — between-debate deck refinement (the thinning +
+upgrading slice of the deferred shop).** At waypoints (`CONSULTANT_WAYPOINTS` = after debates 2, 4,
+and 5 — the last is boss prep) the player picks **ONE service per visit** from a menu
+(`consultant.service: 'menu'|'trim'|'upgrade'`):
+- **✂️ Trim the Stump Speech** — the original cut N → draft M trade-in (#1 cut 5 → draft 1; #2 cut
+  8 → draft 2; #3 cut 6 → draft 2). The cut framing makes thinning the *reward path*, not a chore,
+  and a leaner deck draws its best cards more often (the fix for the reward-dilution wall at
+  opponents 4–5). Cut **any** cards (full agency, even rewards) — base ids go to `run.removed`,
+  threaded via `createGame({removedCards})` → `dealRound` filters the player's private deck at
+  build. Engine-safe: `ensureHandHasOpener` no-ops on a subjectless deck and the pool guarantees
+  subjects, so aggressive cuts can't soft-lock.
+- **🗣️ New Talking Points** — draft-only (2/3/3 cards), no cut; goes straight to the reward modal.
+- **⚡ Punch Up the Zingers** — upgrade K cards (2/3/4) to their next authored tier (see **card
+  upgrades** in the roadmap DONE note below). Grid shows each card's next-tier text on its face;
+  non-upgradeable cards render dimmed.
+UI: `runScreen:'consultant'` (`consultantSel` — ALWAYS keyed by the ORIGINAL base id — +
+`playerDeckDefs()`, which returns `{def, origId}` pairs with `def` resolved to the current tier);
+the trim draft reuses the reward modal with `rewardMode:'consultant'` (drains → `startDebate`
+rebuilds, → `'map'`); skippable. `finishRewards` opens it from the post-win drain at a waypoint
+rung; `startDebate` is deferred until the service finishes so the new deck reflects it.
+
+**Under Oath scripted award (2026-07):** winning debate 4 (`UNDER_OATH_RUNG = 3` — checkDebateEnd
+runs PRE-increment; `finishRewards` bumps the rung after the queue drains) unshifts a fixed
+single-choice `RewardOffer` ("⚖️ Special card unlocked! … You're going to need it!") granting the
+standalone `UNDER_OATH` card (see Power-ups §) — guaranteed, so every player holds the
+boss-cracker for the last two debates (still has to DRAW it in-debate; that's the intended
+tension). Two gotchas encoded there: (1) the offer is unshifted **AFTER the mystery-upgrade gamble
+block**, which mutates `rewardQueue[0]` and splices a choice — running first it could delete the
+lone Under Oath tile; (2) the reward pick-handler resolves the clicked card **from the offer's own
+`choices`** (was `REWARDS.find`, which silently no-ops for a non-REWARDS card). Guarded by
+`run.bonus` not already containing it (a loss wipes bonus+rung together, so re-earning next run is
+automatic). Deliberately re-pointable to a 4-way-debate prize later without redesign.
 
 ## Roadmap (triaged — DON'T build until the current scoring is playtested)
 Ordered by priority/dependency. Engine work stays pure/seeded (no `Math.random` — thread the game
@@ -384,6 +426,44 @@ the dark action-card background. **One-time award hint:** the first card ever dr
 (2026-06):** more headliner nouns/verbs, **private finishers** (premium — owned, can't be out-raced:
 `r_x_pipe`/`r_x_idiot`/`r_x_votemany` + `r_x_science`/`r_x_polls`), and a drafted **Typo** action.
 
+**DONE (2026-07) — Card upgrades ("Punch Up the Zingers").** The third deck-building axis (besides
+add + cut): upgrade a card into an authored, funnier, stronger version — build toward one or two
+maxed super-cards or spread upgrades wide. **Data:** `UPGRADES: Record<id, Card>` in cards.ts (key =
+current-tier id → next-tier def, chains compose; registered via the `chain()` helper, which stamps
+`Card.tier` from position — drives the +/++ badge in `cardFace`). Upgraded ids are `<origId>_t1/_t2`;
+defs are **NOT in `ALL`** (they'd leak into `buildTutorialPool`'s ALL-sampling; `findDef` has a
+separate `UPGRADE_DEFS` fallback). Stat curve: SIG pred ±3 → t1 ±4/ceil 4 → t2 ±5/ceil 6; SIG subj
+1.3 → 1.6/ceil 3 → 1.9/ceil 5; upgradeable REWARDS preds run ±5/ceil 6 → ±6/ceil 8 — the
+"draft a reward, punch it up into a super-card" arc. **Authoring rule (Daniel, hard-learned):** an
+upgrade is a strictly stronger NEW joke in the same slot (insult → harder insult) — NEVER the base
+premise with more words tacked on; a first machine-authored pass that padded premises was rejected
+wholesale. All live chain texts are **Daniel's** (daniel-upgrades.md, 2026-07): 78 chains / 153
+defs, most TWO tiers deep — all SIG predicates/subjects/objects, the 4 default `subs`, 15 reward
+predicates. Not every card upgrades (the upgrade dialog lists ONLY cards with a chain). Ceiling
+stays bounded by HEADROOM_MAX so no chain enables a knockout; a mis-played upgraded card self-owns
+harder (intended double-edge). His pass also cut 6 flat REWARDS (r_inventweekend, r_everylaw,
+r_m_morse, r_onlycrime_self, r_raccoons_opp, r_crowd_onhold) and added `p_ikea` (a SIG_BRAG authored
+together with its chain — the model for future upgrade-first card design). **Engine:** `run.upgrades: Record<origBaseId,
+tier>` → `createGame({upgrades})` → `dealRound` maps each built card through `resolveTier` AFTER the
+removed-cards filter (player only — relax the `p.id === 'player'` guard to give bosses upgraded
+decks later). **UI:** consultant service (see Campaign run §) + sometimes (30%,
+`UPGRADE_OFFER_CHANCE`) the post-win draft swaps one choice for a **"⚡ Punch up a random card"**
+mystery tile → applies immediately → `'upgradereveal'` before→after modal, then the reward queue
+drains on. Invariant: `run.removed`/`run.upgrades`/`consultantSel` are all keyed by the ORIGINAL
+base id. Tests: tests/upgrade.test.ts (deck mapping + chain-data integrity incl. leak guard).
+
+**P2 · medium — Upgrade paths for the rest of the REWARDS pool.** Daniel's upgrade pass (2026-07)
+left most reward cards WITHOUT chains — not by design, he ran out of steam writing them (15 reward
+predicates got chains; the other ~15 predicates, all reward NPs, and all reward asides have none).
+Since rewards are the cards the player deliberately drafts, they're exactly where the
+"punch it up into a super-card" fantasy should live. Two routes, not mutually exclusive: (a) author
+chains for the existing reward cards; (b) **design NEW reward cards WITH their upgrade path from the
+start** — Daniel suspects upgrade-first authoring beats retrofitting (the base card can be written
+as the setup of an escalating bit; `p_ikea` in SIG_BRAG is the first card built this way). Also
+consider whether cards that stay chainless should be culled or embraced (a deliberate
+"already perfect" tier). The generated coverage list at the bottom of UPGRADE_PATHS.md
+(`npm run upgrades`) is the live worklist.
+
 **P2 · large epic — Campaign donation economy + shop** (the long-deferred roguelike meta; needs its
 own design pass + phasing). **Note:** the shop's deck-pruning half already shipped as the **Debate
 Consultant** (cut N → draft M at two waypoints — see Campaign run §); this epic now adds the
@@ -425,7 +505,10 @@ default deck played perfectly. The boss should be near-impossible on the *defaul
 must **deck-build even more powerful cards to compensate**. So opponent-deck-strength and the
 player's card economy must be **balanced together** in the deck-building epic (P2) — don't tune one
 without the other. (Player verifies human-beatability by playtest; sims can't.) Optional AI knobs
-still open: `comboSkill`/`cardGreed`.
+still open: `comboSkill`/`cardGreed`. Since card upgrades (2026-07): assume a player reaching the
+boss has ~9 upgrades applied (2+3+4 across the three consultant visits) plus random-upgrade awards —
+tune opponent deck strength against THAT deck, not the default one; the engine's `upgrades` option
+already works for AI players once the `p.id === 'player'` guard in `dealRound` is relaxed.
 
 **P3 · large — 4-way debate (mid-ladder special).** Midway up the ladder, a debate with the player
 + 3 opponents; the player must finish on top to continue. Attacks become **directed**: aim an
@@ -531,6 +614,17 @@ the `PowerEffect` union (types.ts), a def in `POWERUPS` (cards.ts), a `case` in 
   rebuttal punishes it. Gives optimal AI counterplay against player finishers without contesting the cards.
 These are the first **power-up rewards**; good fit for the deferred **shop** (price ∝ power) alongside the
 PRIVATE-finishers note above.
+
+**P2 · medium — Typo → "Hack Their Teleprompter" → Under Oath upgrade chain (deliberate FOLLOW-ON,
+2026-07).** Under Oath shipped as the guaranteed post-debate-4 scripted award (see Campaign run §);
+this chain is the *alternate, earlier* acquisition for sabotage builds: draft `r_typo`, then spend
+consultant upgrade picks — tier 1 = the roadmap's "Hack Their Teleprompter" (**a whole NEW targeting
+effect**, e.g. `typo_full` — remove the opponent's last words / replace their statement; the big
+unbuilt piece), tier 2 = Under Oath (**effect already exists** — the tier def just carries
+`effect:'oath'`). Would be the first mechanic-changing upgrade chain and the only Action-card
+upgrade (fine — the consultant grid shows next-tier text on the face, so it self-advertises). Needs
+a duplicate guard vs the scripted award (two Under Oaths = two uses; decide if that's OK). Don't
+build the mid-tier without its own design pass.
 
 **P3 · trivial — Remove the on-topic card hint.** The green glow + "on topic ✓" tag (`cardHtml` in
 ui/main.ts) is a **temporary debug aid** for catching mislabeled `topics`; once the data is trusted,

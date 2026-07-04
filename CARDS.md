@@ -150,6 +150,7 @@ over-the-top. Aim a new line at whichever tier it feels like.
 - personally returned a lost wallet on live television
 - is a once-in-a-generation genius
 - memorized every ZIP code in this country, out of respect
+- assembles IKEA furniture with no leftover screws, on the first try
 
 #### Attacks
 - wants to put a microchip in your flu shot
@@ -165,7 +166,7 @@ over-the-top. Aim a new line at whichever tier it feels like.
 - couldn't find the economy with both hands and a map
 - has never once returned a shopping cart
 - microwaves fish in the office breakroom
-- puts the milk in before the cereal
+- eats other people's lunches out of the office fridge
 
 #### Pander
 - will deliver free ice cream every Friday
@@ -298,9 +299,7 @@ over-the-top. Aim a new line at whichever tier it feels like.
 - personally invented the pop-up ad
 - wants to put a coin slot on the Statue of Liberty
 - will personally slap every voter in this audience across the face with a rubber chicken
-- single-handedly invented the weekend
 - bench-presses a full-grown bald eagle before breakfast
-- wrote every law you've ever actually benefited from
 - My deeply weird, poll-tested opponent
 - My treasonous and perverted scumbag of an opponent
 - The hardest-working patriots ever to fire up a backyard grill
@@ -328,15 +327,11 @@ over-the-top. Aim a new line at whichever tier it feels like.
 - once received a standing ovation at a funeral
 - will personally time every traffic light to your commute, specifically
 - will hunt down and destroy every shopping cart with one bad wheel
-- My opponent, who is legally three raccoons in a suit,
 - My unindicted co-conspirator of an opponent
-- I, whose only crime is loving this country too much,
 - My campaign, staffed entirely by my most loyal relatives,
 - The last brave patriots in this country who still use their turn signals
-- Everyone here who has ever been placed on hold, which is everyone,
 - whose political opinions would make our founding fathers vomit into a house plant
 - whose lawyer is watching this broadcast and quietly weeping
-- who blinks in Morse code and it spells 'help'
 - which I am legally required to describe as 'allegedly'
 - put that in your pipe and smoke it
 - and anyone who disagrees with that is an idiot

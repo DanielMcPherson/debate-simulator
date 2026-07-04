@@ -13,7 +13,7 @@ export type Role =
   | 'powerup'; // a one-shot action card (not part of the sentence)
 
 /** What a power-up card does when played. */
-export type PowerEffect = 'search' | 'typo' | 'plant' | 'soundbite' | 'hotmic' | 'filibuster' | 'forgot' | 'redeal';
+export type PowerEffect = 'search' | 'typo' | 'plant' | 'soundbite' | 'hotmic' | 'filibuster' | 'forgot' | 'redeal' | 'oath';
 
 /** Whose reputation a subject refers to. Drives scoring. */
 export type Side = 'self' | 'opponent' | 'audience' | 'neutral';
@@ -134,6 +134,12 @@ export interface Card {
   /** Headliner: raises the statement's score cap (adds to `headroom` in scoring), so a
    *  powerful card feels powerful instead of clipping at the base cap. Default 0. */
   ceiling?: number;
+
+  // --- upgrade (any role) ---
+  /** Upgrade tier (1, 2, …; absent = base card). Display-only marker for a card the
+   * player has Punched Up via the Debate Consultant — drives the +/++ badge. Scoring
+   * never reads it; an upgraded card's power lives in its normal stat fields. */
+  tier?: number;
 
   // --- powerup ---
   effect?: PowerEffect;
@@ -283,6 +289,9 @@ export interface PlayerState {
   /** AI only: this statement is a flub-in-progress — build toward a self-own.
    * Rolled once when the statement starts (in `aiTurn`), cleared at resolution. */
   gaffing?: boolean;
+  /** Compelled by Under Oath: this question, build the most self-damaging
+   * statement reachable (overrides normal play; reset each question). */
+  underOath?: boolean;
   /** Multiplier armed by Soundbite, applied to the next completed statement. */
   nextMultiplier?: number;
   /** Whether this player has revealed the crowd's taste (via Plant in the Audience). */
@@ -314,6 +323,10 @@ export interface GameState {
   /** Base ids the player has cut from their deck (Debate Consultant). Filtered out of the
    *  player's private deck at build time so a leaner deck draws its best cards more often. */
   removedCards?: string[];
+  /** Original base id → upgrade tier (Debate Consultant "Punch Up the Zingers").
+   *  Player-only; applied at deck build AFTER `removedCards`, mapping each built card
+   *  through its authored upgrade chain (see UPGRADES in cards.ts). */
+  upgrades?: Record<string, number>;
   /** First-debate onboarding: guarantees a combo-friendly first hand and a simple,
    * non-gaffe opponent on question 1 (drives the UI's first-question hints). */
   tutorial?: boolean;

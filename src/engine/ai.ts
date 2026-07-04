@@ -42,7 +42,12 @@ interface PlanOptions {
   // WORST self-own it can muster (most-negative delta), kept short and punchy, so
   // it's a clear, funny howler ("I secretly eat babies") rather than a mushy
   // barely-negative muddle. Returns null if no self-own is reachable.
-  objective?: 'best' | 'gaffe';
+  // 'confess' (Under Oath) minimizes delta over ALL completions — unlike 'gaffe'
+  // it never rejects a positive line (on a weird self-own-less board it degrades
+  // to the least-good statement instead of returning null) and prefers the
+  // LONGEST line among equally-damaging ones: a compelled confession should be a
+  // long, spectacular unburdening, not a punchy slip.
+  objective?: 'best' | 'gaffe' | 'confess';
 }
 
 /**
@@ -65,7 +70,14 @@ export function plan(line: Card[], avail: Avail[], opts: PlanOptions = {}): Plan
   };
 
   const gaffe = opts.objective === 'gaffe';
+  const confess = opts.objective === 'confess';
   const consider = (r: PlanResult) => {
+    if (confess) {
+      // Most damaging first (raw delta, like 'gaffe' — no style/risk shaping);
+      // tie-break the LONGER extension (the eloquent confession), then first-found.
+      if (!best || r.delta < best.delta || (r.delta === best.delta && r.ext.length > best.ext.length)) best = r;
+      return;
+    }
     if (gaffe) {
       if (r.delta >= 0) return; // not a flub — a gaffe must be a net self-own
       // SHORTEST self-own (a punchy "I secretly eat babies", and it stops there rather
@@ -133,6 +145,10 @@ export interface AiOptions {
   /** Hold back the mean power-ups (Typo/Forgot/Hot Mic) — nervous rookies don't
    * sabotage. Set by `aiTurn`; default false. */
   restrainPower?: boolean;
+  /** Under Oath: compelled to build the most self-damaging statement reachable
+   * ('confess' plan). Overrides gaffing/style AND all power-up play — a compelled
+   * opponent can't Search/Typo its way out. Set by `aiTurn` from `state.ai.underOath`. */
+  compelled?: boolean;
   /** Onboarding (Q1 of the first debate): play a clean single subject–verb, no combo,
    * no finisher, no gaffe/blunder — so the player's hint-driven combo clearly wins. */
   tutorialSimple?: boolean;
@@ -149,7 +165,20 @@ export function chooseMove(state: GameState, opts: AiOptions = {}): Move {
   const avail = availFor(state);
   const maxExtend = opts.maxExtend ?? 4;
   const styleCategory = state.opponent ? STYLE_CATEGORY[state.opponent.style] : undefined;
-  const best = plan(line, avail, { maxExtend, topicId: state.topic?.id, styleCategory });
+  // A compelled speaker never wants the 'best' plan — skip the wasted search.
+  const best = opts.compelled ? null : plan(line, avail, { maxExtend, topicId: state.topic?.id, styleCategory });
+
+  // UNDER OATH: compelled to confess — build the most self-damaging completion
+  // reachable (checked FIRST; overrides everything, including power-up escapes).
+  // If no completion is reachable at all ('confess' null ⟺ 'best' null — same
+  // DFS reachability), fall through to the best-prefix fallback at the bottom.
+  if (opts.compelled) {
+    const confession = plan(line, avail, { maxExtend, topicId: state.topic?.id, objective: 'confess' });
+    if (confession) {
+      if (confession.ext.length > 0) return { kind: 'take', from: confession.ext[0].source, cardId: confession.ext[0].card.id };
+      if (isComplete(line)) return { kind: 'end' }; // the confession is out — commit to it
+    }
+  }
 
   // ONBOARDING (Q1): play a clean single subject–verb — no connectors, no finisher, no
   // sabotage — so the player's hint-driven combo clearly out-scores it. The plan maximizes
@@ -171,7 +200,7 @@ export function chooseMove(state: GameState, opts: AiOptions = {}): Move {
   // GAFFE: a flustered opponent flubs its statement. Build toward the least-bad
   // self-own (allow a touch more depth so a good setup can precede the blunder).
   // If no self-own is reachable from here, fall through to normal play.
-  if (opts.gaffing) {
+  if (opts.gaffing && !opts.compelled) {
     const flub = plan(line, avail, { maxExtend, topicId: state.topic?.id, objective: 'gaffe' });
     if (flub) {
       if (flub.ext.length > 0) return { kind: 'take', from: flub.ext[0].source, cardId: flub.ext[0].card.id };
@@ -181,7 +210,9 @@ export function chooseMove(state: GameState, opts: AiOptions = {}): Move {
 
   // Power-ups (simple heuristics; the AI ignores Plant — it's blind to the crowd).
   // Nervous rookies hold back the mean ones (restrainPower) and don't soundbite a gaffe.
-  const power = (e: string) => state.ai.hand.find((c) => c.role === 'powerup' && c.effect === e);
+  // A compelled (Under Oath) speaker plays NO power-ups — it's mid-confession, and the
+  // Search branch below would otherwise fire whenever no completion is reachable.
+  const power = (e: string) => (opts.compelled ? undefined : state.ai.hand.find((c) => c.role === 'powerup' && c.effect === e));
   const typo = power('typo');
   // Only Typo when it can force the player into a genuine self-own (not random gibberish).
   if (!opts.restrainPower && typo && !state.player.done && bestTypoJam(state, state.player.line).delta < 0) {
@@ -197,7 +228,9 @@ export function chooseMove(state: GameState, opts: AiOptions = {}): Move {
     if (strong || bigCombo) return { kind: 'power', cardId: forgot.id };
   }
   const hotmic = power('hotmic');
-  if (!opts.restrainPower && hotmic && state.player.hand.some((c) => c.role === 'powerup')) {
+  // (effect !== 'oath': the player holding Under Oath alone is not steal bait — the AI
+  // can't use it, and stealing the scripted story card would delete it from the run.)
+  if (!opts.restrainPower && hotmic && state.player.hand.some((c) => c.role === 'powerup' && c.effect !== 'oath')) {
     return { kind: 'power', cardId: hotmic.id }; // steal the player's power-up (auto-target)
   }
   const search = power('search');
@@ -261,12 +294,16 @@ function nervousBonus(state: GameState): number {
 export function aiTurn(state: GameState, opts: AiOptions = {}): Move {
   const opp = state.opponent;
   const simple = !!state.tutorial && state.round === 1; // onboarding: never gaffe on Q1
-  if (opp && state.ai.line.length === 0) {
+  // Under Oath overrides nerves entirely — skip the roll so it can't overwrite the
+  // compulsion (this also bypasses the boss's gaffeChance 0: the oath, not luck, forces
+  // the confession — the whole point of the card).
+  const compelled = !!state.ai.underOath;
+  if (opp && !compelled && state.ai.line.length === 0) {
     const chance = Math.min(0.95, (opp.gaffeChance ?? 0) + nervousBonus(state));
     state.ai.gaffing = !simple && chance > 0 && gameRng(state)() < chance;
   }
   const restrainPower = (opp?.gaffeChance ?? 0) >= 0.25;
-  return chooseMove(state, { maxExtend: opts.maxExtend, gaffing: state.ai.gaffing, restrainPower, tutorialSimple: simple });
+  return chooseMove(state, { maxExtend: opts.maxExtend, gaffing: state.ai.gaffing, restrainPower, tutorialSimple: simple && !compelled, compelled });
 }
 
 /** Heuristic for the fallback branch: how promising is appending this card? */
