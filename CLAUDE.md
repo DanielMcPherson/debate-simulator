@@ -411,6 +411,11 @@ Full strategy (with reasoning, marketing phases, pricing) lives in `RELEASE_ROAD
 - **AI-generated content requires Steam disclosure** (and costs some audience/curators): the
   gpt-image-2 portraits and any TTS voice clips. Fine for prototyping; any *shipping*
   decision about them is Daniel's, made deliberately — flag it, don't default into it.
+- **Hosting/playtest-distribution plan (2026-07-05, NOT yet executed — RELEASE_ROADMAP.md §9):**
+  keep the github.io URL alive until the friends who have it deliver feedback (redirect later,
+  never a sudden 404); the stranger-ready demo = open (no password) on the real domain via
+  Cloudflare Pages + a public itch.io page, same `dist/`, with the debate-end telemetry adapter
+  landing BEFORE stranger recruitment; repo goes private only after the redirect grace window.
 
 ## Roadmap (triaged — DON'T build until the current scoring is playtested)
 Ordered by priority/dependency. Engine work stays pure/seeded (no `Math.random` — thread the game
@@ -843,7 +848,7 @@ exactly. Two layers:
 **P1 · medium — Shareability (PROMOTED from P2, 2026-07).** The absurd generated statements are
 inherently screenshot-bait — a "share this line" / clean screenshot of a resolved statement is the
 **playtester-recruitment engine** (what makes someone else click the web link), not just a growth
-feature, so it's now early in the release path (see RELEASE_ROADMAP.md §9) instead of post-proof.
+feature, so it's now early in the release path (see RELEASE_ROADMAP.md §10) instead of post-proof.
 Cheap: render the judged line + reaction to a canvas/image (the statement already reverts to clean
 single-color text after the FX — deliberately screenshot-ready).
 
