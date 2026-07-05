@@ -525,12 +525,18 @@ Harness: **`scripts/sim-balance.mjs`** (`npx vite-node scripts/sim-balance.mjs e
 proxy driving the AI's own `plan()` (crowd-blind, mirrors Typo/Forgot/Search). Absolute win rates
 are proxies — **relative differences are the signal**. Re-run it after any scoring/card change.
 N=100/config findings, several of which **overturn this item's old diagnosis**:
-- **Planning depth (`maxExtend`) points DOWNHILL past ~4–5 — for BOTH sides.** Long builds cost
-  tempo: more turns exposed to pool theft and sabotage (the Forgot heuristic baits on lines ≥4)
-  while the payoff clips at the cap. The player proxy at ext 4 beats ext 6 at every rung (vs boss:
-  73% vs 43% win). The BOSS at ext 4 is ~20 pts HARDER than at its current ext 6 (54% vs 73%
-  player win, punchy default-deck player). The old "cap flattens depth" note was half right —
-  extra depth isn't just flat at the top, it's actively counterproductive.
+- **Planning depth (`maxExtend`) points DOWNHILL past ~4–5 — for BOTH sides — but NOT because
+  long statements are bad.** Depth is a per-turn REPLANNING horizon, not statement length:
+  measured at the boss, ext 4 and ext 6 build near-identical lines (avg 5.65 vs 5.76 cards, same
+  sabotage exposure) — a shallow planner still chains long compound statements one good step at a
+  time. The deep planner loses ~2 delta/statement because it commits toward distant completions
+  whose contested pool pieces get taken mid-build (ambitious-but-fragile); the shallow one only
+  chases value already within reach and re-extends from what survived (greedy-but-robust). Player
+  proxy at ext 4 beats ext 6 at every rung (vs boss: 73% vs 43% win); the BOSS at ext 4 is ~20 pts
+  HARDER than at its current ext 6 (54% vs 73% player win vs a default-deck ext-4 player). The old
+  "cap flattens depth" note was half right — extra depth isn't just flat at the top, it's actively
+  counterproductive. **No tension with the design north star:** long lines built incrementally are
+  exactly as strong as ever; it's far-ahead commitment to specific contested cards that's fragile.
 - **Raw reward-card injection into the AI deck is noise** (boss 64%→60% from +0→+6 cards; its avg
   statement cap-clips at ~30–31). **Upgraded tiers are what bite** — they carry `ceiling` headroom:
   +6 rewards AND 9 upgrade tier-steps → boss 64%→46%, avg statement 34.3.
