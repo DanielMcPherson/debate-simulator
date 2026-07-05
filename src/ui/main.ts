@@ -910,7 +910,8 @@ const TUTORIAL_BODY = `
 function runModalHtml(): string {
   if (runScreen === 'tutorial') {
     return `<div class="modal-backdrop"><div class="modal map-modal">
-      <div class="modal-title" style="color:var(--gold)">📝 How to Debate</div>
+      <div class="modal-title" style="color:var(--gold);text-align:center">🏛️ My Opponent Kicks Puppies 🏛️</div>
+      <div class="title-sub">A Debate Simulator</div>
       ${TUTORIAL_BODY}
       <button class="action" id="beginTutorial">Got it — pick my candidate ▶</button>
     </div></div>`;
@@ -1150,7 +1151,8 @@ function render(): void {
   const finisherNote = notes.map((n) => `<div class="held">${n}</div>`).join('');
 
   app.innerHTML = `
-    <h1><span class="tstar">✦</span>⚖️ DEBATE SIMULATOR ⚖️<span class="tstar">✦</span></h1>
+    <h1><span class="tstar">✦</span>🏛️ MY OPPONENT KICKS PUPPIES 🏛️<span class="tstar">✦</span></h1>
+    <div class="title-sub">A Debate Simulator</div>
     ${runScreen === 'result' || fxHoldSummary ? '' : bannerHtml()}
     <div class="scorebar-wrap">
       <div class="crowd" aria-hidden="true"></div>

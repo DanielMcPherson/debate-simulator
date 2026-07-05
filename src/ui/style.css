@@ -43,8 +43,10 @@ body {
 /* --- engraved broadcast title --- */
 h1 {
   position:relative; z-index:0;
-  font-family:var(--display); font-weight:700; letter-spacing:5px; font-size:23px;
-  text-align:center; margin:0 0 5px;
+  font-family:var(--display); font-weight:700;
+  /* the title is long — scale it (and its tracking) with the viewport instead of wrapping */
+  letter-spacing:clamp(1.5px, .8vw, 4px); font-size:clamp(14px, 3.6vw, 22px);
+  text-align:center; margin:0 0 2px;
   background:linear-gradient(180deg,#fbe6b0,#c89a3f);
   -webkit-background-clip:text; background-clip:text; color:transparent;
   text-shadow:0 1px 0 rgba(0,0,0,.5);
@@ -63,6 +65,11 @@ h1::before {
 /* the title gradient clips the stars to transparent too; paint them gold explicitly */
 h1 .tstar { -webkit-text-fill-color:var(--gold); }
 .qstar { color:var(--gold); opacity:.6; font-size:.85em; margin:0 8px; }
+/* small genre subtitle under the show title (masthead + tutorial modal) */
+.title-sub {
+  font-family:var(--label); text-transform:uppercase; letter-spacing:3px; font-size:11px;
+  text-align:center; color:var(--gold); opacity:.65; margin:0 0 6px;
+}
 
 /* --- campaign run strip (mirrors the real run-pill) --- */
 .run-pill {

@@ -397,8 +397,17 @@ Full strategy (with reasoning, marketing phases, pricing) lives in `RELEASE_ROAD
   deck-building design. Never build a web backend (see PvP roadmap: online = Steam-only).
 - **Translation is explicitly out of scope** — grammar/morphology/jokes are per-language
   rebuilds, not string tables. Don't design for it unless US-English finds an audience.
-- **"Debate Simulator" is a working title.** A real, searchable name is needed BEFORE any
-  Steam page exists (URL + wishlists attach to it).
+- **NAME CHOSEN (2026-07-05): "My Opponent Kicks Puppies"** (statement-as-title; capsule
+  subtitle "— A Debate Simulator" for SEO; tagline candidate "…and I approved this message").
+  Vetted: no Steam/board-game title collision; myopponentkickspuppies.com UNREGISTERED as of
+  2026-07-05. Runner-up if a late collision surfaces: "Let Me Finish!" (letmefinishgame.com
+  free). **Daniel's manual follow-ups before the Steam Coming-Soon page:** USPTO TESS search
+  (Class 9/41), register the domain + social handles. Keep "Debate Simulator" as the repo/dev
+  name until the Steam page exists. **The in-game UI already shows the real name** (2026-07-05):
+  browser-tab title (index.html), the h1 masthead + a `.title-sub` "A Debate Simulator" genre
+  subtitle (main.ts/style.css — masthead font clamps with viewport so the long name never
+  wraps), and the How-to-Debate tutorial modal (whose first example line is, conveniently, the
+  title).
 - **AI-generated content requires Steam disclosure** (and costs some audience/curators): the
   gpt-image-2 portraits and any TTS voice clips. Fine for prototyping; any *shipping*
   decision about them is Daniel's, made deliberately — flag it, don't default into it.
@@ -611,30 +620,95 @@ upgradeSteps?}`; new opponents join `OPPONENTS` with their own `gaffeChance`; re
 `p.id === 'player'` guard in `dealRound` so AI decks map through upgrade tiers; shuffle `deckBoost`
 reward cards into the AI private-deck build (`priv`, style-appropriate); `ladderHtml` renders tier
 groupings; the free web demo = tier 1 (matches the roadmap's "first rungs free" funnel). The 4-way
-debate special (P3 below) slots naturally at a tier boundary if built.
+debate special (P2 below) slots naturally at a tier boundary if built.
 
-**P3 · large — 4-way debate (mid-ladder special).** Midway up the ladder, a debate with the player
-+ 3 opponents; the player must finish on top to continue. Attacks become **directed**: aim an
-attack at a specific opponent to *lower their approval* — usually the leader, but you might kick the
-last-place candidate to keep them out. Opponents also direct attacks at specific candidates (not
-necessarily the player). Pander/self-praise boost your own approval. Needs a multi-candidate game
-state + targeted-attack moves + AI target selection.
+**P2 · large — 4-way debate (special; DESIGN PASS DONE 2026-07 — PROTOTYPE IS THE NEXT CODING
+TASK: the roadmap's highest-uncertainty item, so de-risk it before building campaign structure
+around it; Fable/Daniel discussion).** The rules-changeup special: the player + 3 opponents,
+finish on top to continue; also a potential later standalone mode (decide after the special
+ships). **Campaign decisions (2026-07, tiered-ladder era):** at most ONE per campaign (a rules
+changeup is memorable once, a mechanic twice). Placement = its own node at the **T2→T3 boundary**
+(after rung 8) — deliberately difficulty-verdict-proof: if it tests hard (roadblock), T3.1's
+breather still gives the relax moment right after; if easy, it IS the breather and T3.1 can
+tighten. Prize = **upgrade picks, not a card draft** — adds power without deck bulk (counters the
+tiered spec's 11-draft dilution flag) and gives the boundary a distinct identity: consultant →
+4-way → final tier. (The old "after debate 4, mind Under Oath collisions" placement note is
+obsolete; Under Oath now re-points to rung 8 in the tiered spec — if the 4-way ships there,
+sequence the two beats deliberately.)
+**NEXT STEP — isolated prototype, no campaign integration:** a dev-only entry (debug button / URL
+param) launching a single 4-way with a roster of 3 already-DEFEATED ladder opponents returning for
+a rematch (portraits, styles, and banter already exist — free art — and it reads as a narrative
+beat). No reward wiring, no new characters. The prototype must come back with verdicts on:
+(1) is it fun at all / does it belong in the game; (2) does directed targeting create real
+decisions (trip the leader vs kick the last-place spoiler); (3) breather or roadblock; (4) run
+length — 4 speakers/question roughly doubles a round, so it likely wants fewer questions (~5–6)
+or it drags.
+
+  **Core decisions (each cascades from the previous):**
+  - **No contested pool.** Three rivals draining a shared pool between your plays makes
+    planning impossible, fights the north star (long statements need a stable card supply),
+    and no screen fits a 4-way pool. Each candidate builds from an UNCONTESTED deal (private
+    hand + a generous per-question deal).
+  - **Whole-statement turns.** Card-by-card alternation exists ONLY because the 1v1 pool is
+    a race; uncontested, it's just waiting through three AI plays. Each candidate builds
+    their complete statement uninterrupted, resolves, play passes on. Big AI simplification
+    (plan once over a stable deal — no re-planning) and it reads like a real moderated
+    debate.
+  - **Power-ups DISABLED in v1.** Typo/Forgot target an opponent's *in-progress* line, which
+    whole-statement turns abolish; Hot Mic/Plant/Under Oath each need their own ruling.
+    Audit later; don't redesign for v1.
+  - **Virtual subject chips, NOT a "choose your target" phase.** Reuse the PERIOD
+    virtual-card model (never drawn/consumed, offered as a move whenever legal): a fixed
+    always-available row of NPs — each opponent BY NAME, "all of the other corrupt
+    politicians on this stage with me" (collective), the voters, yourself. Solves
+    roster-as-cards screen space with no modal step, keeps the freeform builder the player
+    already knows, and — the key win — multi-clause statements can target DIFFERENT
+    candidates ("Senator A kicks puppies because Governor B eats babies" is a directed
+    double-attack; a second clause needs its own subject anyway). The dealt cards are then
+    predicates/objects/connectors/modifiers/finishers only.
+  - **NO polarity filtering of the deal** (REJECTED: "offer only negative cards when
+    attacking, only positive when bragging"). Open predicates have no polarity without their
+    object, so filtering guts the combinatorial engine; and blunder risk is where the
+    card-feel skill and the comedy live (cards carry no numbers; Heel Turn / Giant Gaffe
+    gambles are content). The strategy layer comes from target choice + the approval math,
+    not from a safe hand.
 
   **Scoring model (decided): independent approval bars, NOT zero-sum redistribution.** Each
-  candidate has their own approval %, all starting ~35%; **attacks just lower the target's bar (no
-  splash), pander/self-praise raise your own** — this is the whole point (cleanly separating the two
-  verbs), is *simpler* to reason about than zero-sum (no "where did the lost share go, and did it
-  feed the wrong rival?" math), makes "kick the last-place candidate" sensible, and matches real-poll
-  intuition (a nasty debate can tank the whole field). **Win = race to a threshold where attacks
-  *delay* rivals** (everyone needs ~60%; sprint yourself OR trip whoever's about to cross) — a plain
-  "boost yourself over X" makes attacks pointless, and "highest at the time limit" also works.
-  **Keep the zero-sum needle for 1v1 debates** — there it's strategically equivalent (lowering your
-  only opponent *is* raising your standing), simpler, and a more dramatic tug-of-war; independent
-  bars there add a second bar for no new decision. The engine fork is thin: the per-statement scoring
-  is identical; only how a delta routes changes (an attack clause → −target's bar). The rules change
-  is easy to explain at the 4-way intro (one screen) since it's a distinct event with poll-like
-  bars. (Open: could independent bars *also* replace the 1v1 needle? Decided no for now — the
-  tug-of-war feel is better head-to-head — but revisit if the two models feel jarring to switch between.)
+  candidate has their own approval %, all starting ~35%; per-clause routing — an attack
+  clause lowers the TARGET's bar (no splash), pander/self-praise raise only yours. Simpler
+  than zero-sum (no "where did the lost share go?" math), makes "kick the last-place
+  candidate" sensible, matches real-poll intuition (a nasty debate can tank the whole
+  field). **The "undecided pool" is PRESENTATION ONLY** (e.g. show 100 − mean(bars)), never
+  a conserved ledger — "attacks push support to undecided, not to rivals" is behaviorally
+  identical to no-splash. **Tuning constants (starting point):** brag/pander +X to you (the
+  efficient self-raise); attack-one −Y target, +Y/4 you (chip damage for you, real damage to
+  them); attack-all −Y/2 each opponent + small +you (wide but shallow). **Gang-ups are
+  emergent** — you + two AIs mobbing the leader is three independent subtractions,
+  devastating with no special rule; if pile-ons dominate playtests the lever is a sympathy
+  rebound / diminishing returns on the round's most-attacked candidate (do NOT build in v1).
+  **Win = race to a threshold where attacks *delay* rivals** (everyone needs ~60%; sprint
+  yourself OR trip whoever's about to cross); "highest after N questions" is the fallback if
+  threshold races run long. **Keep the zero-sum needle for 1v1** — strategically equivalent
+  there, simpler, more dramatic (revisit only if switching models feels jarring). The engine
+  fork is thin: per-statement scoring is IDENTICAL; only how a delta routes changes. The
+  rules change is one intro screen at the event (distinct event, poll-like bars).
+
+  **AI target selection:** ride the existing `style` machinery — default "attack whoever's
+  closest to winning" with personality jitter (aggressive archetype attacks the leader; a
+  panderer mostly brags/panders, attacking only near-threshold rivals). AI-vs-AI attacks are
+  what make the field feel alive.
+
+  **Prototype order — risky part FIRST (this mode's cheap kill-switch; "possibly this idea
+  sucks" is a live hypothesis).** Statement-building is known-fun; what might suck is the
+  MACRO layer: do brag/pander/attack-one/attack-all choices across ~8 questions produce real
+  decisions, or does one strategy dominate? **Step 1 (cheap, runnable anytime): a HEADLESS
+  vite-node sim** — abstract each statement to a type choice + quality roll, run the
+  approval math over many games with simple policies (always-pander, always-mob-leader,
+  mixed). If a degenerate policy flatly wins, retune the constants or kill the idea before
+  ANY engine/UI work. **Step 2 (only if the sim shows texture): engine** — candidates array,
+  per-candidate bars, whole-statement turn rotation, virtual subject chips, per-clause delta
+  routing (pure + seeded + tested, like everything else). **Step 3: UI** — four podiums, the
+  one-screen rules intro, turn indicator.
 
 **P3 · medium — Curse cards** (depends on shop + heel-turn). Opponent sabotage that injects toxic
 pre-formed statements into your deck ("…and that's why I despise my voters"), clogging your hand.
