@@ -489,7 +489,7 @@ function questionCardHtml(): string {
     <div class="qm-meta">Question ${game.round} of ${game.maxRounds} &nbsp;·&nbsp; ${game.topic?.label ?? ''}</div>
     <div class="qm-question">“${game.question ?? ''}”</div>
     <div class="qm-banter">
-      <div class="qm-side"><div class="qm-bubble you">${c.you}</div>${face('you', '🇺🇸')}<div class="qm-name you">You</div></div>
+      <div class="qm-side"><div class="qm-bubble you">${c.you}</div>${face('you', '🎤')}<div class="qm-name you">You</div></div>
       <div class="qm-side"><div class="qm-bubble them">${c.opp}</div>${face('them', '🎙️')}<div class="qm-name them">${game.opponent?.name ?? 'Opponent'}</div></div>
     </div>
     <button class="action" id="questionGo">Let’s debate ▶</button>
@@ -508,7 +508,7 @@ function portraitPic(side: 'you' | 'them'): string {
     const url = ch ? PORTRAITS[`./art/portraits/player-${ch.id}-confident.webp`] : undefined;
     return url
       ? `<img class="portrait" src="${url}" alt="${ch?.name ?? 'You'}">`
-      : '<div class="portrait placeholder">🇺🇸</div>';
+      : '<div class="portrait placeholder">🎤</div>';
   }
   const id = game.opponent?.id;
   const mood = oppMood();
@@ -904,7 +904,7 @@ const TUTORIAL_BODY = `
         winning over the crowd.</li>
     </ul>
     <div class="howto-foot">Win debates! Build your deck of sound bites, wild promises, and
-      attack lines! Try to debate your way to the top! 🇺🇸</div>
+      attack lines! Try to debate your way to the top! 🦅</div>
   </div>`;
 
 function runModalHtml(): string {
