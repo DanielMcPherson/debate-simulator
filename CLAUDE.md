@@ -519,24 +519,46 @@ raise it when the player lands a big matching statement — the opponent's hidde
 national disgrace", not a mushy −2) + `restrainPower` (rookies hold back Typo/Forgot/Hot Mic).
 Resolve adds a comedic "tell" log line. Opp 1 is a verified Glass Joe.
 
-**P1 · medium — Make the BOSS actually hard via DECK QUALITY (deck-building note).** Playtest sims
-show the late ladder is a flat ~55–60% plateau: the **±35/50 scoring cap flattens `maxExtend`**
-(deeper AI just caps out) so depth can't harden the top, and on equal-tier decks a clean player has
-a structural edge. The intended lever: **better opponents play better cards** — up the ladder,
-opponents get increasingly powerful decks (reward-tier `REWARDS`-style cards, then beyond), not the
-default deck played perfectly. The boss should be near-impossible on the *default* deck; the player
-must **deck-build even more powerful cards to compensate**. So opponent-deck-strength and the
-player's card economy must be **balanced together** in the deck-building epic (P2) — don't tune one
-without the other. (Player verifies human-beatability by playtest; sims can't.) Optional AI knobs
-still open: `comboSkill`/`cardGreed`. Since card upgrades (2026-07): assume a player reaching the
-boss has ~9 upgrades applied (2+3+4 across the three consultant visits) plus random-upgrade awards —
-tune opponent deck strength against THAT deck, not the default one; the engine's `upgrades` option
-already works for AI players once the `p.id === 'player'` guard in `dealRound` is relaxed.
-First upgrade-era playtest data (2026-07, n=1): the upgraded deck made rungs 1–4 noticeably easier
-("got to the 5th opponent easier than I ever have"), then **opponent 5 clobbered the run** even
-after an Under Oath forced her into a terrible Q1 — so the pre-boss difficulty step already bites
-BEFORE any opponent-deck-quality work; when tuning, mind the gap between rung 4 and 5, not just
-the boss.
+**P1 · medium — Make the BOSS actually hard — SPEC'D BY SIMULATION (2026-07 balance study).**
+Harness: **`scripts/sim-balance.mjs`** (`npx vite-node scripts/sim-balance.mjs expA|expB|expC|expD|expE 100`)
+— deterministic, seeded; AI side is the real `aiTurn` (gaffes/nerves/power-ups); the player is a
+proxy driving the AI's own `plan()` (crowd-blind, mirrors Typo/Forgot/Search). Absolute win rates
+are proxies — **relative differences are the signal**. Re-run it after any scoring/card change.
+N=100/config findings, several of which **overturn this item's old diagnosis**:
+- **Planning depth (`maxExtend`) points DOWNHILL past ~4–5 — for BOTH sides.** Long builds cost
+  tempo: more turns exposed to pool theft and sabotage (the Forgot heuristic baits on lines ≥4)
+  while the payoff clips at the cap. The player proxy at ext 4 beats ext 6 at every rung (vs boss:
+  73% vs 43% win). The BOSS at ext 4 is ~20 pts HARDER than at its current ext 6 (54% vs 73%
+  player win, punchy default-deck player). The old "cap flattens depth" note was half right —
+  extra depth isn't just flat at the top, it's actively counterproductive.
+- **Raw reward-card injection into the AI deck is noise** (boss 64%→60% from +0→+6 cards; its avg
+  statement cap-clips at ~30–31). **Upgraded tiers are what bite** — they carry `ceiling` headroom:
+  +6 rewards AND 9 upgrade tier-steps → boss 64%→46%, avg statement 34.3.
+- **Player deck progression only matters at the top** (boss 43%→64% at ext 6; mid-ladder unmoved —
+  both sides saturate the cap there). The "deck-build to beat the boss" arc already exists; the
+  boss is just too soft for it to be necessary.
+- **Rungs 4/5 are mechanically near-identical** (same ext 6, same `attack`-style deck; gaffe 0.05
+  vs 0.02 barely fires). The playtest "rung 5 wall" did NOT reproduce (rung 5 ≈ rung 4 ≈ 65–75%) —
+  likely variance/human factors, not a design cliff. Differentiate them (below).
+- Gaffe curve carries rungs 1–3 exactly as intended (2.0 → 0.8 gaffes/debate ⇒ 100% → ~65% win).
+
+**The spec (validated as `expE`): boss = `maxExtend 4` + full-mirror deck (+6 top reward cards, 9
+upgrade tier-steps) ⇒ 27% proxy win on the default deck, 47% with a full progression deck** — the
+intended "near-impossible without deck-building, a real fight with it" (today's boss: 73%).
+Implementation: per-rung deck-quality fields on `LADDER` (boost cards + upgrade steps), relax the
+`p.id === 'player'` guard in `dealRound` (the `upgrades` option already works), shuffle boost cards
+into the AI's private-deck build; **LOWER late-ladder `maxExtend` to ~4–5 instead of raising it**
+(the cards.ts comment "maxExtend tops out at 6" is now known wrong in the harmful direction). Give
+rung 5 a partial boost (e.g. +4 rewards, 4 upgrade steps) so rungs 4<5<6 form a real gradient and
+slander stops being a smearwell clone. These numbers are the starting point, not gospel: re-run the
+sim suite after implementing, then **human playtest** (the proxy can't model crowd-reading, humor-
+seeking, or how funny the boss's upgraded zingers land — which is also why a boosted boss deck is
+north-star-aligned even where win rate moves little).
+Open follow-ups (NOT spec'd — need a design pass): if playtest wants the boss meaner still, use
+levers the cap can't clip — boss plans crowd-aware ("reads the room"; thematic, uses the existing
+hidden-crowd plumbing), guaranteed sabotage cards in the boss deck (sabotage bypasses the cap and
+is what actually punishes long player lines), optional starting-bar handicap. `comboSkill`/
+`cardGreed` AI knobs remain open but are likely cap-clipped too.
 
 **P3 · large — 4-way debate (mid-ladder special).** Midway up the ladder, a debate with the player
 + 3 opponents; the player must finish on top to continue. Attacks become **directed**: aim an
