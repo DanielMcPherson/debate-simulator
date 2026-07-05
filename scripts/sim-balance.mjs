@@ -103,13 +103,17 @@ function boostAiDeck(state, k, rng, aiUpgradeSteps = 0) {
 
 // ---------- one debate ----------
 function runDebate(cfg) {
-  const rung = LADDER[cfg.rung];
+  const rung = cfg.rung !== undefined ? LADDER[cfg.rung] : undefined;
   const state = createGame({
     seed: cfg.seed,
-    opponentId: rung.opponentId,
+    opponentId: cfg.opponentId ?? rung.opponentId,
     playerBonus: cfg.bonus ?? [],
     upgrades: cfg.upgrades,
   });
+  // Proposed-opponent override: CLONE the opponent def (never mutate the shared OPPENENTS
+  // entry) so a hypothetical gaffeChance can be simulated without touching cards.ts.
+  if (cfg.oppGaffe !== undefined && state.opponent)
+    state.opponent = { ...state.opponent, gaffeChance: cfg.oppGaffe };
   const rng = makeRng(cfg.seed ^ 0x9e3779b9);
   if (cfg.aiBoost || cfg.aiUpgradeSteps) boostAiDeck(state, cfg.aiBoost ?? 0, rng, cfg.aiUpgradeSteps ?? 0);
   let guard = 0;
@@ -117,7 +121,7 @@ function runDebate(cfg) {
     if (state.awaitingNext) { nextQuestion(state); continue; }
     const move =
       state.turn === 'ai'
-        ? aiTurn(state, { maxExtend: cfg.aiExtend ?? rung.maxExtend })
+        ? aiTurn(state, { maxExtend: cfg.aiExtend ?? rung?.maxExtend })
         : playerMove(state, { maxExtend: cfg.playerExtend });
     applyMove(state, move);
   }
@@ -196,6 +200,46 @@ if (exp === 'expD' || exp === 'all') {
   console.log(`-- and vs the rich progression player at ext 4 --`);
   for (const ae of [4, 6])
     runConfig(`  6:grandstand@ext${ae}`, (seed) => ({ ...progressionCfg(5, seed, 4, 2), aiExtend: ae }), N);
+}
+// Proposed 12-rung, 3-tier campaign (2026-07 tiered-campaign design pass). Each rung:
+// baseId = existing opponent whose STYLE (and thus signature deck) the slot uses — NEW
+// opponents borrow a same-style stand-in for simulation; gaffe overrides gaffeChance;
+// ext = maxExtend; boost/up = AI deck injection (reward cards / upgrade tier-steps).
+// Player model: ext-4 proxy, rewards ≈ 1.5×wins, consultant picks 3/4/5 after rungs 4/8/11.
+const PROPOSED_LADDER = [
+  // Tier 1 — City Hall
+  { label: 'T1.1 breather (pander)', baseId: 'pander', gaffe: 0.45, ext: 3, boost: 0, up: 0 },
+  { label: 'T1.2 NEW (pander)', baseId: 'passer', gaffe: 0.25, ext: 3, boost: 0, up: 0 },
+  { label: 'T1.3 blowhard (brag)', baseId: 'blowhard', gaffe: 0.15, ext: 4, boost: 0, up: 0 },
+  { label: 'T1.4 BOSS passer (pander)', baseId: 'passer', gaffe: 0.1, ext: 4, boost: 0, up: 0 },
+  // Tier 2 — The Primary
+  { label: 'T2.1 breather NEW (brag)', baseId: 'blowhard', gaffe: 0.15, ext: 4, boost: 0, up: 0 },
+  { label: 'T2.2 smearwell (attack)', baseId: 'smearwell', gaffe: 0.05, ext: 4, boost: 4, up: 2 },
+  { label: 'T2.3 NEW (attack)', baseId: 'smearwell', gaffe: 0.05, ext: 4, boost: 4, up: 4 },
+  { label: 'T2.4 BOSS slander (attack)', baseId: 'slander', gaffe: 0, ext: 4, boost: 6, up: 6 },
+  // Tier 3 — The General
+  { label: 'T3.1 breather NEW (pander)', baseId: 'passer', gaffe: 0.1, ext: 4, boost: 2, up: 4 },
+  { label: 'T3.2 NEW (attack)', baseId: 'slander', gaffe: 0, ext: 4, boost: 6, up: 9 },
+  { label: 'T3.3 NEW (brag)', baseId: 'grandstand', gaffe: 0, ext: 4, boost: 6, up: 8 },
+  { label: 'T3.4 FINAL grandstand (brag)', baseId: 'grandstand', gaffe: 0, ext: 4, boost: 12, up: 14 },
+];
+// Cumulative player upgrade steps entering each rung (consultant 3/4/5 after rungs 4/8/11).
+const STEPS_F = [0, 0, 0, 0, 3, 3, 3, 3, 7, 7, 7, 12];
+
+if (exp === 'expF' || exp === 'all') {
+  console.log(`\n=== F. PROPOSED 12-RUNG TIERED CAMPAIGN — vs ext-4 progression player (N=${N}) ===`);
+  PROPOSED_LADDER.forEach((o, i) => {
+    runConfig(`  ${String(i + 1).padStart(2)} ${o.label}`, (seed) => {
+      const rng = makeRng(seed ^ 0x1234abcd);
+      const bonus = draftRewards(Math.round(i * 1.5), rng);
+      const deckDefs = [...buildPrivateDeck(), ...bonus].map((c) => ({ id: c.id.split('#')[0] }));
+      const upgrades = assignUpgrades(deckDefs, STEPS_F[i], rng);
+      return {
+        opponentId: o.baseId, aiExtend: o.ext, oppGaffe: o.gaffe, aiBoost: o.boost,
+        aiUpgradeSteps: o.up, playerExtend: 4, seed, bonus, upgrades,
+      };
+    }, N);
+  });
 }
 if (exp === 'expE' || exp === 'all') {
   console.log(`\n=== E. PROPOSED BOSS — ext 4 + full-mirror deck (+6 rewards, 9 upgrade steps) (N=${N}) ===`);

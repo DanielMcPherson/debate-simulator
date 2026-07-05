@@ -548,23 +548,70 @@ N=100/config findings, several of which **overturn this item's old diagnosis**:
   likely variance/human factors, not a design cliff. Differentiate them (below).
 - Gaffe curve carries rungs 1–3 exactly as intended (2.0 → 0.8 gaffes/debate ⇒ 100% → ~65% win).
 
-**The spec (validated as `expE`): boss = `maxExtend 4` + full-mirror deck (+6 top reward cards, 9
-upgrade tier-steps) ⇒ 27% proxy win on the default deck, 47% with a full progression deck** — the
-intended "near-impossible without deck-building, a real fight with it" (today's boss: 73%).
-Implementation: per-rung deck-quality fields on `LADDER` (boost cards + upgrade steps), relax the
-`p.id === 'player'` guard in `dealRound` (the `upgrades` option already works), shuffle boost cards
-into the AI's private-deck build; **LOWER late-ladder `maxExtend` to ~4–5 instead of raising it**
-(the cards.ts comment "maxExtend tops out at 6" is now known wrong in the harmful direction). Give
-rung 5 a partial boost (e.g. +4 rewards, 4 upgrade steps) so rungs 4<5<6 form a real gradient and
-slander stops being a smearwell clone. These numbers are the starting point, not gospel: re-run the
-sim suite after implementing, then **human playtest** (the proxy can't model crowd-reading, humor-
-seeking, or how funny the boss's upgraded zingers land — which is also why a boosted boss deck is
-north-star-aligned even where win rate moves little).
-Open follow-ups (NOT spec'd — need a design pass): if playtest wants the boss meaner still, use
-levers the cap can't clip — boss plans crowd-aware ("reads the room"; thematic, uses the existing
-hidden-crowd plumbing), guaranteed sabotage cards in the boss deck (sabotage bypasses the cap and
-is what actually punishes long player lines), optional starting-bar handicap. `comboSkill`/
-`cardGreed` AI knobs remain open but are likely cap-clipped too.
+**IMPLEMENTATION SUPERSEDED (2026-07): the per-rung recipe now lives in the TIERED CAMPAIGN spec
+(next item) — the findings above remain the reference.** The original 6-rung spec (`expE`: boss =
+ext 4 + full-mirror deck ⇒ 27% proxy win on default deck / 47% on full progression) became rung
+T3.4 of the tiered ladder. Open follow-ups (NOT spec'd — need a design pass): if playtest wants the
+final boss meaner still, use levers the cap can't clip — boss plans crowd-aware ("reads the room";
+thematic, uses the existing hidden-crowd plumbing), guaranteed sabotage cards in the boss deck
+(sabotage bypasses the cap and is what actually punishes long player lines), optional starting-bar
+handicap. `comboSkill`/`cardGreed` AI knobs remain open but are likely cap-clipped too.
+
+**P1 · large — TIERED CAMPAIGN: 12 rungs in 3 Punch-Out-style tiers (DESIGN PASS DONE 2026-07 —
+sim-validated, ready to implement; Daniel/Fable).** Replaces the 6-rung ladder with **3 tiers × 4
+debates — City Hall → The Primary → The General** (working names) per the release roadmap's paid-
+release content bar. **Rhythm:** each tier = breather → climb → climb → tier boss; a new tier's
+breather is deliberately easier than the prior tier's boss (a moment to relax, trounce someone, and
+draft before stepping up) but never rookie-easy. **Difficulty philosophy (Daniel's calls, 2026-07):**
+target = "a skilled human beats the full campaign most of the time" — Daniel's own play is the
+litmus test until dedicated playtesters exist; top rungs MAY temporarily outpace humans while
+deck-building content catches up (buff the player economy to close the gap, NEVER dumb down the
+boss). Roguelike full reset on loss stays (new default deck, try a different build).
+**The tuned ladder (sim `expF`, N=100, vs an ext-4 progression proxy; re-run after scoring/card
+changes). gaffe/ext are the opponent's; boost/upg = reward cards injected into its deck / upgrade
+tier-steps applied to it; win% = proxy player win rate (bar = avg final needle):**
+```
+rung slot         opponent               gaffe ext boost/upg  win% (bar)
+ 1   T1 breather  Gov. Patty Pander      .45   3   —          100  (+98)
+ 2   T1 climb     NEW Hugh Kissbaby      .25   3   —           90  (+75)
+ 3   T1 climb     Sen. Blowhard          .15   4   —           91  (+59)
+ 4   T1 BOSS      Mayor Buck Passer      .10   4   —           69  (+30)
+ 5   T2 breather  NEW Chip Vainwright    .15   4   —           90  (+64)
+ 6   T2 climb     Rep. Dirk Smearwell    .05   4   +4/2        82  (+45)
+ 7   T2 climb     NEW Sal Mudslinger     .05   4   +4/4        74  (+33)
+ 8   T2 BOSS      Justice Vera Slander   0     4   +6/6        54  (+11)
+ 9   T3 breather  NEW Fay Weathervane    .10   4   +2/4        69  (+32)
+10   T3 climb     NEW Vic Torpedo        0     4   +6/9        61  (+15)
+11   T3 climb     NEW Sterling Landslide 0     4   +6/8        46  (−7)
+12   T3 FINAL     M. Q. Grandstand III   0     4   +12/14      42  (−17)
+```
+In-tier bar-monotonic with breather bumps at 5/9. The final at 42% vs the strongest proxy is
+deliberately ABOVE the old 25–35 band: humans are weaker than the proxy, so this should land near
+the "beat it most of the time" target — escalate via the non-cap-clipped levers (prev item) only if
+playtest demands. Knob rationale (balance study above): gaffes carry tier 1 + every breather;
+maxExtend stays 3–4 (5+ measured counterproductive); AI deck quality carries tiers 2–3.
+**Cast:** existing 6 redistributed as anchors (see table). Six NEW opponents — names/blurbs/tells
+are **DRAFTS for Daniel to punch up or replace** (same authoring rule as cards): **Alderman Hugh
+Kissbaby** (pander, "Has personally kissed every baby in the district. Twice.", nervousOf pander),
+**Lt. Gov. Chip Vainwright** (brag, "Peaked in high school. Will tell you about it.", nervousOf
+self_brag+attacked), **D.A. Sal Mudslinger** (attack, "Never met a fact he couldn't allege.",
+nervousOf attacked), **Ambassador Fay Weathervane** (pander, "Polls before breakfast. Repolls
+after.", nervousOf pander), **Senate Whip Vic Torpedo** (attack, "Sinks careers for sport. Yours is
+next.", no tell), **Gov. Sterling Landslide** (brag, "Has never lost. Has also never been checked
+for a pulse.", no tell). Art: 6 × 3 moods = 18 portraits via `npm run genart` (the AI-art Steam
+disclosure decision applies before shipping).
+**Reward economy stretch:** 11 post-win drafts (dilution risk rises → trims matter more);
+consultant waypoints move to **after rungs 4, 8, 11** (tier boundaries + boss prep), upgrade picks
+**3/4/5**; `UNDER_OATH_RUNG` re-points to after the T2 boss (rung 8 — the award was built
+re-pointable). FLAG: the REWARDS pool needs more cards to support 11 drafts × 3 choices without
+repeats — pairs with "design new cards WITH their upgrade path". The sim's player model assumed
+rewards ≈ 1.5×wins (base draft + achievement awards) and that consultant schedule.
+**Implementation notes:** `LADDER` rows become `{opponentId, maxExtend, tier, deckBoost?,
+upgradeSteps?}`; new opponents join `OPPONENTS` with their own `gaffeChance`; relax the
+`p.id === 'player'` guard in `dealRound` so AI decks map through upgrade tiers; shuffle `deckBoost`
+reward cards into the AI private-deck build (`priv`, style-appropriate); `ladderHtml` renders tier
+groupings; the free web demo = tier 1 (matches the roadmap's "first rungs free" funnel). The 4-way
+debate special (P3 below) slots naturally at a tier boundary if built.
 
 **P3 · large — 4-way debate (mid-ladder special).** Midway up the ladder, a debate with the player
 + 3 opponents; the player must finish on top to continue. Attacks become **directed**: aim an
