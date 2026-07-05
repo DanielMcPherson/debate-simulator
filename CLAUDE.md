@@ -5,7 +5,9 @@ Simulator* + *Slay the Spire*). You build absurd political statements one chunk 
 an audience-reaction scorebar decides who wins. There's a roguelike campaign on top.
 
 This file orients a new session. Player-facing rules live in `README.md`; sharing/deploy
-steps in `SHARING.md`.
+steps in `SHARING.md`; the commercialization strategy (platforms, audio/VA plan, marketing,
+monetization) in `RELEASE_ROADMAP.md` — **local-only + gitignored** (repo is public), so its
+absence on another machine is expected, not an error.
 
 ## Design north star (2026-06)
 **The fun is building long, ridiculous, over-the-top statements that parody how politicians
@@ -382,6 +384,25 @@ lone Under Oath tile; (2) the reward pick-handler resolves the clicked card **fr
 `run.bonus` not already containing it (a loss wipes bonus+rung together, so re-earning next run is
 automatic). Deliberately re-pointable to a 4-way-debate prize later without redesign.
 
+## Commercialization track (2026-07) — decisions that constrain dev work
+Full strategy (with reasoning, marketing phases, pricing) lives in `RELEASE_ROADMAP.md`
+(local-only, gitignored — repo is public). The *decisions* future sessions must respect:
+- **Stay on the TS/web stack — no engine rewrite for any target platform.** Steam ships as
+  an **Electron or Tauri wrapper** (`steamworks.js` / Tauri plugin for achievements + cloud
+  saves + lobbies); mobile ships via **Capacitor** (the cost is the phone-layout rework, not
+  tooling). Console is the only rewrite trigger and is out of scope. Corollary: keep the
+  engine pure and the app static/backend-free — that's what makes the ports cheap.
+- **The web build is the free demo/funnel, not the product.** Paid release on Steam + itch
+  ($4.99–7.99 tier); mobile premium later. **No F2P / card-pack IAP** — it would distort the
+  deck-building design. Never build a web backend (see PvP roadmap: online = Steam-only).
+- **Translation is explicitly out of scope** — grammar/morphology/jokes are per-language
+  rebuilds, not string tables. Don't design for it unless US-English finds an audience.
+- **"Debate Simulator" is a working title.** A real, searchable name is needed BEFORE any
+  Steam page exists (URL + wishlists attach to it).
+- **AI-generated content requires Steam disclosure** (and costs some audience/curators): the
+  gpt-image-2 portraits and any TTS voice clips. Fine for prototyping; any *shipping*
+  decision about them is Daniel's, made deliberately — flag it, don't default into it.
+
 ## Roadmap (triaged — DON'T build until the current scoring is playtested)
 Ordered by priority/dependency. Engine work stays pure/seeded (no `Math.random` — thread the game
 RNG); player-only meta lives in `ui/main.ts`. Source: `~/Downloads/debate_game_session_notes.md`.
@@ -452,17 +473,19 @@ mystery tile → applies immediately → `'upgradereveal'` before→after modal,
 drains on. Invariant: `run.removed`/`run.upgrades`/`consultantSel` are all keyed by the ORIGINAL
 base id. Tests: tests/upgrade.test.ts (deck mapping + chain-data integrity incl. leak guard).
 
-**P2 · medium — Upgrade paths for the rest of the REWARDS pool.** Daniel's upgrade pass (2026-07)
-left most reward cards WITHOUT chains — not by design, he ran out of steam writing them (15 reward
-predicates got chains; the other ~15 predicates, all reward NPs, and all reward asides have none).
-Since rewards are the cards the player deliberately drafts, they're exactly where the
-"punch it up into a super-card" fantasy should live. Two routes, not mutually exclusive: (a) author
-chains for the existing reward cards; (b) **design NEW reward cards WITH their upgrade path from the
-start** — Daniel suspects upgrade-first authoring beats retrofitting (the base card can be written
-as the setup of an escalating bit; `p_ikea` in SIG_BRAG is the first card built this way). Also
-consider whether cards that stay chainless should be culled or embraced (a deliberate
-"already perfect" tier). The generated coverage list at the bottom of UPGRADE_PATHS.md
-(`npm run upgrades`) is the live worklist.
+**P2 · medium — CURATE the upgrade pool (direction REVERSED after first playtest, 2026-07):
+fewer, stronger upgrades — not more.** The original plan was to extend chains across the rest of
+the REWARDS pool (15 reward predicates have chains; the other ~15 predicates, all reward NPs, and
+all reward asides don't — Daniel ran out of steam authoring them). First playtest flipped that:
+with 78 chains the Punch-Up grid is **an overwhelming list to scroll through**, and stretching for
+coverage produces so-so upgrades. **A handful of really strong, focused upgrades beats broad
+coverage** — don't author more chains just to fill the coverage list. Directions (Daniel decides):
+(a) prune the weakest existing chains down to the memorable ones; (b) UI relief without cutting
+content — offer a random SUBSET of K upgradeable cards per consultant visit (mirrors the reward
+draft; adds run variety and makes each visit a decision, not a catalog scroll); (c) when new reward
+cards are wanted, **design them WITH their upgrade path from the start** (`p_ikea` in SIG_BRAG is
+the model) rather than retrofitting. Chainless cards are now a deliberate tier, not a gap — the
+upgrade dialog already shows only cards with a chain.
 
 **P2 · large epic — Campaign donation economy + shop** (the long-deferred roguelike meta; needs its
 own design pass + phasing). **Note:** the shop's deck-pruning half already shipped as the **Debate
@@ -509,6 +532,11 @@ still open: `comboSkill`/`cardGreed`. Since card upgrades (2026-07): assume a pl
 boss has ~9 upgrades applied (2+3+4 across the three consultant visits) plus random-upgrade awards —
 tune opponent deck strength against THAT deck, not the default one; the engine's `upgrades` option
 already works for AI players once the `p.id === 'player'` guard in `dealRound` is relaxed.
+First upgrade-era playtest data (2026-07, n=1): the upgraded deck made rungs 1–4 noticeably easier
+("got to the 5th opponent easier than I ever have"), then **opponent 5 clobbered the run** even
+after an Under Oath forced her into a terrible Q1 — so the pre-boss difficulty step already bites
+BEFORE any opponent-deck-quality work; when tuning, mind the gap between rung 4 and 5, not just
+the boss.
 
 **P3 · large — 4-way debate (mid-ladder special).** Midway up the ladder, a debate with the player
 + 3 opponents; the player must finish on top to continue. Attacks become **directed**: aim an
@@ -636,23 +664,68 @@ resolutions read identically across a debate. Give each tier a pool of phrasings
 confused/combo notes too), picked with the game RNG (deterministic). Pattern mirrors `Topic.questions`
 (35 phrasings across 7 topics, picked per question — done). Cosmetic; pairs well with the juice pass.
 
-**P2 · small — Sound (backlog).** Highest juice-per-effort thing left for a *debate* game and not yet
-started: applause / groans / boos / a gavel on resolution, deterministic by reaction tier. Self-hosted
-clips (static app — no external hosts). Pairs directly with the resolution-juice FX (`playResolutionFx`).
+**P1 · medium — Sound & the phased VOICE plan (promoted from P2-small, 2026-07).** For a comedy
+game audio is where the laugh lands — Oh...Sir!!'s joke-delivery mechanism was *hearing* the
+insult, stitched from per-chunk voice clips, and our card/chunk architecture maps onto that
+exactly. Two layers:
+- **Crowd SFX (the original backlog item, still first):** applause / groans / boos / gavel on
+  resolution, deterministic by reaction tier, self-hosted clips (static app — no external
+  hosts). Pairs directly with `playResolutionFx`.
+- **Voiced statements (phased):** clips are **per-CHUNK, stitched at resolution** — never
+  per-statement (statements are combinatorial). **Phase 1 = TTS for playtesting** (ElevenLabs;
+  per-chunk from day one so seam problems — trailing silence, join intonation, finisher
+  delivery — get solved while fixes are free). **Phase 2 = human voice actors** once the deck
+  is **TEXT-locked** (trigger is explicit: text lock → book actors; text-lock ≠ number-lock —
+  sentiment/ceiling/tier balance stays tunable after recording). Shipping TTS would need the
+  Steam AI-content disclosure (see Commercialization §) — TTS is scaffolding, don't let it
+  quietly become permanent.
+  **Numbers (counted 2026-07):** 431 distinct speakable card texts (278 ALL + 153 upgrade
+  tiers) → **~560 surface forms** (non-invariant predicates/modifiers need both conjugations —
+  "kicks/kick puppies", "is/are"). **The open decision that dominates cost — voice scoping**
+  (Daniel decides, BEFORE any prune-for-VA pass): per-character voicing (6 opps + 3 player
+  candidates) ≈ 5,000 recordings — not viable; one voice per side ≈ 1,100–1,700; a single
+  deadpan C-SPAN announcer ≈ 560 (and fits the broadcast skin). Build a **clip-manifest
+  generator** first: a script walking cards.ts through morphology.ts to emit every renderable
+  surface form (filename schema now, actor script later); "adding cards is data-only" then
+  gains a generate-its-clips build step. The prune-for-VA pass and the CURATE-the-upgrade-pool
+  item above are **the same pass** — do them together (prune to the good lines without making
+  the game repetitive).
 
-**P2 · medium — Shareability (backlog).** The absurd generated statements are inherently screenshot-bait
-— a "share this line" / clean screenshot of a resolved statement is plausibly the whole growth engine and
-doubles as playtest recruitment. Premature until the core loop + deck-building are proven, but cheap to
-add later (render the judged line + reaction to a canvas/image).
+**P1 · medium — Shareability (PROMOTED from P2, 2026-07).** The absurd generated statements are
+inherently screenshot-bait — a "share this line" / clean screenshot of a resolved statement is the
+**playtester-recruitment engine** (what makes someone else click the web link), not just a growth
+feature, so it's now early in the release path (see RELEASE_ROADMAP.md §9) instead of post-proof.
+Cheap: render the judged line + reaction to a canvas/image (the statement already reverts to clean
+single-color text after the FX — deliberately screenshot-ready).
 
-**Platform — deferred (notes only).** Keep building the **github.io web demo**; revisit after the core
-loop + deck-building are proven by playtest. Pro/con: **Web (current)** — zero-friction to play, instant
-deploy, easy tester recruiting; weakest monetization, mobile real-estate limits. **Steam (buy+download)**
-— clearest monetization + "real game" credibility + bigger screen; highest tester friction, only worth it
-if people will pay. **itch.io (buy/PWYW)** — low-expectation way to ship and accept money; small audience.
-**Phone app** — card games suit touch (the horizontal-scroll carousel is already touch-friendly); screen
-real-estate is the hard problem (biggest layout rework). (Would've used Godot from scratch, but web's
-deploy/playtest ease wins for now.)
+**PvP (2026-07 — the biggest sellability feature gap: Oh...Sir!!'s local+online 1v1 was its core
+selling point; its AI was treated as practice mode).** Ordered by cost; the engine is unusually
+ready — turn-based card-by-card alternation, both sides symmetric `PlayerState`s, the AI merely
+*drives* one of them:
+- **P2 · small/medium — Open-hands couch hotseat (ship first).** Two players, one screen, all
+  info visible (fits the north star: the fun is the statements, not hidden-info optimization —
+  plays like a party game, and gives two playtesters per laptop). Work is UI-side: a PvP mode
+  flag, skip `driveAI`, whose-turn indicator + relabeled bar, and a **power-up audit** (Hot Mic's
+  hand-reveal is meaningless open-hands; Plant revealing the crowd to ONE player gets more
+  interesting; Under Oath vs a human needs a ruling). A hidden-hands "pass-the-device curtain"
+  screen is a later variant, only if testers want competitive play.
+- **P2/P3 · small — Async "debate by link".** Deterministic seeded engine + move list = the whole
+  game state fits in a URL (seed + moves); each player takes a turn and sends the link back
+  (chess-by-email). Zero servers — works on the static github.io deploy. Viral web hook.
+- **P3 — Real-time online = Steam-version feature ONLY.** Determinism means online is just
+  relaying moves (no authoritative server); Steamworks lobbies/relay via the wrapper do
+  matchmaking for free. On web it would need a relay server — **never build a web backend**
+  (Commercialization § decision).
+
+**Platform — RESOLVED (2026-07; see Commercialization § + RELEASE_ROADMAP.md).** Keep building the
+**github.io web demo** — it stays forever as the free demo/funnel. The paid game ships on
+**Steam + itch** via an **Electron/Tauri wrapper** (`steamworks.js` for achievements/cloud/lobbies;
+days of work, not a rewrite — desktop hygiene needed: real saves beyond localStorage, settings
+screen, window handling). Steam path: Coming-Soon page early (wishlists accrue; ~5–10k at launch is
+where the algorithm helps), one **Next Fest** demo near launch. **Mobile via Capacitor** comes after
+Steam proves demand — it's a *layout* project (phone real estate), not a tooling one; expect
+political-content review friction (esp. Apple — keep parody generic). **Console is the only thing
+that would force leaving the web stack**; ignore it. (The old Godot question is closed — web won.)
 
 **P2 · large — Graphics, animation & juice.** The UI is a functional prototype. Make it *feel* good:
 character art / reaction faces (an opponent that looks embarrassed on a self-own), animated card
