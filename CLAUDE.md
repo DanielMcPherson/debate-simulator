@@ -356,26 +356,44 @@ debates (after the reward pick). `startDebate` builds the next game eagerly, the
 overlays it; the Begin button clears the screen.
 Decision: path is a straight line (no branching) — too few opponents to make path choice meaningful.
 
-**Debate Consultant (2026-06, MENU 2026-07) — between-debate deck refinement (the thinning +
-upgrading slice of the deferred shop).** At waypoints (`CONSULTANT_WAYPOINTS` = after debates 2, 4,
-and 5 — the last is boss prep) the player picks **ONE service per visit** from a menu
-(`consultant.service: 'menu'|'trim'|'upgrade'`):
-- **✂️ Trim the Stump Speech** — the original cut N → draft M trade-in (#1 cut 5 → draft 1; #2 cut
-  8 → draft 2; #3 cut 6 → draft 2). The cut framing makes thinning the *reward path*, not a chore,
-  and a leaner deck draws its best cards more often (the fix for the reward-dilution wall at
-  opponents 4–5). Cut **any** cards (full agency, even rewards) — base ids go to `run.removed`,
-  threaded via `createGame({removedCards})` → `dealRound` filters the player's private deck at
-  build. Engine-safe: `ensureHandHasOpener` no-ops on a subjectless deck and the pool guarantees
-  subjects, so aggressive cuts can't soft-lock.
-- **🗣️ New Talking Points** — draft-only (2/3/3 cards), no cut; goes straight to the reward modal.
-- **⚡ Punch Up the Zingers** — upgrade K cards (2/3/4) to their next authored tier (see **card
-  upgrades** in the roadmap DONE note below). Grid shows each card's next-tier text on its face;
-  non-upgradeable cards render dimmed.
-UI: `runScreen:'consultant'` (`consultantSel` — ALWAYS keyed by the ORIGINAL base id — +
-`playerDeckDefs()`, which returns `{def, origId}` pairs with `def` resolved to the current tier);
-the trim draft reuses the reward modal with `rewardMode:'consultant'` (drains → `startDebate`
-rebuilds, → `'map'`); skippable. `finishRewards` opens it from the post-win drain at a waypoint
-rung; `startDebate` is deferred until the service finishes so the new deck reflects it.
+**Debate Consultant (2026-06; CLEAN SPLIT + escalating picks 2026-07) — between-debate deck
+refinement (the thinning + upgrading slice of the deferred shop).** At waypoints
+(`CONSULTANT_WAYPOINTS` = after debates 2, 4, and 5 — the last is boss prep) the player picks
+**`picks` services per visit — 1, then 2, then all 3** — each service usable once per visit
+(`consultant.picksLeft`/`used`; all three funnel through `consultantServiceDone`, so mid-visit
+changes are live for the next service — a just-drafted card can be punched up the same visit).
+Each service is exactly ONE deck-building axis (Daniel's redesign, 2026-07: the old trim bundled
+a cut AND a draft; New Talking Points paid entirely in the run's most abundant resource — new
+cards already flow from win drafts + awards — so it read as redundant):
+- **✂️ Trim the Stump Speech** — cut `cut` cards (5), nothing back. Cut **any** cards (full
+  agency, even rewards) — base ids go to `run.removed`, threaded via `createGame({removedCards})`
+  → `dealRound` filters the player's private deck at build. Engine-safe: `ensureHandHasOpener`
+  no-ops on a subjectless deck and the pool guarantees subjects, so aggressive cuts can't
+  soft-lock. Still the fix for the reward-dilution wall at opponents 4–5.
+- **🗣️ New Talking Points** — draft `newCards` (3), no cut; straight to the reward modal.
+  Each offer **guarantees ≥1 card with an authored upgrade chain** (post-`rollSeries` swap-in in
+  `consultantNewTalkingPoints`) — "material worth investing in": feeds Punch Up and distinguishes
+  the service from the plain win draft (only 15/75 REWARDS carry a chain, so a raw 3-roll misses
+  ~half the time).
+- **⚡ Punch Up the Zingers** — upgrade `upgrades` cards (2) to their next authored tier (see
+  **card upgrades** in the roadmap DONE note below). Grid shows each card's next-tier text on its
+  face; only cards with a chain appear.
+**Count-tuning principle (Daniel, 2026-07): per-service counts are FLAT (5/3/2 every visit) —
+escalation lives entirely in `picks`.** The numbers exist to make every option TEMPTING, not to
+price services against their true value or steer toward the optimal pick (an asymmetric
+progression reads as the designer's thumb on the scale): the least-sexy service (trim) wears the
+biggest number, the strongest-per-unit (targeted upgrades) the smallest, so "3 new cards vs 2
+upgrades" stays a real-looking choice even if a spreadsheet prefers upgrades. A stable menu is
+also learnable. If playtest wants more late power, bump all three numbers uniformly. **Skip ends
+the whole visit**, forfeiting remaining picks (completed services keep their effects). UI: `runScreen:'consultant'` (`consultantSel` — ALWAYS keyed by the ORIGINAL base id —
++ `playerDeckDefs()`, which returns `{def, origId}` pairs with `def` resolved to the current
+tier); drafts reuse the reward modal with `rewardMode:'consultant'` (drain →
+`consultantServiceDone('newcards')`). `finishRewards` opens the consultant from the post-win
+drain at a waypoint rung; `startDebate` is deferred until the WHOLE visit ends so the rebuilt
+deck reflects every service. NOTE: the tiered-campaign spec's consultant line (waypoints after
+rungs 4/8/11, upgrade picks 3/4/5) predates this redesign — reconcile per-visit counts when that
+ladder lands, and re-run `scripts/sim-balance.mjs` expF (its player model assumed the old
+one-service consultant).
 
 **Under Oath scripted award (2026-07):** winning debate 4 (`UNDER_OATH_RUNG = 3` — checkDebateEnd
 runs PRE-increment; `finishRewards` bumps the rung after the queue drains) unshifts a fixed

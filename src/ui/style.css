@@ -582,6 +582,9 @@ button.ghost.danger:hover:not(:disabled) { color:#ffb3b3; border-color:var(--the
   transition:transform .1s ease, border-color .1s ease, box-shadow .1s ease;
 }
 .consultant-service:hover { transform:translateY(-2px); border-color:var(--gold); box-shadow:0 8px 20px rgba(0,0,0,.5); }
+/* A service already used this visit (multi-pick escalation): visible but spent. */
+.consultant-service:disabled { opacity:.45; cursor:default; }
+.consultant-service:disabled:hover { transform:none; border-color:inherit; box-shadow:none; }
 .consultant-service .svc-title { font-family:var(--display); font-size:18px; font-weight:700; color:var(--gold); }
 .consultant-service .svc-desc { font-size:14px; line-height:1.45; color:var(--ink); }
 

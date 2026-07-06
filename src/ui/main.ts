@@ -42,18 +42,28 @@ let run = {
 let runScreen: 'tutorial' | 'select' | 'map' | 'result' | 'reward' | 'awardhint' | 'consultant' | 'upgradereveal' | 'defeat' | 'victory' | null = null;
 let awardHintSeen = false; // one-time-ever: after the FIRST card award, teach the player to hunt for more
 
-// Debate Consultant — a between-debate deck-refinement waypoint offering a MENU of services
-// (pick ONE per visit): Trim the Stump Speech (cut N cards → draft `draft` new ones — thinning
-// framed as a trade-in), New Talking Points (draft `newCards`, no cut), or Punch Up the Zingers
-// (upgrade `upgrades` cards to their next authored tier — see UPGRADES in cards.ts). Gated to
-// three rungs so early decks stay default; the last visit is boss prep.
+// Debate Consultant — a between-debate deck-refinement waypoint offering a MENU of services,
+// each exactly ONE deck-building axis (clean split, 2026-07): Trim the Stump Speech (cut `cut`
+// cards, nothing back), New Talking Points (draft `newCards`), or Punch Up the Zingers (upgrade
+// `upgrades` cards to their next authored tier — see UPGRADES in cards.ts). The per-service
+// counts are FLAT across visits — escalation lives ENTIRELY in `picks` (1 → 2 → all 3).
+// Tuning principle (Daniel, 2026-07): the numbers exist to make every option TEMPTING, not to
+// price them against their true value or steer the player toward the optimal pick — so the
+// least-sexy service (trim) wears the biggest number and the strongest-per-unit one (targeted
+// upgrades) the smallest, and no asymmetric progression signals a designer's thumb on the
+// scale. If playtest wants more late power, bump all three numbers uniformly. Skip forfeits
+// the visit's remaining picks. Gated to three rungs so early decks stay default; the last
+// visit is boss prep.
 type ConsultantService = 'menu' | 'trim' | 'upgrade';
-const CONSULTANT_WAYPOINTS: Record<number, { cut: number; draft: number; newCards: number; upgrades: number }> = {
-  2: { cut: 5, draft: 1, newCards: 2, upgrades: 2 }, // before debate 3
-  4: { cut: 8, draft: 2, newCards: 3, upgrades: 3 }, // before debate 5
-  5: { cut: 6, draft: 2, newCards: 3, upgrades: 4 }, // before debate 6 — boss prep
+type ServiceKey = 'trim' | 'newcards' | 'upgrade';
+const CONSULTANT_WAYPOINTS: Record<number, { picks: number; cut: number; newCards: number; upgrades: number }> = {
+  2: { picks: 1, cut: 5, newCards: 3, upgrades: 2 }, // before debate 3
+  4: { picks: 2, cut: 5, newCards: 3, upgrades: 2 }, // before debate 5
+  5: { picks: 3, cut: 5, newCards: 3, upgrades: 2 }, // before debate 6 — boss prep
 };
-let consultant: { cut: number; draft: number; newCards: number; upgrades: number; service: ConsultantService } | null = null;
+let consultant:
+  | { picks: number; cut: number; newCards: number; upgrades: number; service: ConsultantService; picksLeft: number; used: Set<ServiceKey> }
+  | null = null;
 let consultantSel = new Set<string>(); // ORIGINAL base ids selected to cut/upgrade this session
 
 // Winning THIS rung (0-indexed, checked pre-increment in checkDebateEnd — so 3 = debate 4)
@@ -333,20 +343,18 @@ function finishRewards(): void {
     return;
   }
   if (rewardMode === 'consultant') {
-    consultant = null;
-    consultantSel = new Set();
-    game = startDebate(); // rebuild with the cut cards + drafted cards
-    runScreen = 'map';
-    render();
+    // A drained consultant draft = New Talking Points finished; back to the menu or on to
+    // the next debate, depending on picks left.
+    consultantServiceDone('newcards');
     return;
   }
   // post: a debate win — advance the rung, then maybe open the Consultant before the map.
   run.rung += 1;
   const wp = CONSULTANT_WAYPOINTS[run.rung];
   if (wp) {
-    consultant = { ...wp, service: 'menu' }; // pick ONE service this visit
+    consultant = { ...wp, service: 'menu', picksLeft: wp.picks, used: new Set() };
     consultantSel = new Set();
-    runScreen = 'consultant'; // refine the deck; startDebate is deferred until it finishes
+    runScreen = 'consultant'; // refine the deck; startDebate is deferred until the visit ends
   } else {
     game = startDebate();
     runScreen = 'map'; // show the ladder + next opponent before the next debate
@@ -354,47 +362,67 @@ function finishRewards(): void {
   render();
 }
 
-/** Commit the selected cuts and move to the draft stage (reuses the reward modal/queue). */
-function consultantConfirmCuts(): void {
-  if (!consultant || consultantSel.size !== consultant.cut) return;
-  run.removed.push(...consultantSel);
-  rewardMode = 'consultant';
-  rewardQueue = rollSeries(
-    Array.from({ length: consultant.draft }, () => ({
-      title: '🎩 Sharpen Your Message',
-      body: 'Your deck is leaner — now draft a powerful new card to build around.',
-    })),
-  );
-  runScreen = 'reward';
+/** A consultant service just finished: spend the pick, then back to the menu (if picks remain)
+ *  or on to the next debate. All three services funnel through here, so mid-visit changes are
+ *  live for the next service — playerDeckDefs() rebuilds from run.removed/bonus/upgrades, so a
+ *  just-drafted card can be punched up in the same visit. */
+function consultantServiceDone(key: ServiceKey): void {
+  if (!consultant) return;
+  consultant.used.add(key);
+  consultant.picksLeft -= 1;
+  consultantSel = new Set();
+  if (consultant.picksLeft > 0) {
+    consultant.service = 'menu';
+    runScreen = 'consultant';
+  } else {
+    consultant = null;
+    game = startDebate(); // rebuild with the refined deck
+    runScreen = 'map';
+  }
   render();
 }
 
-/** Consultant "New Talking Points": a draft-only service — straight to the reward modal. */
+/** Commit the selected cuts ("Trim the Stump Speech") — a pure thinning, nothing back. */
+function consultantConfirmCuts(): void {
+  if (!consultant || consultantSel.size !== consultant.cut) return;
+  run.removed.push(...consultantSel);
+  consultantServiceDone('trim');
+}
+
+/** Consultant "New Talking Points": a draft-only service — straight to the reward modal.
+ *  Each offer guarantees ≥1 card with an authored upgrade chain (material worth investing
+ *  in — feeds Punch Up, and distinguishes the service from the plain win draft). */
 function consultantNewTalkingPoints(): void {
   if (!consultant) return;
   rewardMode = 'consultant';
   rewardQueue = rollSeries(
     Array.from({ length: consultant.newCards }, () => ({
       title: '🗣️ New Talking Points',
-      body: 'Your consultant hands you fresh material. Draft a card.',
+      body: 'Your consultant hands you material worth investing in. Draft a card.',
     })),
   );
+  const offered = new Set(rewardQueue.flatMap((o) => o.choices.map((c) => c.id)));
+  for (const offer of rewardQueue) {
+    if (offer.choices.some((c) => upgradeOf(c.id))) continue;
+    const pool = REWARDS.filter((c) => upgradeOf(c.id) && !offered.has(c.id) && !run.bonus.some((b) => b.id === c.id));
+    if (!pool.length) continue; // every upgradeable reward is owned/offered — leave the roll as-is
+    const swap = pool[Math.floor(Math.random() * pool.length)];
+    offer.choices[Math.floor(Math.random() * offer.choices.length)] = swap;
+    offered.add(swap.id);
+  }
   runScreen = 'reward';
   render();
 }
 
-/** Commit the selected upgrades ("Punch Up the Zingers") and head to the next debate. */
+/** Commit the selected upgrades ("Punch Up the Zingers"). */
 function consultantConfirmUpgrades(): void {
   if (!consultant || consultantSel.size !== consultant.upgrades) return;
   for (const id of consultantSel) run.upgrades[id] = (run.upgrades[id] ?? 0) + 1;
-  consultant = null;
-  consultantSel = new Set();
-  game = startDebate(); // rebuild with the punched-up deck
-  runScreen = 'map';
-  render();
+  consultantServiceDone('upgrade');
 }
 
-/** Decline the Consultant — keep the deck as-is, forfeit the service, on to the next debate. */
+/** Leave the Consultant — forfeit any remaining picks, on to the next debate. (Changes from
+ *  already-completed services this visit are kept; startDebate rebuilds from run.*.) */
 function consultantSkip(): void {
   consultant = null;
   consultantSel = new Set();
@@ -978,27 +1006,50 @@ function runModalHtml(): string {
   if (runScreen === 'consultant' && consultant) {
     const plural = (n: number) => (n === 1 ? '' : 's');
     if (consultant.service === 'menu') {
+      const { picks, picksLeft, used } = consultant;
+      const midVisit = picksLeft < picks;
+      const choose =
+        picks === 1
+          ? 'Choose one way to improve your deck.'
+          : midVisit
+            ? `Choose <b>${picksLeft}</b> more way${plural(picksLeft)} to improve your deck.`
+            : picksLeft >= 3
+              ? 'Today, every service is on the house.'
+              : `Choose <b>${picksLeft}</b> ways to improve your deck.`;
+      const greeting = midVisit ? `<b>"What's next?"</b>` : `<b>"So, what are we working on today?"</b> Work with an expert to sharpen your message.`;
+      const svc = (key: ServiceKey, title: string, desc: string) =>
+        used.has(key)
+          ? `<button class="consultant-service" disabled>
+              <span class="svc-title">${title} ✓</span><span class="svc-desc">${desc}</span>
+            </button>`
+          : `<button class="consultant-service" data-service="${key}">
+              <span class="svc-title">${title}</span><span class="svc-desc">${desc}</span>
+            </button>`;
       return `<div class="modal-backdrop"><div class="modal consultant-modal">
         <div class="modal-title" style="color:var(--gold)">🎩 Debate Consultant</div>
-        <p><b>"So, what are we working on today?"</b> Pick one service this visit.</p>
+        <p>${greeting} ${choose}</p>
         <div class="consultant-menu">
-          <button class="consultant-service" data-service="trim">
-            <span class="svc-title">✂️ Trim the Stump Speech</span>
-            <span class="svc-desc">Trade in <b>${consultant.cut}</b> cards, draft <b>${consultant.draft}</b> powerful
-            new card${plural(consultant.draft)}. A leaner deck means your best lines come up more often.</span>
-          </button>
-          <button class="consultant-service" data-service="newcards">
-            <span class="svc-title">🗣️ New Talking Points</span>
-            <span class="svc-desc">Draft <b>${consultant.newCards}</b> new card${plural(consultant.newCards)} — no trade-in.</span>
-          </button>
-          <button class="consultant-service" data-service="upgrade">
-            <span class="svc-title">⚡ Punch Up the Zingers</span>
-            <span class="svc-desc">Rewrite <b>${consultant.upgrades}</b> of your card${plural(consultant.upgrades)} into
-            their next, nastier draft. Same card, more punch.</span>
-          </button>
+          ${svc(
+            'trim',
+            '✂️ Trim the Stump Speech',
+            `Cut <b>${consultant.cut}</b> weak cards from your deck. Less filler means your
+             best lines show up more often.`,
+          )}
+          ${svc(
+            'newcards',
+            '🗣️ New Talking Points',
+            `Add <b>${consultant.newCards}</b> new card${plural(consultant.newCards)} to your deck.
+             No trade-in required.`,
+          )}
+          ${svc(
+            'upgrade',
+            '⚡ Punch Up the Zingers',
+            `Upgrade <b>${consultant.upgrades}</b> card${plural(consultant.upgrades)} to stronger
+             versions. Same argument, sharper delivery.`,
+          )}
         </div>
         <div class="consultant-actions">
-          <button class="ghost" id="consultantSkip">Skip — keep my deck</button>
+          <button class="ghost" id="consultantSkip">${midVisit ? "That's enough — on to the next debate" : 'Skip — keep my deck'}</button>
         </div>
       </div></div>`;
     }
@@ -1018,13 +1069,12 @@ function runModalHtml(): string {
         .join('');
       return `<div class="modal-backdrop"><div class="modal consultant-modal">
         <div class="modal-title" style="color:var(--gold)">✂️ Trim the Stump Speech</div>
-        <p>Trade in <b>${need}</b> card${plural(need)} from your deck — a leaner deck means your best
-        lines come up more often. In exchange you'll draft
-        <b>${consultant.draft}</b> powerful new card${plural(consultant.draft)}.</p>
+        <p>Cut <b>${need}</b> card${plural(need)} from your deck — less filler means your best
+        lines show up more often.</p>
         <div class="consultant-count">Select ${sel} / ${need}</div>
         <div class="cards consultant-grid">${cards}</div>
         <div class="consultant-actions">
-          <button class="action" id="consultantConfirm" ${sel === need ? '' : 'disabled'}>Select ${need} cards to trade in</button>
+          <button class="action" id="consultantConfirm" ${sel === need ? '' : 'disabled'}>✂️ Cut ${need} card${plural(need)}</button>
           <button class="ghost" id="consultantBack">◀ Back</button>
         </div>
       </div></div>`;
