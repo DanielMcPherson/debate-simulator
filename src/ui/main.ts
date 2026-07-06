@@ -1276,6 +1276,16 @@ function render(): void {
   // A one-time welcome modal kicks off the very first turn; the banner takes over after "Got it!".
   const showTutorialIntro = !!currentHint && !tutorialIntroSeen && !runScreen;
   const needle = ((100 - game.bar) / 200) * 100; // 0..100 left%; You favored → left (matches podiums)
+  // Whose turn is it right now? The speaker "on the mic" gets a podium glow + mic chip while a
+  // question is live (done-speakers and between-question panels get none).
+  const activeSide =
+    !game.winner && !game.awaitingNext && !fxHoldSummary && !runScreen
+      ? game.turn === 'player' && !game.player.done
+        ? 'you'
+        : game.turn === 'ai' && !game.ai.done
+        ? 'them'
+        : null
+      : null;
   // Zero-sum 1v1: bar (-100..+100, signed toward player) shown as audience-support % that sums to 100.
   const youSupport = approvalPct();
   // The card area shows a centered panel (not cards) between questions and at a debate win.
@@ -1340,7 +1350,7 @@ function render(): void {
     </div>
 
     <div class="stage">
-      <div class="podium you">
+      <div class="podium you${activeSide === 'you' ? ' active' : ''}">
         ${portraitPic('you')}
         <div class="pbody">
           ${podiumMeta('you')}
@@ -1349,7 +1359,7 @@ function render(): void {
           ${fxShownSides.has('you') ? tallyHtml(game.player.lastReaction) : ''}
         </div>
       </div>
-      <div class="podium them${pendingTypo ? ' typo-target' : ''}">
+      <div class="podium them${activeSide === 'them' ? ' active' : ''}${pendingTypo ? ' typo-target' : ''}">
         ${portraitPic('them')}
         <div class="pbody">
           ${podiumMeta('them')}

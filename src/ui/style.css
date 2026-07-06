@@ -133,6 +133,16 @@ h1 .tstar { -webkit-text-fill-color:var(--gold); }
 .podium.you  { border-top:3px solid var(--you); }
 .podium.them { border-top:3px solid var(--them); }
 .podium.them.typo-target { box-shadow:0 0 0 2px var(--them), 0 0 18px rgba(255,93,93,.45); }
+/* whose turn it is: the speaker "on the mic" wears a side-colored glow + a bobbing mic chip */
+.podium.active { position:relative; }
+.podium.you.active  { box-shadow:0 0 0 2px var(--you),  0 0 20px rgba(58,160,255,.35); }
+.podium.them.active { box-shadow:0 0 0 2px var(--them), 0 0 20px rgba(255,93,93,.35); }
+.podium.active::after {
+  content:'🎤'; position:absolute; top:-13px; right:9px; font-size:20px; z-index:2;
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.7));
+  animation:micBob 1.4s ease-in-out infinite;
+}
+@keyframes micBob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
 .portrait {
   width:118px; height:148px; flex:0 0 auto; align-self:stretch; border-radius:10px; object-fit:cover;
   border:2px solid var(--gold-deep); background:#0e1424; box-shadow:0 2px 10px rgba(0,0,0,.55);
