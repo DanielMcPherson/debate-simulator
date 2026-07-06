@@ -1002,9 +1002,31 @@ that would force leaving the web stack**; ignore it. (The old Godot question is 
 
 **P2 · large — Graphics, animation & juice.** The UI is a functional prototype. Make it *feel* good:
 character art / reaction faces (an opponent that looks embarrassed on a self-own), animated card
-plays, donation/score tickers, audience reactions. Tied to this: properly **stage the opponent's
-turn** — show the pool, "opponent's turn", the AI "thinking", then it picks a card (currently just an
-`AI_DELAY` pause with "Your opponent is speaking…").
+plays, donation/score tickers, audience reactions. The **minimal "stage the opponent's turn" slice
+shipped 2026-07-06** (see the card-play staging DONE note below: visible thinking pause + TAKEN!
+pool-grab + word-flash); remaining here is the richer art layer (reaction faces, tickers, crowd).
+
+**DONE (2026-07-06) — card-play staging + thinking pause + row intent-labels (the pool-visibility
+pass, from the iPad playtest — a non-gamer never realized the pool was contested or the hand
+private).** Every non-resolving `take` (BOTH sides) plays a mini staging FX — `playCardFx` in
+ui/main.ts, pattern-matched to `playResolutionFx`: the played card glows in its row (an AI **pool**
+grab lingers longer and wears a red **"TAKEN!"** stamp — the contested-pool lesson made visible),
+whisks toward its speaker's podium, then its words flash one at a time onto the teleprompter.
+`stagedSpeechHtml` wraps the appended card's words in `.nw` spans — unstyled unless `.lit`, so the
+line reverts to plain text with no re-render (same transient-markup principle as the resolution
+juice). **State applies FIRST**; FX phases 1–2 animate the stale pre-render DOM (where the card
+still sits), phase 3 renders the new state and flashes. Any tap fast-forwards (`playFxSkip`);
+`playFxBusy` swallows clicks and defers `driveAI` (both `playerMove` and the card click handler
+guard on it). A **finisher take skips it** (it resolves — the resolution FX owns that moment);
+period/power moves and AI **hand** plays skip the row phases (no visible button), keeping just the
+word-flash. The AI's pre-move pause now renders a visible **"💭 X is thinking…"** line under their
+teleprompter (`aiThinking` finally displays something) — longer while you're both building
+(`AI_THINK` 1050ms) than after you've ended (`AI_THINK_SOLO` 420ms, so their solo finish doesn't
+drag). Row labels carry always-visible intent sub-lines (`.rail-sub`: "⚔️ first come, first served" /
+"🔒 only you can play these") — the old title-tooltips don't exist on touch. **Q1 tutorial tie-in:**
+the AI's FIRST pool grab queues a one-time contested-pool lesson into the coaching panel
+(`grabLessonShown`/`grabLessonPending`, cleared when the player next plays, reset in `newRun`) —
+taught the moment it happens, not as upfront rules text. Pacing knobs live in `PLAY_FX`.
 
 **DONE (2026-06) — resolution juice.** When a finished statement scores, its words **transiently**
 bold/highlight as an **animated readout strip below** pops a chip per phrase (ATTACK/BRAG/PANDER/GAFFE/

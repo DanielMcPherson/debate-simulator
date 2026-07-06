@@ -8,10 +8,24 @@ import { isComplete, canAppend } from '../engine/grammar';
 import { LADDER, REWARDS, RELICS, findRelic, OPPONENTS, PERIOD, PERIOD_ENABLED, UNDER_OATH, upgradeOf, resolveTier } from '../data/cards';
 
 const app = document.getElementById('app')!;
-const AI_DELAY = 650;
+// The opponent visibly "thinks" before each pick (the pause is the tell that a turn is
+// happening at all — instant plays made their whole side ignorable, iPad playtest).
+const AI_THINK = 1050; // while you're both building (card-by-card alternation)
+const AI_THINK_SOLO = 420; // once you've ended — don't drag their solo finish
 
 let aiThinking = false;
 let resolving = false; // a statement's resolution animation is playing — lock input
+// --- card-play staging (mini sibling of the resolution juice): the played card glows in its
+// row, whisks toward its speaker's podium, then its words flash onto the teleprompter one at a
+// time. State is applied FIRST; this only animates the transition. Click to fast-forward.
+let playFxBusy = false; // a play animation is running — swallow input, defer driveAI
+let playFxSkip = false; // the player clicked to fast-forward the current play FX
+let playFxMark: { side: 'you' | 'them'; cardIdx: number } | null = null; // card whose words flash
+const PLAY_FX = { hold: 340, grab: 520, whisk: 240, word: 95, settle: 200 }; // ms pacing knobs
+// Q1 tutorial: the AI's first pool grab is THE teachable moment for the contested pool —
+// surface a one-time lesson in the coaching panel right after it happens.
+let grabLessonShown = false;
+let grabLessonPending = false; // lesson is up until the player next plays a card
 let fxHoldSummary = false; // hold the round-summary panel until the resolving FX finishes
 let pendingQuestionCard = false; // show the "next question" card modal before the player acts
 let fxSkip = false; // the player clicked to fast-forward the current resolution FX
@@ -159,6 +173,8 @@ function newRun(): void {
   consultantSel = new Set();
   tutorialIntroSeen = false; // show the welcome modal again on a fresh run
   tutorialSkipped = false; // a fresh run gets the gated tutorial back (skip is per-run)
+  grabLessonShown = false; // …and the contested-pool lesson fires again
+  grabLessonPending = false;
   lastHintText = null;
   pendingQuestionCard = false;
   game = startDebate();
@@ -478,6 +494,15 @@ function partialText(line: Card[]): string {
   return displayWords(line).join(' ').replace(/\s+\./g, '.').trim();
 }
 
+/** In-progress line with the just-played card's words wrapped in `.nw` spans — playCardFx
+ * flashes them in one at a time. Unstyled until `.lit`, plain again once it's removed. */
+function stagedSpeechHtml(line: Card[], cardIdx: number): string {
+  const words = displayWords(line).map((w, i) =>
+    i === cardIdx && w ? w.split(' ').map((x) => `<span class="nw">${x}</span>`).join(' ') : w,
+  );
+  return words.join(' ').replace(/\s+\./g, '.').trim();
+}
+
 /** Index of the opponent's last SPOKEN word (skips a trailing period) — what Typo replaces. */
 function oppLastContentIdx(): number {
   const line = game.ai.line;
@@ -493,6 +518,7 @@ function oppLastWord(): string {
 function oppSpeechHtml(): string {
   const line = game.ai.line;
   if (!line.length) return '<span style="color:var(--muted)">…</span>';
+  if (playFxMark?.side === 'them') return stagedSpeechHtml(line, playFxMark.cardIdx);
   if (!pendingTypo) return partialText(line) || '<span style="color:var(--muted)">…</span>';
   const ci = oppLastContentIdx();
   const words = displayWords(line).map((w, i) => (i === ci && w ? `<span class="typo-target-word">${w}</span>` : w));
@@ -803,6 +829,7 @@ function speechHtml(side: 'you' | 'them'): string {
   if (p.done && p.lastReaction && (p.lastReaction.grammatical || p.lastReaction.confusedSpan))
     return judgedSpeechHtml(p.line, p.lastReaction);
   if (side === 'them') return oppSpeechHtml();
+  if (playFxMark?.side === 'you') return stagedSpeechHtml(game.player.line, playFxMark.cardIdx);
   return partialText(game.player.line) || '<span style="color:var(--muted)">…</span>';
 }
 
@@ -855,14 +882,26 @@ function tutorialStep(): TutorialStep | null {
   // role actually exists (contested pool — the AI may have taken it), fall back to ending the
   // statement rather than pointing at nothing. An empty line can't end, so drop the hint entirely
   // (advisory-off beats a dead board; ensureHandHasOpener makes this branch near-unreachable).
+  let final = step;
   if (step.roles.length > 0 && !step.end) {
     const playable = [...game.pool, ...game.player.hand].some(
       (c) => step.roles.includes(c.role) && canAppend(line, c),
     );
-    if (!playable)
-      return line.length > 0 ? { roles: [], text: 'Tap End Statement to deliver it!', end: true } : null;
+    if (!playable) {
+      if (line.length === 0) return null;
+      final = { roles: [], text: 'Tap End Statement to deliver it!', end: true };
+    }
   }
-  return step;
+  // One-time contested-pool lesson, taught the moment it just HAPPENED (the AI's first grab)
+  // rather than as upfront rules text. Cleared when the player next plays a card.
+  if (grabLessonPending) {
+    const opp = game.opponent?.name ?? 'Your opponent';
+    final = {
+      ...final,
+      text: `👀 See that? ${opp} grabbed a card from the SHARED POOL — anything there is first come, first served. Your HAND below is yours alone. ${final.text}`,
+    };
+  }
+  return final;
 }
 
 // Player-facing grammatical-function labels (the real engine roles, no invented words).
@@ -892,11 +931,12 @@ function cardFace(c: Card, hint = false): string {
 // A flickable card rail: a side label badge, a scrollable card row (keeps its #id +
 // .cards hooks), prev/next chevrons, and a pagination-dots strip filled by setupRails().
 function carousel(id: 'pool' | 'hand' | 'opphand', label: string, inner: string, title = ''): string {
+  const plain = label.split('<')[0].trim(); // label may carry a .rail-sub span — aria wants just the name
   return `<div class="carousel">
     <span class="rail-label"${title ? ` title="${title}"` : ''}>${label}</span>
-    <button class="rail-arrow prev" data-rail="${id}" aria-label="Scroll ${label} left">‹</button>
+    <button class="rail-arrow prev" data-rail="${id}" aria-label="Scroll ${plain} left">‹</button>
     <div class="cards" id="${id}">${inner}</div>
-    <button class="rail-arrow next" data-rail="${id}" aria-label="Scroll ${label} right">›</button>
+    <button class="rail-arrow next" data-rail="${id}" aria-label="Scroll ${plain} right">›</button>
     <div class="rail-dots" data-dots="${id}" aria-hidden="true"></div>
   </div>`;
 }
@@ -1314,6 +1354,11 @@ function render(): void {
         <div class="pbody">
           ${podiumMeta('them')}
           <div class="speech">${speechHtml('them')}</div>
+          ${
+            aiThinking && !game.ai.done && !game.winner
+              ? `<div class="ai-thinking">💭 ${oppName} is thinking<span class="tdots"><span>.</span><span>.</span><span>.</span></span></div>`
+              : ''
+          }
           ${fxShownSides.has('them') ? fxStripHtml(game.ai.lastReaction, game.ai.line) : ''}
           ${fxShownSides.has('them') ? tallyHtml(game.ai.lastReaction) : ''}
         </div>
@@ -1352,13 +1397,13 @@ function render(): void {
           </div>`
         : `${carousel(
             'pool',
-            `Shared Pool${DEBUG ? ' <span class="ontopic-key">✓ on topic</span>' : ''}`,
+            `Shared Pool<span class="rail-sub">⚔️ first come, first served</span>${DEBUG ? ' <span class="ontopic-key">✓ on topic</span>' : ''}`,
             game.pool.map((c) => cardHtml(c, 'pool')).join('') || '<span class="rail-empty">(pool empty)</span>',
-            'Contested — no refill this question',
+            'Contested with your opponent — no refill this question',
           )}
           ${carousel(
             'hand',
-            'Your Hand',
+            'Your Hand<span class="rail-sub">🔒 only you can play these</span>',
             (game.player.hand.map((c) => cardHtml(c, 'hand')).join('') || '<span class="rail-empty">(hand empty)</span>') +
               tutHintHtml(), // Q1 tutorial coaching fills the hand row's spare space
             'Private — no refill this question',
@@ -1457,6 +1502,9 @@ function render(): void {
 
   app.querySelectorAll<HTMLButtonElement>('.card').forEach((btn) => {
     btn.addEventListener('click', () => {
+      // While a play animation runs, the pointerdown already fast-forwarded it — swallow the
+      // click itself so a stale (pre-render) button can't dispatch a second move.
+      if (playFxBusy) return;
       // Debate Consultant: toggle a card for cutting (capped at the cut count). Update the DOM in
       // place rather than re-render() — a full render rebuilds innerHTML and scrolls the grid to top.
       if (btn.dataset.cut) {
@@ -1857,10 +1905,48 @@ async function playRoundFx(secondSide: 'you' | 'them'): Promise<void> {
   render(); // reveal the round summary / result / defeat now that both have animated
 }
 
+function pWait(ms: number): Promise<void> {
+  return new Promise((res) => (playFxSkip ? res() : window.setTimeout(res, ms)));
+}
+
+/** Stage a just-played card: glow it in its row (the AI's pool grab wears a TAKEN! stamp —
+ * the contested-pool lesson made visible), whisk it toward its speaker's podium, then flash
+ * its words onto the teleprompter one at a time. The move is ALREADY applied — phases 1–2
+ * animate the stale pre-render DOM (where the card still sits), phase 3 renders the new state
+ * with the appended words marked. Any tap fast-forwards. */
+async function playCardFx(side: 'you' | 'them', cardId: string, cardIdx: number): Promise<void> {
+  playFxBusy = true;
+  playFxSkip = false;
+  const skip = () => (playFxSkip = true);
+  document.addEventListener('pointerdown', skip, true);
+  const btn = app.querySelector<HTMLElement>(`.card[data-id="${cardId}"]`);
+  if (btn && !playFxSkip) {
+    // AI hand plays have no visible button (their hand is hidden) — they skip to the word flash.
+    btn.classList.add('played', side === 'them' ? 'by-them' : 'by-you');
+    await pWait(side === 'them' ? PLAY_FX.grab : PLAY_FX.hold); // linger on the grab so the theft reads
+    btn.classList.add('whisk');
+    await pWait(PLAY_FX.whisk);
+  }
+  playFxMark = { side, cardIdx };
+  render();
+  const words = [...app.querySelectorAll<HTMLElement>(`.podium.${side} .speech .nw`)];
+  for (const w of words) {
+    w.classList.add('lit');
+    await pWait(PLAY_FX.word);
+  }
+  await pWait(PLAY_FX.settle);
+  playFxMark = null;
+  // No re-render needed: an unlit `.nw` span is unstyled, so the line reads as plain text again.
+  app.querySelectorAll<HTMLElement>(`.podium.${side} .speech .nw`).forEach((w) => w.classList.remove('lit'));
+  document.removeEventListener('pointerdown', skip, true);
+  playFxBusy = false;
+}
+
 async function playerMove(move: Move): Promise<void> {
-  if (game.winner || game.awaitingNext || game.turn !== 'player' || aiThinking || resolving) return;
+  if (game.winner || game.awaitingNext || game.turn !== 'player' || aiThinking || resolving || playFxBusy) return;
   const wasSpeaking = !game.player.done;
   applyMove(game, move);
+  if (move.kind === 'take') grabLessonPending = false; // played on — the pool lesson has been read
   // Resolved (done flipped true) covers ending the turn AND playing a finisher (a `take`, not `end`).
   const justResolved = wasSpeaking && game.player.done && !!game.player.lastReaction;
   if (justResolved) {
@@ -1877,7 +1963,13 @@ async function playerMove(move: Move): Promise<void> {
     if (maybeShowMidAwards()) return; // mid-debate draft is showing — driveAI resumes after it drains
   } else {
     if (justResolved) pendingFx = 'you'; // finished first → wait for the opponent before scoring
-    render();
+    // A non-resolving take (a finisher take resolves — the resolution FX owns that moment)
+    // gets the staged play: highlight → whisk → words flash onto your teleprompter.
+    if (move.kind === 'take' && move.from !== 'period' && !game.player.done && !game.winner) {
+      await playCardFx('you', move.cardId, game.player.line.length - 1);
+    } else {
+      render();
+    }
   }
   driveAI();
 }
@@ -1904,10 +1996,20 @@ function driveAI(): void {
       if (maybeShowMidAwards()) return; // mid-debate awards earned this round (player spoke first)
     } else {
       if (justResolved) pendingFx = 'them'; // finished first → hold its score until the player ends
-      render();
+      if (move.kind === 'take' && move.from !== 'period' && !game.ai.done && !game.winner) {
+        // Q1 tutorial: the AI's FIRST pool grab is the teachable moment for the contested
+        // pool — queue the one-time lesson for the player's next coaching-panel step.
+        if (move.from === 'pool' && run.rung === 0 && game.round === 1 && !tutorialSkipped && !grabLessonShown) {
+          grabLessonShown = true;
+          grabLessonPending = true;
+        }
+        await playCardFx('them', move.cardId, game.ai.line.length - 1);
+      } else {
+        render();
+      }
     }
     driveAI(); // keep going if the AI still holds the turn (player already ended)
-  }, AI_DELAY);
+  }, game.player.done ? AI_THINK_SOLO : AI_THINK);
 }
 
 // A gilded broadcast frame hugging the viewport edge, with corner flourishes. Injected ONCE
