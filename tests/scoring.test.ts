@@ -232,9 +232,10 @@ describe('scoring — periods, conjunctions & combos', () => {
     expect(five).toBeLessThan(one * 1.5);
   });
 
-  it('an elided clause-join ("and therefore" with no repeated subject) still combos', () => {
-    // "My opponent kicks puppies and therefore lies" — shared subject, logic tier
-    expect(combo('s_opp', 'p_kick_pup', 'c_therefore', 'p_lie')?.kind).toBe('logic');
+  it('a clause-join ("and therefore" between two clauses) combos on the logic tier', () => {
+    // "My opponent kicks puppies and therefore my opponent lies" — two clauses, logic tier.
+    // ("and therefore" is clause-only now: it needs its own subject, can't elide like "and".)
+    expect(combo('s_opp', 'p_kick_pup', 'c_therefore', 's_opp', 'p_lie')?.kind).toBe('logic');
   });
 
   it('a "but" digs out of a self-own better than a period — and reads as confusion', () => {

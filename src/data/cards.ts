@@ -359,7 +359,7 @@ export const CONNECTORS: Card[] = [
   // Flavor variants (map to existing conj behaviors) — more connector words to chain
   // longer compound sentences. Playtester wanted to ramble; these are the sanctioned
   // way to do it (period stays disabled; jamming two thoughts with no connector = run-on).
-  { id: 'c_so', role: 'connector', text: 'so', conj: 'and therefore' },
+  { id: 'c_so', role: 'connector', text: 'so', conj: 'and therefore' }, // logic tier (×1.30). Clause-only like every non-"and" conjunction: "so" needs a full new clause with its own subject, can't string bare predicates ("…protect veterans so promise…" was ungrammatical).
   { id: 'c_plus', role: 'connector', text: 'and plus', conj: 'and' },
   { id: 'c_however', role: 'connector', text: 'however', conj: 'but' },
 ];

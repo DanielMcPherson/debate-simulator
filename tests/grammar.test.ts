@@ -39,14 +39,16 @@ describe('grammar — chunk model', () => {
     expect(parse(line).clauses[0].preds).toHaveLength(2);
   });
 
-  it('lets a clause-join connector share the subject (elided) like "and"', () => {
-    // "My opponent kicks puppies and therefore lies" — no repeated subject
-    const line = cards('s_opp', 'p_kick_pup', 'c_therefore', 'p_lie');
+  it('a clause-join connector ("and therefore") needs its own subject — it cannot elide it like "and"', () => {
+    // "My opponent kicks puppies and therefore lies" is now an ungrammatical fragment:
+    // only "and" strings bare predicates under a shared subject. "and therefore" must
+    // open a full new clause with its own subject.
+    expect(isComplete(cards('s_opp', 'p_kick_pup', 'c_therefore', 'p_lie'))).toBe(false);
+    const line = cards('s_opp', 'p_kick_pup', 'c_therefore', 's_opp', 'p_lie');
     expect(isComplete(line)).toBe(true);
     const clauses = parse(line).clauses;
-    expect(clauses).toHaveLength(1); // one clause, shared subject
-    expect(clauses[0].preds).toHaveLength(2);
-    expect(clauses[0].preds[1].joinedBy).toBe('and therefore'); // real connector recorded
+    expect(clauses).toHaveLength(2); // two clauses, each with its own subject
+    expect(clauses[1].joinedByPrev).toBe('and therefore'); // real connector recorded
   });
 
   it('joins independent clauses with "because"', () => {
@@ -55,13 +57,17 @@ describe('grammar — chunk model', () => {
     expect(parse(line).clauses).toHaveLength(2);
   });
 
-  it('"because" REQUIRES its own subject — it cannot elide it like "and"/"and therefore"', () => {
-    // "...is a disgrace because lies" is ungrammatical (no subject after because);
-    // the same shape with "and" or "and therefore" is fine (shared subject).
-    expect(isComplete(cards('s_opp', 'p_disgrace', 'c_because', 'p_lie'))).toBe(false);
-    expect(isValidPrefix(cards('s_opp', 'p_disgrace', 'c_because', 'p_lie'))).toBe(false);
+  it('only "and" elides a shared subject — "but"/"and therefore"/"so"/"because" are clause-only', () => {
+    // "...is a disgrace <conn> lies" (bare predicate, no new subject) is ungrammatical for
+    // every conjunction EXCEPT "and", which coordinates predicates under the shared subject.
+    for (const conn of ['c_because', 'c_therefore', 'c_but', 'c_so', 'c_however']) {
+      expect(isComplete(cards('s_opp', 'p_disgrace', conn, 'p_lie'))).toBe(false);
+      expect(isValidPrefix(cards('s_opp', 'p_disgrace', conn, 'p_lie'))).toBe(false);
+      // …but each is fine with its own subject (a real clause join).
+      expect(isComplete(cards('s_opp', 'p_disgrace', conn, 's_people', 'p_love_fd'))).toBe(true);
+    }
+    // "and" is the sole exception: it still coordinates bare predicates.
     expect(isComplete(cards('s_opp', 'p_disgrace', 'c_and', 'p_lie'))).toBe(true);
-    expect(isComplete(cards('s_opp', 'p_disgrace', 'c_therefore', 'p_lie'))).toBe(true);
   });
 
   it('firstInvalidIndex points at the token where parsing breaks (for the "WHAT??" highlight)', () => {
