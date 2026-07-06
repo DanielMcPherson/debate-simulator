@@ -617,6 +617,18 @@ button.ghost.danger:hover:not(:disabled) { color:#ffb3b3; border-color:var(--the
 .upgrade-reveal .card { cursor:default; }
 .upgrade-arrow { font-size:30px; color:var(--gold); text-shadow:0 0 12px rgba(230,190,90,.7); }
 
+/* --- passive relics: the endorsement pick tile + the podium badge row --- */
+.card.relic-tile {
+  background:linear-gradient(180deg,#3a2340,#1d1226); color:var(--ink);
+  border:1px solid var(--gold);
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+}
+.card.relic-tile .relic-icon { font-size:26px; line-height:1; margin-top:14px; }
+.card.relic-tile .relic-name { font-family:var(--display); font-size:15px; color:var(--gold); }
+.card.relic-tile .banner { background:linear-gradient(180deg,#c69a3a,#8a6a1f); color:#1a1408; }
+.pmeta .relic-row { display:flex; gap:3px; line-height:1; }
+.pmeta .relic-badge { font-size:15px; cursor:help; filter:drop-shadow(0 0 3px rgba(230,190,90,.5)); }
+
 /* --- candidate select --- */
 /* explicit width so the flex-centered modal doesn't shrink-wrap the grid into a column */
 .select-modal { width:660px; max-width:calc(100vw - 32px); border-color:var(--gold); }

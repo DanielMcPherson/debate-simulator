@@ -1,7 +1,7 @@
-import type { Card, Category, DebateStyle, GameState, Move, NervousTrigger } from './types';
+import type { Card, Category, DebateStyle, GameState, Move, NervousTrigger, RelicMods } from './types';
 import { canAppend, isComplete, rolesOf } from './grammar';
 import { scoreStatement, dominantCategory } from './scoring';
-import { bestTypoJam, gameRng } from './game';
+import { bestTypoJam, gameRng, playerRelicMods } from './game';
 import { PERIOD, PERIOD_ENABLED } from '../data/cards';
 
 const STYLE_CATEGORY: Record<DebateStyle, Category> = {
@@ -48,6 +48,12 @@ interface PlanOptions {
   // LONGEST line among equally-damaging ones: a compelled confession should be a
   // long, spectacular unburdening, not a punchy slip.
   objective?: 'best' | 'gaffe' | 'confess';
+  // Relic mods are PUBLIC passives (unlike the crowd, which stays hidden from the AI):
+  // `mods` = the SPEAKER's own relics, `defenderMods` = the listener's (Teflon damping).
+  // Without them the AI would over-value attacks into a Teflon player and mis-price
+  // sabotage forecasts.
+  mods?: RelicMods;
+  defenderMods?: RelicMods;
 }
 
 /**
@@ -63,7 +69,7 @@ export function plan(line: Card[], avail: Avail[], opts: PlanOptions = {}): Plan
   let best: PlanResult | null = null;
 
   const evaluate = (full: Card[], ext: Avail[]): PlanResult => {
-    const delta = scoreStatement(full, { topicId: opts.topicId }).delta; // NOTE: no crowd — AI is blind
+    const delta = scoreStatement(full, { topicId: opts.topicId, mods: opts.mods, defenderMods: opts.defenderMods }).delta; // NOTE: no crowd — AI is blind
     const poolUsed = ext.reduce((n, a) => n + (a.source === 'pool' ? 1 : 0), 0);
     const styleBonus = opts.styleCategory && dominantCategory(full) === opts.styleCategory ? STYLE_BONUS : 0;
     return { ext: ext.slice(), value: delta - riskPenalty * poolUsed + styleBonus, delta };
@@ -165,15 +171,18 @@ export function chooseMove(state: GameState, opts: AiOptions = {}): Move {
   const avail = availFor(state);
   const maxExtend = opts.maxExtend ?? 4;
   const styleCategory = state.opponent ? STYLE_CATEGORY[state.opponent.style] : undefined;
+  // The player's relics are public passives — the AI plans its OWN lines against them
+  // as defenderMods (a Teflon player devalues its attacks, so it organically pivots).
+  const dm = playerRelicMods(state);
   // A compelled speaker never wants the 'best' plan — skip the wasted search.
-  const best = opts.compelled ? null : plan(line, avail, { maxExtend, topicId: state.topic?.id, styleCategory });
+  const best = opts.compelled ? null : plan(line, avail, { maxExtend, topicId: state.topic?.id, styleCategory, defenderMods: dm });
 
   // UNDER OATH: compelled to confess — build the most self-damaging completion
   // reachable (checked FIRST; overrides everything, including power-up escapes).
   // If no completion is reachable at all ('confess' null ⟺ 'best' null — same
   // DFS reachability), fall through to the best-prefix fallback at the bottom.
   if (opts.compelled) {
-    const confession = plan(line, avail, { maxExtend, topicId: state.topic?.id, objective: 'confess' });
+    const confession = plan(line, avail, { maxExtend, topicId: state.topic?.id, objective: 'confess', defenderMods: dm });
     if (confession) {
       if (confession.ext.length > 0) return { kind: 'take', from: confession.ext[0].source, cardId: confession.ext[0].card.id };
       if (isComplete(line)) return { kind: 'end' }; // the confession is out — commit to it
@@ -191,7 +200,7 @@ export function chooseMove(state: GameState, opts: AiOptions = {}): Move {
     const simpleAvail = avail.filter(
       (a) => a.card.role !== 'connector' && a.card.role !== 'intensifier' && a.card.role !== 'modifier',
     );
-    const p = plan(line, simpleAvail, { maxExtend: Math.min(2, maxExtend), topicId: state.topic?.id, styleCategory });
+    const p = plan(line, simpleAvail, { maxExtend: Math.min(2, maxExtend), topicId: state.topic?.id, styleCategory, defenderMods: dm });
     if (p && p.ext.length > 0) return { kind: 'take', from: p.ext[0].source, cardId: p.ext[0].card.id };
     if (best && best.ext.length > 0) return { kind: 'take', from: best.ext[0].source, cardId: best.ext[0].card.id };
     return { kind: 'end' };
@@ -201,7 +210,7 @@ export function chooseMove(state: GameState, opts: AiOptions = {}): Move {
   // self-own (allow a touch more depth so a good setup can precede the blunder).
   // If no self-own is reachable from here, fall through to normal play.
   if (opts.gaffing && !opts.compelled) {
-    const flub = plan(line, avail, { maxExtend, topicId: state.topic?.id, objective: 'gaffe' });
+    const flub = plan(line, avail, { maxExtend, topicId: state.topic?.id, objective: 'gaffe', defenderMods: dm });
     if (flub) {
       if (flub.ext.length > 0) return { kind: 'take', from: flub.ext[0].source, cardId: flub.ext[0].card.id };
       if (isComplete(line)) return { kind: 'end' }; // gaffe is complete — commit to it
@@ -223,7 +232,8 @@ export function chooseMove(state: GameState, opts: AiOptions = {}): Move {
   const forgot = power('forgot');
   if (!opts.restrainPower && forgot && !state.player.done && state.player.line.length > 0) {
     const pl = state.player.line;
-    const strong = isComplete(pl) && scoreStatement(pl, { topicId: state.topic?.id }).delta >= 4;
+    // Scoring the PLAYER's line → their own relic mods apply (still no crowd).
+    const strong = isComplete(pl) && scoreStatement(pl, { topicId: state.topic?.id, mods: dm }).delta >= 4;
     const bigCombo = pl.length >= 4;
     if (strong || bigCombo) return { kind: 'power', cardId: forgot.id };
   }

@@ -766,22 +766,52 @@ of good starters is welcome (StS starting-relic variety) but must be **curated +
 This *raises* the value of the Consultant/rewards. Touches `cards.ts` + the private-deck build
 (`deck.ts`/`game.ts`) + the select screen (`ui/main.ts`); engine + tests. See [[tune-for-temptation]].
 
-**P2 · medium — Passive RELICS (Slay-the-Spire-style; design decision 2026-07-06, Daniel).**
-**DECISION: add passive relics; REJECT cross-card engine-building.** For a 12-debate campaign the
-depth should come from content + meta variety, NOT from in-statement mechanics that compete with
-word-building for attention (that fights the north star). Passive **scoring-context modifiers** are
-the sweet spot — they change *how statements land*, add build identity + run variety, and impose
-**zero extra in-line decision load**. Starter ideas: **Teflon Don** (attacks on you backfire for the
-debate), **Incumbent** (start each debate at +10 bar), **Media Darling** (off-topic penalty removed),
-**Base Rally** (your best on-taste clause always gets the crowd boost regardless of hidden taste),
-**Career Politician** (+1 period/statement — cleanly re-surfaces the parked period mechanic).
-Cross-card chains / setup-payoff engines are REJECTED (optimization puzzle, off-north-star). If the
-campaign ever drags, the lever is **fewer rungs, never more in-line mechanics**. **Architecture
-flag:** relics would be the FIRST player-only meta that touches the ENGINE
-(`run.relics → createGame({relics}) → ScoreOptions`/`GameState`), vs today's deck-only
-`bonus`/`removed`/`upgrades` — model them as clean scoring modifiers threaded through ScoreOptions,
-NOT scattered `if`s in `scoreStatement`. Needs a design pass (seam + starter list + acquisition UI:
-consultant? post-win?). Engine + tests.
+**DONE (2026-07-06) — Passive RELICS (Slay-the-Spire-style; first slice shipped same day).**
+**PLAYER-FACING BRAND = "ENDORSEMENT" (Daniel, 2026-07-06):** "relic" is genre vocabulary, not
+debate vocabulary — every player-visible string says *endorsement* (grant modal "🏅 Endorsement
+earned!", tile banner, any future copy), while CODE deliberately keeps `Relic`/`RELICS`/
+`run.relics`/`.relic-badge` etc. (the roguelike term developers recognize; player-facing-only
+rename by choice, not oversight). Author future relic names/blurbs so they read as things a
+BACKER could confer ("Endorsed: Teflon Don").
+**DECISION: add passive relics; REJECT cross-card engine-building** (in-statement mechanics compete
+with word-building for attention — off-north-star; if the campaign ever drags, the lever is fewer
+rungs, never more in-line mechanics). Relics are passive **scoring-context modifiers** — zero extra
+in-line decision load. **The seam (the architecture flag honored):** a `Relic {id, icon, name,
+blurb, mods: RelicMods}` is plain declarative data (types.ts, next to `Crowd` — the modeling
+precedent), catalog `RELICS`/`findRelic` in cards.ts (NOT cards: never in ALL/decks/REWARDS/findDef
+— the leak guard is tested); `mergeRelicMods` (new engine/relics.ts) flattens a relic list
+(booleans OR, additive sum, multipliers take min) and everything downstream consumes the merged
+bag: `run.relics: string[]` (main.ts, wiped in newRun — win-gated like bonus) → `createGame({relics})`
+→ `state.relics` (player-only) → **two `ScoreOptions` channels** (scoring.ts): `mods` = the
+SPEAKER's relics, `defenderMods` = the DEFENDER's when scoring the attacker's line. All scoring
+mods act at the **contribution level inside `scoreStatement`** (one `applyRelicMods` adjuster after
+both `contributions()` calls — complete AND confused path), so breakdown/FX/analytics always match
+the bar — **never adjust the signed bar delta in resolveStatement**. **The 5 shipped relics:**
+🍳 Teflon Don (`incomingAttackMult 0.5` — Daniel chose DAMPING over the original "backfire": a
+reflected delta needs a second Reaction channel and shows attack-FX that moves the bar the wrong
+way; a true backfire relic is a follow-on), 🏛️ The Incumbent (`barStart 10`, applied at createGame's
+bar init — once per debate since the bar persists across questions), 📸 Media Darling
+(`offTopicImmune` — kills the penalty AND the badge), 🚌 Base Rally (`crowdAlwaysBoost` — when the
+hidden taste matched nothing, boost the best POSITIVE contribution instead; never double-boosts,
+never amplifies a blunder, resolution-only like `crowd` itself), 🧯 Spin Doctor (`blunderMult 1.3`
+replaces the ×1.6 — also softens the confused-path blunder punch-through). **AI awareness
+(deliberate):** relics are PUBLIC passives (podium badges), so `plan()` takes `mods`/`defenderMods`
+(every chooseMove plan call passes the player's mods as defenderMods — the AI organically devalues
+attacks into Teflon), and `bestTypoJam` + the Forgot heuristic score the player's line under the
+player's mods; **crowd-blindness untouched**. **Acquisition (Daniel's call): ONE relic per run** —
+a scripted "🏅 Endorsement earned!" pick-1-of-2 offer (`RELIC_RUNGS = {2}`, after winning debate 3),
+unshifted onto the reward queue AFTER the rewardQueue[0]-mutating upgrade-gamble block (same
+ordering constraint as Under Oath; disjoint from UNDER_OATH_RUNG). A `data-relicpick` branch grants
+it (skips the awardhint interception — that teaches CARD hunting); consultant untouched (relics
+aren't a deck axis). Display: emoji badges + tooltip in the YOU podium (`.relic-badge`). Deal event
+logs relic ids. Tests: tests/relics.test.ts (catalog integrity + leak guard, threading,
+per-relic scoring incl. FX≡bar and the confused path, determinism, AI awareness). **Follow-ons
+(not built):** 📅 Career Politician (+1 period — needs the `usedPeriod` boolean→count refactor;
+deliberately isolated), Prime Time (+headroom), County-Fair Charmer (rambling-immune —
+playtest-watch: rambling is a north-star limiter), Push Pollster (knowsCrowd), Front-Runner Energy
+(opp gaffe aura), a true backfire relic, a character-select starting relic (pairs with the
+starting-decks item), a second waypoint (keep pick counts uniform — tune-for-temptation), and the
+12-rung re-point (`RELIC_RUNGS` → tier breathers).
 
 **P2 · medium — OPPONENT-SPECIFIC signature cards (design idea, 2026-07-06; Daniel).** Today every
 speaker draws from the same lexicon, so characters don't *sound* distinct. Give each opponent a

@@ -1,4 +1,4 @@
-import type { Card, Category, Crowd, PhraseHit, PredInstance, Reaction, ReactionLabel, SentenceStructure, Side } from './types';
+import type { Card, Category, Crowd, PhraseHit, PredInstance, Reaction, ReactionLabel, RelicMods, SentenceStructure, Side } from './types';
 import { firstInvalidIndex, isComplete, isValidPrefix, parse } from './grammar';
 import { renderSentence } from './morphology';
 
@@ -50,7 +50,7 @@ const OFF_TOPIC_MULT = 0.75;
 // to teach "be concise / combo with connectors" rather than pile single sentences.
 const RAMBLE_LIMIT = 3;
 const RAMBLE_STEP = 2.5;
-const BLUNDER_MULT = 1.6; // self-owns and audience-insults hurt extra
+export const BLUNDER_MULT = 1.6; // self-owns and audience-insults hurt extra (relic blunderMult replaces it)
 
 /**
  * A subject's EFFECTIVE side for scoring. A "thing" noun (side 'neutral') is
@@ -391,6 +391,32 @@ export interface ScoreOptions {
   /** A pre-resolution amplifier (e.g. a Soundbite's ×1.5), applied WITH the finisher factor
    *  BEFORE the final clamp — so it respects the statement cap (no cap-bypass knockout). */
   multiplier?: number;
+  /** The SPEAKER's merged relic mods (their own scoring context): `blunderMult` softens
+   *  their self-owns/audience-insults (both paths, incl. the confused-path blunder
+   *  punch-through), `offTopicImmune` kills the dodge penalty + badge, `crowdAlwaysBoost`
+   *  boosts their best positive contribution when the crowd's taste didn't match.
+   *  Relic mods are PUBLIC passives — unlike `crowd`, the AI may plan with them. */
+  mods?: RelicMods;
+  /** The DEFENDER's merged relic mods when scoring the attacker's line:
+   *  `incomingAttackMult` damps every attack_opp contribution (Teflon Don). Applied at
+   *  the contribution level so the breakdown/FX stay consistent with the bar. */
+  defenderMods?: RelicMods;
+}
+
+/** Relic adjustments that act per-contribution — applied immediately after
+ *  `contributions()` in BOTH scoring paths, BEFORE the crowd boost (so a boosted
+ *  attack boosts the damped value) and before the audience-insult poison rule. */
+function applyRelicMods(contribs: Contrib[], opts: ScoreOptions): Contrib[] {
+  const atk = opts.defenderMods?.incomingAttackMult;
+  const blunder = opts.mods?.blunderMult;
+  if (atk === undefined && blunder === undefined) return contribs;
+  return contribs.map((c) => {
+    let delta = c.delta;
+    if (atk !== undefined && c.category === 'attack_opp') delta *= atk;
+    if (blunder !== undefined && (c.category === 'self_own' || c.category === 'insult_aud'))
+      delta *= blunder / BLUNDER_MULT; // swap the baked ×1.6 for the relic's gentler multiple
+    return delta === c.delta ? c : { ...c, delta };
+  });
 }
 
 export function scoreStatement(line: Card[], opts: ScoreOptions = {}): Reaction {
@@ -403,7 +429,7 @@ export function scoreStatement(line: Card[], opts: ScoreOptions = {}): Reaction 
     // THROUGH the muffle at full strength: you can't ramble your way out of insulting the
     // crowd or owning yourself, even in word salad. Only the *rest* of the salad is dampened
     // + capped; the blunder lands at its real (already ×1.6) value.
-    const contribs = contributions(parse(line));
+    const contribs = applyRelicMods(contributions(parse(line)), opts);
     // Only a GENUINE, attributable blunder punches through — one with an explicit subject.
     // A negative predicate orphaned by a missing subject defaults to the audience side, but
     // that's a garble artifact, not a real crowd insult, so it stays muffled (don't hammer a
@@ -439,7 +465,7 @@ export function scoreStatement(line: Card[], opts: ScoreOptions = {}): Reaction 
   // can't farm the boost. A combo containing the matched clause still multiplies
   // the boosted value, rewarding skillful crowd-reading.)
   let crowdPleased = false;
-  const contribs = contributions(parse(line));
+  const contribs = applyRelicMods(contributions(parse(line)), opts);
   if (opts.crowd) {
     let bestIdx = -1;
     let bestMag = 0;
@@ -449,6 +475,17 @@ export function scoreStatement(line: Card[], opts: ScoreOptions = {}): Reaction 
         bestIdx = i;
       }
     });
+    // Base Rally: when the crowd's taste found nothing, the holder's bused-in base
+    // cheers anyway — boost the largest POSITIVE contribution instead. Never fires on
+    // top of a real taste match (no double boost), never amplifies a blunder.
+    if (bestIdx < 0 && opts.mods?.crowdAlwaysBoost) {
+      contribs.forEach((c, i) => {
+        if (c.delta > bestMag) {
+          bestMag = c.delta;
+          bestIdx = i;
+        }
+      });
+    }
     if (bestIdx >= 0) {
       crowdPleased = true;
       contribs[bestIdx] = { ...contribs[bestIdx], delta: contribs[bestIdx].delta * opts.crowd.boost, crowdFavorite: true };
@@ -483,7 +520,9 @@ export function scoreStatement(line: Card[], opts: ScoreOptions = {}): Reaction 
 
   // Off-topic shrinks a good statement (can't out-pander the question); a bomb is
   // already a bomb, so leave non-positive totals alone.
-  const dodged = !!opts.topicId && !line.some((c) => c.topics?.includes(opts.topicId!));
+  // Media Darling: off-topic immunity — no penalty AND no OFF-TOPIC badge (nothing
+  // penalized, nothing flagged; the press never runs the follow-up).
+  const dodged = !opts.mods?.offTopicImmune && !!opts.topicId && !line.some((c) => c.topics?.includes(opts.topicId!));
   if (dodged && total > 0) total *= OFF_TOPIC_MULT;
 
   total = Math.max(-hardCap, Math.min(hardCap, total));

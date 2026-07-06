@@ -1,8 +1,9 @@
-import type { Card, GameEvent, GameState, Move, PlayerId, PlayerState } from './types';
+import type { Card, GameEvent, GameState, Move, PlayerId, PlayerState, RelicMods } from './types';
 import { isComplete, canAppend } from './grammar';
 import { scoreStatement } from './scoring';
+import { mergeRelicMods } from './relics';
 import { renderSentence, cardLabel } from './morphology';
-import { TOPICS, OPPONENTS, CROWDS, ALL, findDef, resolveTier, PERIOD, PERIOD_ENABLED } from '../data/cards';
+import { TOPICS, OPPONENTS, CROWDS, ALL, findDef, findRelic, resolveTier, PERIOD, PERIOD_ENABLED } from '../data/cards';
 import {
   buildPrivateDeck,
   buildSharedDeck,
@@ -27,6 +28,8 @@ export interface GameOptions {
   removedCards?: string[];
   /** Original base id → tier the player upgraded it to (Punch Up the Zingers). */
   upgrades?: Record<string, number>;
+  /** Relic ids carried from the run (player-only passives; resolved via findRelic). */
+  relics?: string[];
   /** First-debate onboarding (guaranteed first hand + simple opponent on Q1). */
   tutorial?: boolean;
 }
@@ -176,6 +179,7 @@ function dealRound(state: GameState): void {
     question: state.question,
     crowdLoves: state.crowd?.loves, // the HIDDEN taste — recorded for analysis only
     opponent: state.opponent?.id,
+    relics: state.relics?.length ? state.relics.map((r) => r.id) : undefined, // player passives
     first: state.turn,
     playerHand: state.player.hand.map(cardLabel),
     aiHand: state.ai.hand.map(cardLabel),
@@ -326,9 +330,19 @@ export function createGame(opts: GameOptions = {}): GameState {
   state.playerBonus = opts.playerBonus ?? [];
   state.removedCards = opts.removedCards ?? [];
   state.upgrades = opts.upgrades ?? {};
+  state.relics = (opts.relics ?? []).map(findRelic).filter((r): r is NonNullable<typeof r> => !!r);
+  // The Incumbent: the bar starts tilted toward the holder. Once per DEBATE, not per
+  // question — the bar persists across questions and is never reset by dealRound.
+  state.bar = mergeRelicMods(state.relics).barStart ?? 0;
   state.tutorial = opts.tutorial ?? false;
   dealRound(state);
   return state;
+}
+
+/** The player's merged relic mods (NO_MODS when relic-less). Relics are PUBLIC
+ *  passives — unlike the hidden crowd, the AI is allowed to plan with these. */
+export function playerRelicMods(state: GameState): RelicMods {
+  return mergeRelicMods(state.relics);
 }
 
 export function activePlayer(state: GameState): PlayerState {
@@ -414,7 +428,18 @@ function resolveStatement(state: GameState, p: PlayerState): void {
   // A Soundbite (if armed) amplifies BEFORE the cap — threaded into scoreStatement so it can't
   // bypass the statement cap (that was a knockout-blow bug). Then spend it.
   const mult = p.nextMultiplier && p.nextMultiplier !== 1 ? p.nextMultiplier : 1;
-  const reaction = scoreStatement(p.line, { topicId: state.topic?.id, crowd: state.crowd, multiplier: mult });
+  // Relics are player-only: speaking, the player scores under their own mods; the AI
+  // speaking scores against the player's defenderMods (Teflon damping). All relic
+  // effects act INSIDE scoreStatement (contribution level) so the breakdown/FX always
+  // match the bar — never adjust the signed bar delta below.
+  const pm = playerRelicMods(state);
+  const reaction = scoreStatement(p.line, {
+    topicId: state.topic?.id,
+    crowd: state.crowd,
+    multiplier: mult,
+    mods: p.id === 'player' ? pm : undefined,
+    defenderMods: p.id === 'ai' ? pm : undefined,
+  });
   p.nextMultiplier = undefined;
   p.lastReaction = reaction;
   p.done = true;
@@ -522,7 +547,10 @@ export function bestTypoJam(state: GameState, victimLine: Card[]): { index: numb
     if (!canAppend(base, c)) continue;
     const line = [...base, c];
     if (!isComplete(line)) continue; // must replace into a real statement
-    const d = scoreStatement(line, { topicId: state.topic?.id }).delta; // toward the victim
+    // The victim is always the PLAYER at every call site (the player picks their own
+    // swap; only the AI auto-jams) — so forecast under the player's relic mods (a Spin
+    // Doctor holder self-owns less than the raw jam suggests). No crowd: still hidden.
+    const d = scoreStatement(line, { topicId: state.topic?.id, mods: playerRelicMods(state) }).delta; // toward the victim
     if (d < delta) {
       delta = d;
       index = i;

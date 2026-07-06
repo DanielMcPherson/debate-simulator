@@ -1,11 +1,11 @@
 import './style.css';
-import type { Card, Category, GameState, Move, Reaction } from '../engine/types';
+import type { Card, Category, GameState, Move, Reaction, Relic } from '../engine/types';
 import { createGame, applyMove, canEnd, nextQuestion } from '../engine/game';
 import { buildPrivateDeck } from '../engine/deck';
 import { aiTurn } from '../engine/ai';
 import { displayWords, cardLabel } from '../engine/morphology';
 import { isComplete, canAppend } from '../engine/grammar';
-import { LADDER, REWARDS, OPPONENTS, PERIOD, PERIOD_ENABLED, UNDER_OATH, upgradeOf, resolveTier } from '../data/cards';
+import { LADDER, REWARDS, RELICS, findRelic, OPPONENTS, PERIOD, PERIOD_ENABLED, UNDER_OATH, upgradeOf, resolveTier } from '../data/cards';
 
 const app = document.getElementById('app')!;
 const AI_DELAY = 650;
@@ -38,7 +38,8 @@ let run = {
   character: null as string | null,
   removed: [] as string[],
   upgrades: {} as Record<string, number>, // original base id → tier (Punch Up the Zingers)
-}; // rung + earned cards + chosen candidate + cut card ids + upgraded card tiers
+  relics: [] as string[], // passive relic ids (RELICS in cards.ts) — win-gated like bonus
+}; // rung + earned cards + chosen candidate + cut card ids + upgraded card tiers + relics
 let runScreen: 'tutorial' | 'select' | 'map' | 'result' | 'reward' | 'awardhint' | 'consultant' | 'upgradereveal' | 'defeat' | 'victory' | null = null;
 let awardHintSeen = false; // one-time-ever: after the FIRST card award, teach the player to hunt for more
 
@@ -71,6 +72,13 @@ let consultantSel = new Set<string>(); // ORIGINAL base ids selected to cut/upgr
 // Re-point this at the 4-way debate's prize if/when that mid-ladder event ships.
 const UNDER_OATH_RUNG = 3;
 
+// Winning THESE rungs adds a scripted relic offer to the reward queue: pick 1 of 2 passive
+// relics (RELICS in cards.ts) — a run-defining edge, deliberately SCARCE (one per run for
+// now; if playtest wants a second waypoint, keep the pick count uniform — tune-for-temptation).
+// Disjoint from UNDER_OATH_RUNG. Re-point to the tier breathers when the 12-rung ladder lands.
+const RELIC_RUNGS = new Set([2]); // after winning debate 3 (checked pre-increment)
+const RELIC_OFFER_COUNT = 2;
+
 // The player's selectable candidates (cosmetic for now — portrait + name; art in src/ui/art/portraits).
 const PLAYER_CHARACTERS = [
   { id: 'maverick', name: 'The Maverick', tagline: 'A rough-edged outsider who tells it like it is.' },
@@ -84,7 +92,8 @@ type AwardSpec = { title: string; body: string }; // a headline; choices are rol
 // `upgrade` (sometimes on the base win offer): a "Punch up a random card" gamble replacing one of
 // the 3 choices — the target stays hidden until picked, then a before→after reveal shows it.
 type UpgradeOffer = { origId: string; from: Card; to: Card };
-type RewardOffer = AwardSpec & { choices: Card[]; upgrade?: UpgradeOffer };
+// `relics` (a scripted endorsement offer): pick ONE passive relic instead of a card.
+type RewardOffer = AwardSpec & { choices: Card[]; upgrade?: UpgradeOffer; relics?: Relic[] };
 let rewardQueue: RewardOffer[] = [];
 let rewardMode: 'post' | 'mid' | 'consultant' = 'post';
 let upgradeReveal: UpgradeOffer | null = null; // showing the before→after of a picked random upgrade
@@ -137,6 +146,7 @@ function startDebate(): GameState {
     playerBonus: run.bonus,
     removedCards: run.removed, // cards cut at a Debate Consultant waypoint
     upgrades: run.upgrades, // cards punched up at a Debate Consultant waypoint
+    relics: run.relics, // passive relics (the post-debate-3 endorsement pick)
     tutorial: run.rung === 0, // first debate: guaranteed combo-friendly Q1 hand + simple opponent
   });
 }
@@ -144,7 +154,7 @@ function startDebate(): GameState {
 let game = startDebate();
 
 function newRun(): void {
-  run = { rung: 0, bonus: [], character: null, removed: [], upgrades: {} };
+  run = { rung: 0, bonus: [], character: null, removed: [], upgrades: {}, relics: [] };
   consultant = null;
   consultantSel = new Set();
   tutorialIntroSeen = false; // show the welcome modal again on a fresh run
@@ -282,6 +292,24 @@ function checkDebateEnd(): void {
         body: `<b>Under Oath</b> — played on a question, your opponent <b>cannot lie</b>: they take the stage and confess to the worst of it. You're going to need it!`,
         choices: [UNDER_OATH],
       });
+    }
+    // The scripted relic endorsement: pick 1 of 2 passive relics. Unshifted AFTER the
+    // upgrade-gamble block for the same reason as Under Oath (it mutates rewardQueue[0]).
+    // Rolled from the unowned pool; skipped if somehow fewer than the offer remain.
+    if (RELIC_RUNGS.has(run.rung)) {
+      const pool = RELICS.filter((r) => !run.relics.includes(r.id));
+      const offer: Relic[] = [];
+      while (offer.length < RELIC_OFFER_COUNT && pool.length) {
+        offer.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+      }
+      if (offer.length === RELIC_OFFER_COUNT) {
+        rewardQueue.unshift({
+          title: '🏅 Endorsement earned!',
+          body: 'Powerful backers want a piece of you. Accept ONE endorsement — its edge is yours for the rest of the run.',
+          choices: [],
+          relics: offer,
+        });
+      }
     }
     runScreen = 'result';
   } else {
@@ -566,7 +594,14 @@ function podiumMeta(side: 'you' | 'them'): string {
   const supportHtml = `<div class="support ${side}">${support}% approval</div>`;
   if (side === 'you') {
     const ch = PLAYER_CHARACTERS.find((c) => c.id === run.character);
-    return `<div class="pmeta"><div class="who">You</div>${ch ? `<div class="name">${ch.name}</div>` : ''}${supportHtml}</div>`;
+    // Passive relic badges — the persistent "what edges do I hold" display (tooltip = rules text).
+    const relics = run.relics
+      .map(findRelic)
+      .filter((r): r is Relic => !!r)
+      .map((r) => `<span class="relic-badge" title="${r.name} — ${r.blurb}">${r.icon}</span>`)
+      .join('');
+    const relicRow = relics ? `<div class="relic-row">${relics}</div>` : '';
+    return `<div class="pmeta"><div class="who">You</div>${ch ? `<div class="name">${ch.name}</div>` : ''}${relicRow}${supportHtml}</div>`;
   }
   const id = game.opponent?.id;
   const mood = oppMood();
@@ -1001,11 +1036,21 @@ function runModalHtml(): string {
           <span class="ctext">⚡ Punch up a random card in your deck</span><span class="banner">Upgrade</span>
         </button>`
       : '';
+    // Relic tiles (the scripted endorsement offer): passive, not cards — no cardFace.
+    const relicTiles = (head.relics ?? [])
+      .map(
+        (r) => `<button class="card reward relic-tile" data-relicpick="${r.id}">
+          <span class="relic-icon">${r.icon}</span>
+          <span class="relic-name">${r.name}</span>
+          <span class="ctext">${r.blurb}</span><span class="banner">Endorsement</span>
+        </button>`,
+      )
+      .join('');
     const more = rewardQueue.length > 1 ? `<div class="reward-more">+${rewardQueue.length - 1} more reward${rewardQueue.length > 2 ? 's' : ''} to come…</div>` : '';
     return `<div class="modal-backdrop"><div class="modal reward-modal">
       <div class="modal-title" style="color:var(--gold)">${head.title}</div>
       <p>${head.body}</p>
-      <div class="cards" style="margin-top:8px">${choices}${upgradeTile}</div>
+      <div class="cards" style="margin-top:8px">${choices}${upgradeTile}${relicTiles}</div>
       ${more}
     </div></div>`;
   }
@@ -1413,6 +1458,18 @@ function render(): void {
           rewardQueue.shift();
           runScreen = 'upgradereveal'; // Continue resumes the reward-queue drain
           render();
+        }
+        return;
+      }
+      // Picking a relic from the scripted endorsement offer. Skips the awardhint
+      // interception — that modal teaches CARD hunting, and a relic isn't one.
+      if (btn.dataset.relicpick) {
+        const relic = rewardQueue[0]?.relics?.find((r) => r.id === btn.dataset.relicpick);
+        if (relic) {
+          run.relics.push(relic.id); // takes effect next createGame (wiped on a loss — the win-gate)
+          rewardQueue.shift();
+          if (rewardQueue.length) render();
+          else finishRewards();
         }
         return;
       }

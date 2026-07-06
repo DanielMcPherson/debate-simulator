@@ -1,4 +1,4 @@
-import type { Card, Crowd, GramNumber, Opponent, Side, Topic } from '../engine/types';
+import type { Card, Crowd, GramNumber, Opponent, Relic, Side, Topic } from '../engine/types';
 
 // Chunk lexicon (Oh...Sir!!-style). The deck is mostly SUBJECT noun phrases and
 // chunky PREDICATE phrases. Predicates are either complete ("kicks puppies") or
@@ -547,6 +547,51 @@ export const CROWDS: Crowd[] = [
   { id: 'bloodthirsty', loves: 'attack_opp', boost: 1.5 },
   { id: 'patriots', loves: 'pander_aud', boost: 1.5 },
 ];
+
+// Passive RELICS — run-persistent scoring-context modifiers (Slay-the-Spire-style).
+// NOT cards: never in ALL/decks/REWARDS (no tutorial-pool leak, no findDef entry).
+// Granted by the campaign UI (RELIC_RUNGS in ui/main.ts) → run.relics →
+// createGame({relics}); each mod's consumption point is documented on RelicMods
+// (types.ts). Names/blurbs are drafts for Daniel per the card authoring rule.
+export const RELICS: Relic[] = [
+  {
+    id: 'teflon',
+    icon: '🍳',
+    name: 'Teflon Don',
+    blurb: 'Nothing sticks. Attacks on you land at half strength.',
+    mods: { incomingAttackMult: 0.5 },
+  },
+  {
+    id: 'incumbent',
+    icon: '🏛️',
+    name: 'The Incumbent',
+    blurb: 'You already have the office — and a ten-point head start.',
+    mods: { barStart: 10 },
+  },
+  {
+    id: 'darling',
+    icon: '📸',
+    name: 'Media Darling',
+    blurb: 'The press never runs the follow-up question. Dodge freely.',
+    mods: { offTopicImmune: true },
+  },
+  {
+    id: 'baserally',
+    icon: '🚌',
+    name: 'Base Rally',
+    blurb: 'Your people came on buses. They will cheer anything.',
+    mods: { crowdAlwaysBoost: true },
+  },
+  {
+    id: 'spindoc',
+    icon: '🧯',
+    name: 'Spin Doctor',
+    blurb: "By morning, that gaffe was a 'lighthearted moment'.",
+    mods: { blunderMult: 1.3 },
+  },
+];
+
+export const findRelic = (id: string): Relic | undefined => RELICS.find((r) => r.id === id);
 
 // REWARD cards — exclusive to the campaign ladder (never in a starting deck).
 // Stronger than normal cards: ±4 predicates and high-intensity loaded subjects.

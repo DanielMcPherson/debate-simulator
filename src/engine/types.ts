@@ -59,6 +59,40 @@ export interface Crowd {
   boost: number;
 }
 
+/**
+ * Passive scoring-context modifiers carried by a relic. Plain declarative data —
+ * no hooks, no id-switches — merged across the holder's relics (mergeRelicMods in
+ * relics.ts) and consumed at documented points only:
+ *  - incomingAttackMult: scoreStatement, via ScoreOptions.defenderMods (attacks ON the holder).
+ *  - barStart:           createGame's bar init (bar persists across questions → once per debate).
+ *  - offTopicImmune:     scoreStatement's off-topic `dodged` check.
+ *  - crowdAlwaysBoost:   scoreStatement's crowd block (resolution-only, like `crowd` itself).
+ *  - blunderMult:        scoreStatement, replaces the ×1.6 blunder multiplier (both paths,
+ *                        including the confused-path blunder punch-through).
+ */
+export interface RelicMods {
+  /** Attacks on the holder land at this multiple (Teflon Don 0.5). */
+  incomingAttackMult?: number;
+  /** Starting bar toward the holder each debate (Incumbent +10). */
+  barStart?: number;
+  /** Off-topic penalty removed — and no OFF-TOPIC badge (Media Darling). */
+  offTopicImmune?: boolean;
+  /** Best positive contribution gets the crowd boost even off-taste (Base Rally). */
+  crowdAlwaysBoost?: boolean;
+  /** Replaces BLUNDER_MULT for the holder's self-owns/audience-insults (Spin Doctor 1.3). */
+  blunderMult?: number;
+}
+
+/** A passive run-persistent relic. NOT a card: never in ALL/decks/REWARDS — granted by the
+ * campaign UI, threaded run.relics → createGame({relics}) → ScoreOptions (player-only). */
+export interface Relic {
+  id: string;
+  icon: string;
+  name: string;
+  blurb: string;
+  mods: RelicMods;
+}
+
 /** A debate question's topic. */
 export interface Topic {
   id: string;
@@ -327,6 +361,10 @@ export interface GameState {
    *  Player-only; applied at deck build AFTER `removedCards`, mapping each built card
    *  through its authored upgrade chain (see UPGRADES in cards.ts). */
   upgrades?: Record<string, number>;
+  /** The player's passive relics for this debate (resolved from ids at createGame).
+   *  Player-only, like `playerBonus`. Public passives: the AI plans around them
+   *  (unlike the crowd, which stays hidden until resolution). */
+  relics?: Relic[];
   /** First-debate onboarding: guarantees a combo-friendly first hand and a simple,
    * non-gaffe opponent on question 1 (drives the UI's first-question hints). */
   tutorial?: boolean;
