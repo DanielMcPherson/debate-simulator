@@ -1043,9 +1043,19 @@ teaches the core loop with animated glows, paired with the resolution juice:
   **pops** (`.pop` added via rAF when `currentHint.text` changes vs `lastHintText` — rAF so it survives
   the double render() in a tick) to call attention each time the step advances. The finisher step reads "Play a Finisher to end strong — or tap End
   Statement" (the finisher IS an end-move; no "End after", no score-math language). Shown ONLY while
-  building on Q1 of debate 1; the player can ignore it. CSS under "onboarding hints".
+  building on Q1 of debate 1. CSS under "onboarding hints".
   Note Q1 is player-first (`round % 2 === 1`), and play **alternates card-by-card** (`advanceTurn`
   on every `take`) until a speaker ends — the hints reflect the player's line on each of their turns.
+  **Hints GATE, not just glow (2026-07-06 — iPad playtest: a non-gamer played two nouns in a row and
+  the walkthrough couldn't recover):** while a hint is up, off-script cards get `.gated` (dimmed,
+  `aria-disabled` — NOT the `disabled` attr, so the click still lands and shakes "no" + re-pops the
+  coaching panel). The End button stays live throughout (escape valve). A **"Skip tutorial"** opt-out
+  (`tutorialSkipped`, reset in `newRun`) lives in BOTH the welcome modal and the coaching panel —
+  skipping kills hints AND gating (advisory-free freeform Q1). Two `tutorialStep()` guards keep gating
+  soft-lock-free: an **open predicate** from the hand hints `np` ("needs a target"), and a **safety
+  net** falls back to an End-only step if no playable card of the hinted role exists. The Q1
+  round-summary shows a one-time closing beat ("that was one way to build — mix it up") so the gated
+  sequence doesn't teach a false fixed-card-order rule.
 
 **DONE (2026-06) — next-question card.** Each new question opens with a modal (`questionCardHtml`,
 `pendingQuestionCard` in ui/main.ts) so the question gets its own un-ignorable moment in the busy UI:

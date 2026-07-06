@@ -158,6 +158,7 @@ function newRun(): void {
   consultant = null;
   consultantSel = new Set();
   tutorialIntroSeen = false; // show the welcome modal again on a fresh run
+  tutorialSkipped = false; // a fresh run gets the gated tutorial back (skip is per-run)
   lastHintText = null;
   pendingQuestionCard = false;
   game = startDebate();
@@ -817,30 +818,51 @@ function onTopic(c: Card): boolean {
 type TutorialStep = { roles: Card['role'][]; text: string; end?: boolean };
 let currentHint: TutorialStep | null = null; // set each render; drives the first-question hints
 let tutorialIntroSeen = false; // the "Tap a subject…" welcome modal has been dismissed
+let tutorialSkipped = false; // "Skip tutorial" pressed — hints AND gating off, freeform Q1
 let lastHintText: string | null = null; // last shown hint text — to pop the banner only when it changes
 
 /** The onboarding hint for the FIRST question of the first debate only: walks the player
  * through subject → verb → connector → subject → verb → finisher → End. Returns the card
  * role(s) to glow + the instruction (and whether to glow the End button). Null = no hint. */
 function tutorialStep(): TutorialStep | null {
+  if (tutorialSkipped) return null; // player opted out — no hints, no gating
   if (run.rung !== 0 || game.round !== 1) return null; // first question of the first debate only
   if (game.winner || game.awaitingNext || resolving) return null;
   if (game.turn !== 'player' || game.player.done) return null; // only while you're building
   const line = game.player.line;
-  if (line.length === 0) return { roles: ['np'], text: 'Tap a subject card to start your statement.' };
-  const last = line[line.length - 1];
-  if (last.role === 'connector') return { roles: ['np'], text: 'Now tap a subject to begin your next point.' };
-  if (!isComplete(line))
-    return {
-      roles: ['predicate'],
-      // Reassure about agreement — a playtester thought a plural subject couldn't take "is".
-      text: 'Tap a verb to say something about them. Don’t worry about plurals — “is/are” auto-matches the subject.',
-    };
-  const hasConn = line.some((c) => c.role === 'connector' && c.conj !== 'period');
-  if (!hasConn) return { roles: ['connector'], text: 'Tap “and” to chain a second point — combos score big!' };
-  const finisher = [...game.pool, ...game.player.hand].some((c) => c.role === 'intensifier' && canAppend(line, c));
-  if (finisher) return { roles: ['intensifier'], text: 'Play a Finisher to end strong — or tap End Statement.', end: true };
-  return { roles: [], text: 'Tap End Statement to lock in your combo!', end: true };
+  const step = ((): TutorialStep => {
+    if (line.length === 0) return { roles: ['np'], text: 'Tap a subject card to start your statement.' };
+    const last = line[line.length - 1];
+    if (last.role === 'connector') return { roles: ['np'], text: 'Now tap a subject to begin your next point.' };
+    if (!isComplete(line)) {
+      // An open verb from the hand ("wants to destroy ___") needs an OBJECT next, not another
+      // verb — with gating, mis-hinting here would soft-lock the tutorial.
+      if (last.role === 'predicate' && last.open)
+        return { roles: ['np'], text: 'That verb needs a target — tap a noun to finish the thought.' };
+      return {
+        roles: ['predicate'],
+        // Reassure about agreement — a playtester thought a plural subject couldn't take "is".
+        text: 'Tap a verb to say something about them. Don’t worry about plurals — “is/are” auto-matches the subject.',
+      };
+    }
+    const hasConn = line.some((c) => c.role === 'connector' && c.conj !== 'period');
+    if (!hasConn) return { roles: ['connector'], text: 'Tap “and” to chain a second point — combos score big!' };
+    const finisher = [...game.pool, ...game.player.hand].some((c) => c.role === 'intensifier' && canAppend(line, c));
+    if (finisher) return { roles: ['intensifier'], text: 'Play a Finisher to end strong — or tap End Statement.', end: true };
+    return { roles: [], text: 'Tap End Statement to lock in your combo!', end: true };
+  })();
+  // Gating safety net: hints now DISABLE off-script cards, so if no playable card of the hinted
+  // role actually exists (contested pool — the AI may have taken it), fall back to ending the
+  // statement rather than pointing at nothing. An empty line can't end, so drop the hint entirely
+  // (advisory-off beats a dead board; ensureHandHasOpener makes this branch near-unreachable).
+  if (step.roles.length > 0 && !step.end) {
+    const playable = [...game.pool, ...game.player.hand].some(
+      (c) => step.roles.includes(c.role) && canAppend(line, c),
+    );
+    if (!playable)
+      return line.length > 0 ? { roles: [], text: 'Tap End Statement to deliver it!', end: true } : null;
+  }
+  return step;
 }
 
 // Player-facing grammatical-function labels (the real engine roles, no invented words).
@@ -884,7 +906,7 @@ function carousel(id: 'pool' | 'hand' | 'opphand', label: string, inner: string,
 // play area instead of adding a banner that grows the visible region.
 function tutHintHtml(): string {
   if (!currentHint || !tutorialIntroSeen) return '';
-  return `<div class="tut-hint">👉 ${currentHint.text}</div>`;
+  return `<div class="tut-hint"><span>👉 ${currentHint.text}</span><button class="tut-skip" id="tutSkip">Skip tutorial ✕</button></div>`;
 }
 
 function cardHtml(c: Card, source: 'pool' | 'hand'): string {
@@ -911,8 +933,13 @@ function cardHtml(c: Card, source: 'pool' | 'hand'): string {
   const canFinish = isIntens && canAppend(game.player.line, c);
   const disabled = !canPlay() || (isIntens && !canFinish) ? 'disabled' : '';
   const hinted = !!currentHint && currentHint.roles.includes(c.role);
-  const cls = `card ${source} role-${c.role}${DEBUG && onTopic(c) ? ' ontopic' : ''}${hinted ? ' hint' : ''}`;
-  return `<button class="${cls}" data-id="${c.id}" data-from="${source}" ${disabled}>${cardFace(c, hinted)}</button>`;
+  // Q1 tutorial gating: while a hint is up, off-script cards are dimmed and refuse to play —
+  // the advisory glow alone wasn't binding (iPad playtest: two nouns in a row derailed the
+  // walkthrough). NOT the `disabled` attr: the button must still receive the click so the
+  // handler can shake "no" instead of silently ignoring the tap.
+  const gated = !!currentHint && tutorialIntroSeen && !hinted;
+  const cls = `card ${source} role-${c.role}${DEBUG && onTopic(c) ? ' ontopic' : ''}${hinted ? ' hint' : ''}${gated ? ' gated' : ''}`;
+  return `<button class="${cls}" data-id="${c.id}" data-from="${source}" ${gated ? 'aria-disabled="true"' : disabled}>${cardFace(c, hinted)}</button>`;
 }
 
 /** Render an opponent's-hand card: a steal target during a Hot Mic, else read-only intel. */
@@ -1313,6 +1340,13 @@ function render(): void {
               ${game.ai.lastReaction ? `<p class="${reactionClass(game.ai.lastReaction)}">${panelReaction(game.ai.lastReaction, false, game.opponent?.name ?? 'Your opponent', game.opponent?.pronoun)}</p>` : ''}
             </div>
             <div class="rs-standing"><span class="you">You ${youSupport}%</span> &nbsp;·&nbsp; <span class="them">${100 - youSupport}% ${game.opponent?.name ?? 'Opponent'}</span></div>
+            ${
+              run.rung === 0 && game.round === 1 && !tutorialSkipped
+                ? // Closing beat: the gated walkthrough taught ONE canonical build — don't let it
+                  // read as a fixed card order (the game is freeform; the grammar judges the result).
+                  '<div class="rs-tutnote">🎓 That was one way to build a statement — from here on, mix it up however you like.</div>'
+                : ''
+            }
             ${game.round >= game.maxRounds ? '<div class="rs-progress">Final question complete — tallying the debate…</div>' : ''}
             <button class="action" id="next">Next Question ▶</button>
           </div>`
@@ -1341,6 +1375,7 @@ function render(): void {
             <div class="modal-title">👋 Your turn to speak!</div>
             <p>Tap a <b>subject</b> card to start your statement.</p>
             <button class="action" id="tutorialGotIt">Got it!</button>
+            <button class="ghost tut-skip-modal" id="tutorialSkip">Skip tutorial</button>
           </div></div>`
         : pendingQuestionCard && !game.winner && !runScreen
         ? questionCardHtml()
@@ -1497,6 +1532,17 @@ function render(): void {
         }
         return;
       }
+      // Q1 tutorial gating: an off-script card shakes "no" and re-pops the coaching hint
+      // instead of playing (a silent dead button reads as a bug on touch).
+      if (btn.classList.contains('gated')) {
+        btn.classList.remove('shake');
+        void btn.offsetWidth; // restart the animation on rapid re-taps
+        btn.classList.add('shake');
+        const hint = app.querySelector('.tut-hint');
+        hint?.classList.remove('pop');
+        requestAnimationFrame(() => hint?.classList.add('pop'));
+        return;
+      }
       const id = btn.dataset.id!;
       // Choosing a card to steal for a pending Hot Mic.
       if (pendingHotMic) {
@@ -1575,6 +1621,15 @@ function render(): void {
   });
   app.querySelector<HTMLButtonElement>('#tutorialGotIt')?.addEventListener('click', () => {
     tutorialIntroSeen = true; // dismiss the welcome modal; the hint banner takes over
+    render();
+  });
+  app.querySelector<HTMLButtonElement>('#tutorialSkip')?.addEventListener('click', () => {
+    tutorialSkipped = true; // opt out from the welcome modal — freeform Q1, no hints/gating
+    tutorialIntroSeen = true;
+    render();
+  });
+  app.querySelector<HTMLButtonElement>('#tutSkip')?.addEventListener('click', () => {
+    tutorialSkipped = true; // opt out mid-walkthrough — hints and gating vanish
     render();
   });
   app.querySelector<HTMLButtonElement>('#cancelHotMic')?.addEventListener('click', () => {

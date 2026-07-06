@@ -278,12 +278,43 @@ h1 .tstar { -webkit-text-fill-color:var(--gold); }
 /* Q1 coaching panel — fills the spare space in the hand row (sits in the play area, adds no height) */
 .tut-hint {
   flex:1 1 auto; min-width:210px; align-self:stretch;
-  display:flex; align-items:center; padding:14px 18px; border-radius:10px;
+  display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:6px;
+  padding:14px 18px; border-radius:10px;
   background:rgba(232,192,105,.12); border:1px dashed var(--gold-deep); color:var(--gold);
   font-family:var(--label); font-size:15px; font-weight:600; letter-spacing:.4px; line-height:1.45;
   animation:hintBanner 1.7s ease-in-out infinite;
 }
 .tut-hint.pop { animation:bannerPop .55s cubic-bezier(.2,1.5,.4,1), hintBanner 1.7s ease-in-out infinite; }
+/* the small opt-out inside the coaching panel — quiet, but findable by a veteran */
+.tut-skip {
+  background:none; border:none; padding:0; cursor:pointer;
+  font-family:var(--label); font-size:12px; font-weight:600; letter-spacing:.4px;
+  color:var(--muted); text-decoration:underline; text-underline-offset:3px;
+}
+.tut-skip:hover { color:var(--gold); }
+/* the welcome modal's skip sits under "Got it!" as a low-emphasis second choice */
+.tut-skip-modal { display:block; margin:10px auto 0; font-size:13px; }
+
+/* Q1 tutorial gating: off-script cards are dimmed and refuse to play (click = shake "no").
+   Advisory glows alone weren't binding — a playtester played two nouns in a row. */
+.card.gated { opacity:.42; filter:saturate(.35); cursor:not-allowed; }
+/* button.* out-specifies the later `.card:hover:not(:disabled)` lift — gated cards don't invite */
+button.card.gated:hover { transform:none; box-shadow:0 5px 12px rgba(0,0,0,.45); }
+.card.gated.shake { animation:shakeNo .35s ease-in-out; }
+@keyframes shakeNo {
+  0%,100% { transform:translateX(0); }
+  20% { transform:translateX(-7px); }
+  45% { transform:translateX(6px); }
+  70% { transform:translateX(-4px); }
+  90% { transform:translateX(2px); }
+}
+
+/* the round-summary closing beat after the gated Q1 walkthrough */
+.rs-tutnote {
+  margin:8px auto 2px; padding:8px 14px; max-width:560px; border-radius:10px;
+  background:rgba(232,192,105,.12); border:1px dashed var(--gold-deep); color:var(--gold);
+  font-family:var(--label); font-size:14px; font-weight:600; letter-spacing:.4px;
+}
 
 /* the welcome modal wears the friendly gold tutorial theme, not the red opponent theme */
 .modal.tutorial-modal { border-color:var(--gold-deep); text-align:center; }
