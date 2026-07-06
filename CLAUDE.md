@@ -59,15 +59,21 @@ Cards are **chunks**, not single words. `Card.role`:
 - `predicate` — a chunky verb phrase. Either **closed** (baked `sentiment`, e.g. "kicks
   puppies") or **open** (`open:true` + `affinity`/`deed`, takes an object, e.g. "wants to
   destroy ___"). Conjugates via `pre`/`lead`/`post` (or `invariant:true` for modal/past text).
-- `connector` — `conj`: **only `and` (CCAND) coordinates bare predicates** under a shared, elided subject
-  ("My opponent kicks puppies **and** eats babies" — one clause, one subject), OR joins clauses. **Every
-  OTHER conjunction is clause-ONLY** and needs its own subject: `and therefore`/`but`/`so`/`which is
-  why`/… → CJOIN (joins clauses only — removed from the `PREDS` rules 2026-07, so "…kicks puppies but
-  eats babies" is now *confused*: a human says "…but **I** protect them"; this mainly stops the AI
-  emitting weird elided fragments), and **`because` → CBEC** (subordinates a full clause; "…a jackass
-  because wants to raise taxes" is *confused*). So CJOIN and CBEC are now grammatically identical
-  (clause-join only); their only difference is the combo tier keyed off `conj` in `scoring.ts`
-  (`and therefore`/`because` = logic ×1.30, `but` = pivot ×1.40). `period` is the **free** clause break, but limited to **one per statement**
+- `connector` — `conj`: **ADDITIVE connectors coordinate bare predicates** under a shared, elided subject
+  ("My opponent kicks puppies **and** eats babies" — one clause, one subject) OR join clauses. Additive =
+  plain `and` (CCAND) **and** any `and…` connector flagged `Card.elides` (→ CCOORD) — currently just
+  **`and therefore`** ("…will ban updates **and therefore** will keep us safe" is one elided clause, 2026-07).
+  **Every NON-additive conjunction is clause-ONLY** and needs its own subject: `but`/`so`/`which is why`/…
+  → CJOIN (joins clauses only — CJOIN was removed from the `PREDS` rules 2026-07, so "…kicks puppies but
+  eats babies" is *confused*: a human says "…but **I** protect them"; this stops the AI emitting weird
+  elided fragments like "…so bench presses fishing boats"), and **`because` → CBEC** (subordinates a full
+  clause; "…a jackass because wants to raise taxes" is *confused*). **`elides` is PER-CARD, orthogonal to
+  the `conj` combo tier:** `so` and `which is why` share the `and therefore` logic tier but are NOT additive,
+  so they stay clause-only (`c_so`/`c_which` carry NO `elides`). CCOORD differs from CCAND in that it does
+  NOT coordinate noun phrases — only plain `and` builds a compound subject/object. So CJOIN and CBEC are
+  grammatically identical (clause-join only); their only difference is the combo tier keyed off `conj` in
+  `scoring.ts` (`and therefore`/`because` = logic ×1.30, `but` = pivot ×1.40). An elided `and therefore`
+  earns that same logic combo (the junction's `conj` drives the tier, not whether it elided). `period` is the **free** clause break, but limited to **one per statement**
   (`PlayerState.usedPeriod`, reset each question in `dealRound`; the AI's `availFor` honors it too) —
   so a statement is at most two sentences and rambling-by-period is impossible (chain conjunctions for
   more, and a combo). The `PERIOD` card (cards.ts) is **virtual** — never drawn/consumed, NOT in
@@ -117,11 +123,15 @@ Cards are **chunks**, not single words. `Card.role`:
 
 Grammar: `TOP→S [INT]; S→CLAUSE | S (CCAND|CJOIN|CBEC|CPERIOD) CLAUSE; CLAUSE→SUBJ [MODS] PREDS;
 SUBJ→NP | SUBJ CCAND NP | SUBJ MODS CCAND NP; MODS→MOD | MODS MOD; PREDS→PRED | PREDS CCAND
-PRED; PRED→PC | PO OBJ; OBJ→NP | OBJ CCAND NP`. Terms: `and`→CCAND,
-`and therefore`/`but`/`so`→CJOIN, `because`→**CBEC** and `period`→CPERIOD. **Only `and` (CCAND)
-coordinates bare predicates** (it's the only term in the `PREDS` rule); `CJOIN`/`CBEC`/`CPERIOD` are
-all **clause-ONLY** — absent from PREDS, so each needs its own subject (2026-07: `CJOIN` was removed
-from PREDS, so `but`/`and therefore`/`so` can no longer elide a shared subject). **NP coordination (2026-07):** plain `and` (ONLY `and`) also joins noun phrases into a
+PRED | PREDS CCOORD PRED; PRED→PC | PO OBJ; OBJ→NP | OBJ CCAND NP`. Terms: `and`→CCAND,
+`but`/`so`/`which is why`→CJOIN, `because`→**CBEC**, `period`→CPERIOD, and an ADDITIVE `and…` connector
+flagged `Card.elides` (currently just **`and therefore`**)→**CCOORD** (in addition to its CJOIN term).
+**Additive connectors (CCAND + CCOORD) coordinate bare predicates** (the `PREDS` rule); `CJOIN`/`CBEC`/
+`CPERIOD` are **clause-ONLY** — absent from PREDS, so each needs its own subject (2026-07: `CJOIN` was
+removed from PREDS, so `but`/`so`/`which is why` can no longer elide a shared subject; `and therefore` was
+re-admitted via CCOORD, since it's a genuine additive "and…" that elides naturally — its non-additive
+tier-mates `so`/`which is why` do NOT). CCOORD does NOT coordinate NPs (compound subjects/objects stay
+`and`-only). **NP coordination (2026-07):** plain `and` (ONLY `and`) also joins noun phrases into a
 **compound subject** ("Satan and the lobbyists want to silence free speech" — conjugates PLURAL,
 person = lowest present so "my opponent and I are…") or a **compound object** ("…wants to destroy
 Main Street and our children") — both were natural player builds that used to score "confused". The

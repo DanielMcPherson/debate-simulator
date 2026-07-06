@@ -1,8 +1,8 @@
 import type { Card, Clause, Role, SentenceStructure } from './types';
 
 // Chunk grammar. A statement is a subject noun phrase followed by chunky
-// predicates; predicates may share a subject ONLY when joined by "and", or open new
-// clauses (joined by "because"/"and therefore"/"but"/"so"…). Open predicates take an
+// predicates; predicates may share a subject when joined by an ADDITIVE "and…" connector,
+// or open new clauses (joined by "because"/"but"/"so"…). Open predicates take an
 // object. Validity/completeness drive the AI; the player builds freeform and the
 // audience judges the result.
 //
@@ -10,26 +10,28 @@ import type { Card, Clause, Role, SentenceStructure } from './types';
 //   S     -> CLAUSE | S CCAND CLAUSE | S CJOIN CLAUSE | S CBEC CLAUSE | S CPERIOD CLAUSE
 //   CLAUSE-> SUBJ PREDS | SUBJ MODS PREDS
 //   SUBJ  -> NP | SUBJ CCAND NP | SUBJ MODS CCAND NP   (compound subject)
-//   PREDS -> PRED | PREDS CCAND PRED
+//   PREDS -> PRED | PREDS CCAND PRED | PREDS CCOORD PRED
 //   PRED  -> PC | PO OBJ           (PC = closed predicate, PO = open predicate)
 //   OBJ   -> NP | OBJ CCAND NP                          (compound object)
 //
-// ONLY plain "and" (CCAND) coordinates BARE PREDICATES under a shared, elided subject
-// ("My opponent kicks puppies and eats babies" — one clause, one subject). Every OTHER
-// conjunction — CJOIN ("and therefore"/"but"/"so"/"which is why"/…), CBEC ("because") and
-// CPERIOD (period) — is CLAUSE-ONLY: it can only open a NEW clause and so always needs its
-// own subject. That's the whole difference between CCAND and CJOIN now: CJOIN appears only
-// in the S rule (clause-join), never in PREDS, so "…kicks puppies but eats babies" (bare
-// predicate after "but", no new subject) is ungrammatical — a human would say "…but I
-// protect them" (a full clause), and it stops the AI emitting weird elided fragments like
-// "…is a hero but kicks puppies". "because" subordinating a full clause is the same rule.
-// Plain "and" (ONLY "and") ALSO coordinates noun phrases: a compound subject ("Satan and
-// the lobbyists want to silence free speech") or a compound object ("…wants to destroy
-// Main Street and our children"); the segmenter disambiguates object-coordination from a
-// new clause by lookahead (an NP followed by its own predicate/modifier opens a clause).
+// BARE PREDICATES coordinate under a shared, elided subject ("My opponent kicks puppies and
+// eats babies" — one clause, one subject) only after an ADDITIVE connector: plain "and"
+// (CCAND) or an "and…" connector flagged `elides` (CCOORD — e.g. "and therefore": "…will ban
+// updates and therefore will keep us safe"). Every OTHER conjunction — the rest of CJOIN
+// ("but"/"so"/"which is why"/…), CBEC ("because") and CPERIOD (period) — is CLAUSE-ONLY: it can
+// only open a NEW clause and so always needs its own subject (it appears in the S rule, never
+// in PREDS). So "…kicks puppies but eats babies" (bare predicate after "but", no new subject)
+// is ungrammatical — a human would say "…but I protect them" (a full clause) — and it stops the
+// AI emitting weird elided fragments like "…is a hero but kicks puppies" or "…so bench presses
+// fishing boats". "because" subordinating a full clause is the same rule. CCOORD differs from
+// CCAND in that it does NOT coordinate noun phrases: only plain "and" (ONLY "and") builds a
+// compound subject ("Satan and the lobbyists want to silence free speech") or compound object
+// ("…wants to destroy Main Street and our children"); the segmenter disambiguates
+// object-coordination from a new clause by lookahead (an NP followed by its own predicate/
+// modifier opens a clause).
 
-type Term = 'NP' | 'MOD' | 'PC' | 'PO' | 'CCAND' | 'CJOIN' | 'CBEC' | 'CPERIOD' | 'INT';
-const TERMS = new Set<Term>(['NP', 'MOD', 'PC', 'PO', 'CCAND', 'CJOIN', 'CBEC', 'CPERIOD', 'INT']);
+type Term = 'NP' | 'MOD' | 'PC' | 'PO' | 'CCAND' | 'CCOORD' | 'CJOIN' | 'CBEC' | 'CPERIOD' | 'INT';
+const TERMS = new Set<Term>(['NP', 'MOD', 'PC', 'PO', 'CCAND', 'CCOORD', 'CJOIN', 'CBEC', 'CPERIOD', 'INT']);
 
 /** The part(s) of speech a card can play. */
 export function rolesOf(card: Card): Role[] {
@@ -73,6 +75,10 @@ function termsAt(card: Card): Term[] {
     const t = connTerm(card.conj);
     if (!terms.includes(t)) terms.push(t);
   }
+  // An additive "and…" connector (e.g. "and therefore") also coordinates BARE PREDICATES
+  // under a shared elided subject — like "and" (CCAND) but WITHOUT NP coordination. It keeps
+  // its CJOIN term (clause-joining via the S rule) and gains CCOORD (bare-predicate coord).
+  if (card.role === 'connector' && card.elides && !terms.includes('CCOORD')) terms.push('CCOORD');
   return terms;
 }
 
@@ -85,9 +91,10 @@ const GRAMMAR: Record<string, string[][]> = {
   // rule lets an aside sit mid-compound ("Satan, who is shady, and the lobbyists want…").
   SUBJ: [['NP'], ['SUBJ', 'CCAND', 'NP'], ['SUBJ', 'MODS', 'CCAND', 'NP']],
   MODS: [['MOD'], ['MODS', 'MOD']],
-  // ONLY CCAND ("and") coordinates bare predicates under a shared subject; CJOIN
-  // ("and therefore"/"but"/"so"/…) is clause-only (S rule), so it needs its own subject.
-  PREDS: [['PRED'], ['PREDS', 'CCAND', 'PRED']],
+  // CCAND ("and") and CCOORD (additive "and…" connectors like "and therefore") coordinate
+  // bare predicates under a shared subject; the rest of CJOIN ("but"/"so"/…) is clause-only
+  // (S rule only), so it needs its own subject.
+  PREDS: [['PRED'], ['PREDS', 'CCAND', 'PRED'], ['PREDS', 'CCOORD', 'PRED']],
   PRED: [['PC'], ['PO', 'OBJ']],
   OBJ: [['NP'], ['OBJ', 'CCAND', 'NP']],
 };
@@ -340,11 +347,13 @@ export function segmentDetailed(tokens: Card[]): { clauses: Seg[]; roleAt: Token
             break;
           }
         }
-        // ONLY plain "and" coordinates a bare predicate under a shared, elided subject;
-        // every other conjunction (period / because / but / and therefore / so / …) is a
-        // hard clause boundary — always a new clause, always needing its own subject. An
-        // "and" opens a new clause only when a fresh subject follows; otherwise it elides.
-        if (conj !== 'and' || (next && next.role === 'np')) {
+        // Plain "and" AND additive "and…" connectors (`t.elides`, e.g. "and therefore")
+        // coordinate a bare predicate under a shared, elided subject; every other conjunction
+        // (period / because / but / so / …) is a hard clause boundary — always a new clause,
+        // always needing its own subject. An eliding connector opens a new clause only when a
+        // fresh subject NP follows; otherwise it elides.
+        const canElide = conj === 'and' || !!t.elides;
+        if (!canElide || (next && next.role === 'np')) {
           push();
           cur = { mods: [], preds: [], joinedBy: conj, connIdx: i };
           started = false;

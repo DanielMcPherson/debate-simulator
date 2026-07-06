@@ -352,7 +352,7 @@ export const CONNECTORS: Card[] = [
   { id: 'c_and', role: 'connector', text: 'and', conj: 'and' },
   { id: 'c_but', role: 'connector', text: 'but', conj: 'but' },
   { id: 'c_because', role: 'connector', text: 'because', conj: 'because' },
-  { id: 'c_therefore', role: 'connector', text: 'and therefore', conj: 'and therefore' },
+  { id: 'c_therefore', role: 'connector', text: 'and therefore', conj: 'and therefore', elides: true }, // additive "and…" — coordinates bare predicates under a shared subject (CCOORD)
   { id: 'c_which', role: 'connector', text: 'which is why', conj: 'and therefore' },
   { id: 'c_frankly', role: 'connector', text: 'and frankly', conj: 'and' }, // retiered 2026-07 — reads as "and" with an adverb, didn't earn the ×1.30 logic tier
   { id: 'c_seeing', role: 'connector', text: 'seeing as how', conj: 'because' }, // second clause-only teacher (CBEC needs a full clause after it)

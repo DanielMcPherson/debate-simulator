@@ -234,8 +234,16 @@ describe('scoring — periods, conjunctions & combos', () => {
 
   it('a clause-join ("and therefore" between two clauses) combos on the logic tier', () => {
     // "My opponent kicks puppies and therefore my opponent lies" — two clauses, logic tier.
-    // ("and therefore" is clause-only now: it needs its own subject, can't elide like "and".)
     expect(combo('s_opp', 'p_kick_pup', 'c_therefore', 's_opp', 'p_lie')?.kind).toBe('logic');
+  });
+
+  it('an ELIDED "and therefore" (bare predicates, one subject) still combos on the logic tier', () => {
+    // "My opponent kicks puppies and therefore lies" — one clause, elided subject; the additive
+    // "and therefore" coordinates the bare predicates and still earns the logic combo.
+    const r = scoreStatement(cards('s_opp', 'p_kick_pup', 'c_therefore', 'p_lie'));
+    expect(r.grammatical).toBe(true);
+    expect(r.combo?.kind).toBe('logic');
+    expect(r.delta).toBeGreaterThan(0);
   });
 
   it('a "but" digs out of a self-own better than a period — and reads as confusion', () => {

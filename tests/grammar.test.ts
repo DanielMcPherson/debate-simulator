@@ -39,14 +39,20 @@ describe('grammar — chunk model', () => {
     expect(parse(line).clauses[0].preds).toHaveLength(2);
   });
 
-  it('a clause-join connector ("and therefore") needs its own subject — it cannot elide it like "and"', () => {
-    // "My opponent kicks puppies and therefore lies" is now an ungrammatical fragment:
-    // only "and" strings bare predicates under a shared subject. "and therefore" must
-    // open a full new clause with its own subject.
-    expect(isComplete(cards('s_opp', 'p_kick_pup', 'c_therefore', 'p_lie'))).toBe(false);
-    const line = cards('s_opp', 'p_kick_pup', 'c_therefore', 's_opp', 'p_lie');
-    expect(isComplete(line)).toBe(true);
-    const clauses = parse(line).clauses;
+  it('the additive "and therefore" coordinates bare predicates under a shared, elided subject', () => {
+    // "My opponent kicks puppies and therefore lies" is ONE clause with an elided subject —
+    // "and therefore" is additive ("and" + "therefore"), so (like "and") it strings bare
+    // predicates under the shared subject. It still records itself as the junction.
+    const elided = cards('s_opp', 'p_kick_pup', 'c_therefore', 'p_lie');
+    expect(isComplete(elided)).toBe(true);
+    const one = parse(elided).clauses;
+    expect(one).toHaveLength(1); // one clause, one subject, two predicates
+    expect(one[0].preds).toHaveLength(2);
+    expect(one[0].preds[1].joinedBy).toBe('and therefore');
+    // …and it still opens a NEW clause when a fresh subject follows it.
+    const twoClause = cards('s_opp', 'p_kick_pup', 'c_therefore', 's_opp', 'p_lie');
+    expect(isComplete(twoClause)).toBe(true);
+    const clauses = parse(twoClause).clauses;
     expect(clauses).toHaveLength(2); // two clauses, each with its own subject
     expect(clauses[1].joinedByPrev).toBe('and therefore'); // real connector recorded
   });
@@ -57,17 +63,22 @@ describe('grammar — chunk model', () => {
     expect(parse(line).clauses).toHaveLength(2);
   });
 
-  it('only "and" elides a shared subject — "but"/"and therefore"/"so"/"because" are clause-only', () => {
+  it('only ADDITIVE connectors elide a shared subject — "but"/"so"/"because" stay clause-only', () => {
     // "...is a disgrace <conn> lies" (bare predicate, no new subject) is ungrammatical for
-    // every conjunction EXCEPT "and", which coordinates predicates under the shared subject.
-    for (const conn of ['c_because', 'c_therefore', 'c_but', 'c_so', 'c_however']) {
+    // every NON-additive conjunction — this is the guard that stops the AI misusing the grammar
+    // ("…so bench presses fishing boats", "I promise happiness but love freedom"). NOTE the
+    // "and therefore" tier is SHARED by "so"/"which is why", which are NOT additive and stay
+    // clause-only even though they combo on the same logic tier.
+    for (const conn of ['c_because', 'c_but', 'c_so', 'c_however', 'c_which']) {
       expect(isComplete(cards('s_opp', 'p_disgrace', conn, 'p_lie'))).toBe(false);
       expect(isValidPrefix(cards('s_opp', 'p_disgrace', conn, 'p_lie'))).toBe(false);
       // …but each is fine with its own subject (a real clause join).
       expect(isComplete(cards('s_opp', 'p_disgrace', conn, 's_people', 'p_love_fd'))).toBe(true);
     }
-    // "and" is the sole exception: it still coordinates bare predicates.
-    expect(isComplete(cards('s_opp', 'p_disgrace', 'c_and', 'p_lie'))).toBe(true);
+    // The additive connectors ("and", "and therefore") DO coordinate bare predicates.
+    for (const conn of ['c_and', 'c_therefore']) {
+      expect(isComplete(cards('s_opp', 'p_disgrace', conn, 'p_lie'))).toBe(true);
+    }
   });
 
   it('firstInvalidIndex points at the token where parsing breaks (for the "WHAT??" highlight)', () => {

@@ -160,6 +160,11 @@ export interface Card {
   // 'and' coordinates (CCAND); 'because'/'and therefore' join logically; 'but'
   // pivots/contrasts; 'period' is the free, unlimited, combo-less clause break.
   conj?: 'and' | 'because' | 'and therefore' | 'but' | 'period';
+  /** Connector only: coordinates bare predicates under a shared, elided subject (like
+   *  "and"), even though its combo `conj` tier is not plain 'and'. Set on additive "and…"
+   *  connectors such as "and therefore". Orthogonal to `conj` — "so"/"which is why" share
+   *  the 'and therefore' tier but are NOT additive, so they stay clause-only. */
+  elides?: boolean;
 
   // --- intensifier ---
   factor?: number;
