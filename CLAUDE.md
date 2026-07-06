@@ -484,6 +484,18 @@ the dark action-card background. **One-time award hint:** the first card ever dr
 (2026-06):** more headliner nouns/verbs, **private finishers** (premium — owned, can't be out-raced:
 `r_x_pipe`/`r_x_idiot`/`r_x_votemany` + `r_x_science`/`r_x_polls`), and a drafted **Typo** action.
 
+**DONE (2026-07) — "That's the Name of the Game!" easter-egg award.** A rare mid-debate award for a
+statement that is EXACTLY the game's namesake — "My opponent kicks puppies" and nothing else.
+UI-only (`evalMidAwards` in main.ts), reuses the whole mid-award path (fires `pendingMid` → normal
+`REWARDS` pick; the *achievement* is the payoff, not a bespoke card). Gate: `r.grammatical` AND
+`game.player.line` is exactly `[s_opp, p_kick_pup]` by base id (`id.split('#')[0]`) — a connector/
+finisher/extra card fails both the `length===2` and `grammatical` guards, so it won't false-fire.
+It's a **luck** award (needs both cards dealt to the shared pool AND grabbed before the AI — a
+feature, not a bug: a delightful rare, not a grind). **GAME-NAME COUPLING (caveat):** the trigger
+ids live in a single `NAME_OF_THE_GAME` const with a loud comment — if the game is ever renamed,
+delete that const + its `fire()`. Also a soft constraint on future card-economy work: `s_opp` and
+`p_kick_pup` must both stay in the SHARED (contested) pool (`buildSharedDeck`, deck.ts).
+
 **DONE (2026-07) — Card upgrades ("Punch Up the Zingers").** The third deck-building axis (besides
 add + cut): upgrade a card into an authored, funnier, stronger version — build toward one or two
 maxed super-cards or spread upgrades wide. **Data:** `UPGRADES: Record<id, Card>` in cards.ts (key =
@@ -738,6 +750,54 @@ or it drags.
   routing (pure + seeded + tested, like everything else). **Step 3: UI** — four podiums, the
   one-screen rules intro, turn indicator.
 
+**P1/P2 · medium — Prune + style-tune + randomize the STARTING DECKS (design idea, 2026-07-06;
+Daniel).** The starting deck is currently doing double duty — baseline *and* card showcase — which
+flattens the deck-building progression curve. Reframe: **the baseline deck should be
+competent-but-BLAND; fun/showcase cards belong in the REWARD pool, not the starting deck** (so every
+draft / consultant visit / upgrade feels like real progress). Prune it. Then **tie the starting
+deck to character select** — `PLAYER_CHARACTERS` (maverick / stateswoman / veteran) maps to
+pander / attack / brag, so choosing a candidate *guides the deck*, not just the portrait (today
+character is visual-only). **Cautions to honor when built:** a style deck should **LEAN (~60/40),
+not straitjacket** — keep all-three-intent coverage + the buildability floor (subjects/verbs/
+connectors — the north star needs supply for long chains), because the **hidden crowd** makes a
+pure-style deck punishing (an attack deck vs a pander-loving crowd is stuck). A **randomized subset**
+of good starters is welcome (StS starting-relic variety) but must be **curated + floor-guaranteed**
+(mirror `ensurePoolPlayable`'s spirit, applied to the private deck) so a roll is never unwinnable.
+This *raises* the value of the Consultant/rewards. Touches `cards.ts` + the private-deck build
+(`deck.ts`/`game.ts`) + the select screen (`ui/main.ts`); engine + tests. See [[tune-for-temptation]].
+
+**P2 · medium — Passive RELICS (Slay-the-Spire-style; design decision 2026-07-06, Daniel).**
+**DECISION: add passive relics; REJECT cross-card engine-building.** For a 12-debate campaign the
+depth should come from content + meta variety, NOT from in-statement mechanics that compete with
+word-building for attention (that fights the north star). Passive **scoring-context modifiers** are
+the sweet spot — they change *how statements land*, add build identity + run variety, and impose
+**zero extra in-line decision load**. Starter ideas: **Teflon Don** (attacks on you backfire for the
+debate), **Incumbent** (start each debate at +10 bar), **Media Darling** (off-topic penalty removed),
+**Base Rally** (your best on-taste clause always gets the crowd boost regardless of hidden taste),
+**Career Politician** (+1 period/statement — cleanly re-surfaces the parked period mechanic).
+Cross-card chains / setup-payoff engines are REJECTED (optimization puzzle, off-north-star). If the
+campaign ever drags, the lever is **fewer rungs, never more in-line mechanics**. **Architecture
+flag:** relics would be the FIRST player-only meta that touches the ENGINE
+(`run.relics → createGame({relics}) → ScoreOptions`/`GameState`), vs today's deck-only
+`bonus`/`removed`/`upgrades` — model them as clean scoring modifiers threaded through ScoreOptions,
+NOT scattered `if`s in `scoreStatement`. Needs a design pass (seam + starter list + acquisition UI:
+consultant? post-win?). Engine + tests.
+
+**P2 · medium — OPPONENT-SPECIFIC signature cards (design idea, 2026-07-06; Daniel).** Today every
+speaker draws from the same lexicon, so characters don't *sound* distinct. Give each opponent a
+small set of **signature cards in their own voice/style** (pander / attack / brag flavor matching
+their `style`), shuffled into their AI private deck — so a debate against the panderer *reads*
+different from one against the mudslinger, and the cast has real variety. Deck layering becomes:
+**shared common pool** (contested) + **player-specific** cards (see the starting-deck item above) +
+**opponent-specific** cards. Rides the existing plumbing: opponents already have a `style`, and the
+tiered-ladder `deckBoost` note already shuffles style-appropriate reward cards into the AI
+private-deck build — this extends that with *authored, character-flavored* cards keyed to the
+opponent. Pairs naturally with the 6 new ladder opponents (author their signature lines alongside
+their portraits/blurbs) and with the single-narrator voice decision (character comes from *word
+choice*, not voice, when one announcer reads everyone). Data-first in `cards.ts` (a per-opponent
+card set) + the AI deck build; watch the REWARDS/lexicon size so signature sets don't balloon the
+VA/clip count. Same authoring rule as all cards (a strong, funny, in-character line — not filler).
+
 **P3 · medium — Curse cards** (depends on shop + heel-turn). Opponent sabotage that injects toxic
 pre-formed statements into your deck ("…and that's why I despise my voters"), clogging your hand.
 Remove in the shop, or play deliberately to attempt a Heel Turn.
@@ -856,15 +916,21 @@ exactly. Two layers:
   sentiment/ceiling/tier balance stays tunable after recording). Shipping TTS would need the
   Steam AI-content disclosure (see Commercialization §) — TTS is scaffolding, don't let it
   quietly become permanent.
-  **Numbers (counted 2026-07):** 431 distinct speakable card texts (278 ALL + 153 upgrade
-  tiers) → **~560 surface forms** (non-invariant predicates/modifiers need both conjugations —
-  "kicks/kick puppies", "is/are"). **The open decision that dominates cost — voice scoping**
-  (Daniel decides, BEFORE any prune-for-VA pass): per-character voicing (6 opps + 3 player
-  candidates) ≈ 5,000 recordings — not viable; one voice per side ≈ 1,100–1,700; a single
-  deadpan C-SPAN announcer ≈ 560 (and fits the broadcast skin). Build a **clip-manifest
-  generator** first: a script walking cards.ts through morphology.ts to emit every renderable
-  surface form (filename schema now, actor script later); "adding cards is data-only" then
-  gains a generate-its-clips build step. The prune-for-VA pass and the CURATE-the-upgrade-pool
+  **Numbers (`npm run genclips`, 2026-07-06):** **439 distinct speakable card texts** (`ALL` +
+  `UPGRADE_DEFS`; the earlier hand-count of 431 is stale — the deck grew) → **567 surface forms**
+  (non-invariant predicates/modifiers need both conjugations — "kicks/kick puppies", "is/are").
+  **VOICE SCOPING — DECIDED (2026-07-06): a SINGLE deadpan moderator/announcer voice** (~560 forms,
+  one voice). Rationale: it's the cost floor, fits the C-SPAN broadcast skin, and — the decisive
+  factor as the cast grows to 12 opponents + 3 players — it **decouples voice from the cast** (new
+  opponents add zero recordings). Per-character voicing (≈5,000) is dead; the "few reused male/
+  female voices, player/opp distinct" middle path is the only fallback if playtesters find the
+  single narrator flat (revisit only then). **DONE — clip-manifest generator:** `scripts/gen-clips.ts`
+  (`npm run genclips`) walks `[...ALL, ...UPGRADE_DEFS]` through morphology.ts and emits
+  `voice-manifest.json` (stable `<id>.3sg`/`.pl` keys for two-form cards; single key otherwise) with
+  fail-loud self-checks (distinct count === `ALL.length+UPGRADE_DEFS.length`; forms > cards). It is
+  **pure/deterministic — no TTS, no audio wiring** (that's the explicit follow-on: a genart-style
+  `gen-tts.mjs` reading the manifest + an ElevenLabs `.env` key, then the in-game playback layer +
+  crowd SFX). The prune-for-VA pass and the CURATE-the-upgrade-pool
   item above are **the same pass** — do them together (prune to the good lines without making
   the game repetitive).
 

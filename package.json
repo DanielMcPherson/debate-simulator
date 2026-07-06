@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "catalog": "vite-node scripts/gen-catalog.ts",
     "upgrades": "vite-node scripts/gen-upgrades.ts",
+    "genclips": "vite-node scripts/gen-clips.ts",
     "genart": "node scripts/genart.mjs"
   },
   "devDependencies": {

@@ -1,0 +1,4744 @@
+{
+  "generated": "run `npm run genclips` to regenerate — do not edit by hand",
+  "voice": "single deadpan moderator/announcer (see gen-clips.ts header for the scoping decision)",
+  "distinctCards": 439,
+  "surfaceForms": 567,
+  "clips": [
+    {
+      "key": "s_i",
+      "file": "s_i.mp3",
+      "cardId": "s_i",
+      "role": "np",
+      "conjugation": null,
+      "text": "I"
+    },
+    {
+      "key": "s_admin",
+      "file": "s_admin.mp3",
+      "cardId": "s_admin",
+      "role": "np",
+      "conjugation": null,
+      "text": "My administration"
+    },
+    {
+      "key": "s_record",
+      "file": "s_record.mp3",
+      "cardId": "s_record",
+      "role": "np",
+      "conjugation": null,
+      "text": "My record"
+    },
+    {
+      "key": "s_policies",
+      "file": "s_policies.mp3",
+      "cardId": "s_policies",
+      "role": "np",
+      "conjugation": null,
+      "text": "My policies"
+    },
+    {
+      "key": "s_opp",
+      "file": "s_opp.mp3",
+      "cardId": "s_opp",
+      "role": "np",
+      "conjugation": null,
+      "text": "My opponent"
+    },
+    {
+      "key": "s_opp_wife",
+      "file": "s_opp_wife.mp3",
+      "cardId": "s_opp_wife",
+      "role": "np",
+      "conjugation": null,
+      "text": "My opponent's wife"
+    },
+    {
+      "key": "s_opp_donors",
+      "file": "s_opp_donors.mp3",
+      "cardId": "s_opp_donors",
+      "role": "np",
+      "conjugation": null,
+      "text": "My opponent's donors"
+    },
+    {
+      "key": "s_career",
+      "file": "s_career.mp3",
+      "cardId": "s_career",
+      "role": "np",
+      "conjugation": null,
+      "text": "Career politicians"
+    },
+    {
+      "key": "s_insiders",
+      "file": "s_insiders.mp3",
+      "cardId": "s_insiders",
+      "role": "np",
+      "conjugation": null,
+      "text": "Washington insiders"
+    },
+    {
+      "key": "s_people",
+      "file": "s_people.mp3",
+      "cardId": "s_people",
+      "role": "np",
+      "conjugation": null,
+      "text": "The American people"
+    },
+    {
+      "key": "s_families",
+      "file": "s_families.mp3",
+      "cardId": "s_families",
+      "role": "np",
+      "conjugation": null,
+      "text": "Hardworking families"
+    },
+    {
+      "key": "s_children",
+      "file": "s_children.mp3",
+      "cardId": "s_children",
+      "role": "np",
+      "conjugation": null,
+      "text": "Our children"
+    },
+    {
+      "key": "s_nation",
+      "file": "s_nation.mp3",
+      "cardId": "s_nation",
+      "role": "np",
+      "conjugation": null,
+      "text": "This great nation"
+    },
+    {
+      "key": "s_admin_normal",
+      "file": "s_admin_normal.mp3",
+      "cardId": "s_admin_normal",
+      "role": "np",
+      "conjugation": null,
+      "text": "My totally normal administration"
+    },
+    {
+      "key": "s_campaign_legal",
+      "file": "s_campaign_legal.mp3",
+      "cardId": "s_campaign_legal",
+      "role": "np",
+      "conjugation": null,
+      "text": "My beautiful and completely legal campaign"
+    },
+    {
+      "key": "s_opp_team",
+      "file": "s_opp_team.mp3",
+      "cardId": "s_opp_team",
+      "role": "np",
+      "conjugation": null,
+      "text": "My opponent's team of untrustworthy weirdos"
+    },
+    {
+      "key": "s_people_brave",
+      "file": "s_people_brave.mp3",
+      "cardId": "s_people_brave",
+      "role": "np",
+      "conjugation": null,
+      "text": "The brave people watching this debate"
+    },
+    {
+      "key": "s_people_normal",
+      "file": "s_people_normal.mp3",
+      "cardId": "s_people_normal",
+      "role": "np",
+      "conjugation": null,
+      "text": "The deeply normal and not-at-all-angry people of this country"
+    },
+    {
+      "key": "s_children_screen",
+      "file": "s_children_screen.mp3",
+      "cardId": "s_children_screen",
+      "role": "np",
+      "conjugation": null,
+      "text": "Our screen-addicted but still precious children"
+    },
+    {
+      "key": "s_handshake",
+      "file": "s_handshake.mp3",
+      "cardId": "s_handshake",
+      "role": "np",
+      "conjugation": null,
+      "text": "My famously firm handshake"
+    },
+    {
+      "key": "s_commonsense",
+      "file": "s_commonsense.mp3",
+      "cardId": "s_commonsense",
+      "role": "np",
+      "conjugation": null,
+      "text": "My award-winning common sense"
+    },
+    {
+      "key": "s_opp_friends",
+      "file": "s_opp_friends.mp3",
+      "cardId": "s_opp_friends",
+      "role": "np",
+      "conjugation": null,
+      "text": "My opponent's mysterious offshore friends"
+    },
+    {
+      "key": "s_opp_list",
+      "file": "s_opp_list.mp3",
+      "cardId": "s_opp_list",
+      "role": "np",
+      "conjugation": null,
+      "text": "My opponent's entirely imaginary list of accomplishments"
+    },
+    {
+      "key": "s_goodpeople",
+      "file": "s_goodpeople.mp3",
+      "cardId": "s_goodpeople",
+      "role": "np",
+      "conjugation": null,
+      "text": "The good people who actually showed up tonight"
+    },
+    {
+      "key": "s_smalltowns",
+      "file": "s_smalltowns.mp3",
+      "cardId": "s_smalltowns",
+      "role": "np",
+      "conjugation": null,
+      "text": "Our tired but unbeaten small towns"
+    },
+    {
+      "key": "s_country_flaws",
+      "file": "s_country_flaws.mp3",
+      "cardId": "s_country_flaws",
+      "role": "np",
+      "conjugation": null,
+      "text": "This beautiful country, flaws and all"
+    },
+    {
+      "key": "o_satan",
+      "file": "o_satan.mp3",
+      "cardId": "o_satan",
+      "role": "np",
+      "conjugation": null,
+      "text": "Satan"
+    },
+    {
+      "key": "o_swamp",
+      "file": "o_swamp.mp3",
+      "cardId": "o_swamp",
+      "role": "np",
+      "conjugation": null,
+      "text": "the swamp"
+    },
+    {
+      "key": "o_taxes",
+      "file": "o_taxes.mp3",
+      "cardId": "o_taxes",
+      "role": "np",
+      "conjugation": null,
+      "text": "higher taxes"
+    },
+    {
+      "key": "o_lobbyists",
+      "file": "o_lobbyists.mp3",
+      "cardId": "o_lobbyists",
+      "role": "np",
+      "conjugation": null,
+      "text": "shady lobbyists"
+    },
+    {
+      "key": "o_chaos",
+      "file": "o_chaos.mp3",
+      "cardId": "o_chaos",
+      "role": "np",
+      "conjugation": null,
+      "text": "total chaos"
+    },
+    {
+      "key": "o_freedom",
+      "file": "o_freedom.mp3",
+      "cardId": "o_freedom",
+      "role": "np",
+      "conjugation": null,
+      "text": "freedom and democracy"
+    },
+    {
+      "key": "o_veterans",
+      "file": "o_veterans.mp3",
+      "cardId": "o_veterans",
+      "role": "np",
+      "conjugation": null,
+      "text": "our veterans"
+    },
+    {
+      "key": "o_smallbiz",
+      "file": "o_smallbiz.mp3",
+      "cardId": "o_smallbiz",
+      "role": "np",
+      "conjugation": null,
+      "text": "small businesses"
+    },
+    {
+      "key": "o_middle",
+      "file": "o_middle.mp3",
+      "cardId": "o_middle",
+      "role": "np",
+      "conjugation": null,
+      "text": "the middle class"
+    },
+    {
+      "key": "o_borders",
+      "file": "o_borders.mp3",
+      "cardId": "o_borders",
+      "role": "np",
+      "conjugation": null,
+      "text": "our borders"
+    },
+    {
+      "key": "o_schools",
+      "file": "o_schools.mp3",
+      "cardId": "o_schools",
+      "role": "np",
+      "conjugation": null,
+      "text": "our public schools"
+    },
+    {
+      "key": "o_constitution",
+      "file": "o_constitution.mp3",
+      "cardId": "o_constitution",
+      "role": "np",
+      "conjugation": null,
+      "text": "the Constitution"
+    },
+    {
+      "key": "o_paycheck",
+      "file": "o_paycheck.mp3",
+      "cardId": "o_paycheck",
+      "role": "np",
+      "conjugation": null,
+      "text": "the working man's paycheck"
+    },
+    {
+      "key": "o_mainstreet",
+      "file": "o_mainstreet.mp3",
+      "cardId": "o_mainstreet",
+      "role": "np",
+      "conjugation": null,
+      "text": "Main Street"
+    },
+    {
+      "key": "o_familyfarm",
+      "file": "o_familyfarm.mp3",
+      "cardId": "o_familyfarm",
+      "role": "np",
+      "conjugation": null,
+      "text": "the family farm"
+    },
+    {
+      "key": "o_commonsense",
+      "file": "o_commonsense.mp3",
+      "cardId": "o_commonsense",
+      "role": "np",
+      "conjugation": null,
+      "text": "common sense itself"
+    },
+    {
+      "key": "o_bureaucracy",
+      "file": "o_bureaucracy.mp3",
+      "cardId": "o_bureaucracy",
+      "role": "np",
+      "conjugation": null,
+      "text": "the bloated bureaucracy"
+    },
+    {
+      "key": "o_inflation",
+      "file": "o_inflation.mp3",
+      "cardId": "o_inflation",
+      "role": "np",
+      "conjugation": null,
+      "text": "runaway inflation"
+    },
+    {
+      "key": "o_interests",
+      "file": "o_interests.mp3",
+      "cardId": "o_interests",
+      "role": "np",
+      "conjugation": null,
+      "text": "the special interests"
+    },
+    {
+      "key": "o_committee",
+      "file": "o_committee.mp3",
+      "cardId": "o_committee",
+      "role": "np",
+      "conjugation": null,
+      "text": "a do-nothing committee"
+    },
+    {
+      "key": "s_position",
+      "file": "s_position.mp3",
+      "cardId": "s_position",
+      "role": "np",
+      "conjugation": null,
+      "text": "My position, which is the best position, believe me,"
+    },
+    {
+      "key": "s_campaign_transparent",
+      "file": "s_campaign_transparent.mp3",
+      "cardId": "s_campaign_transparent",
+      "role": "np",
+      "conjugation": null,
+      "text": "My incredibly well-organized and financially transparent campaign"
+    },
+    {
+      "key": "s_plan",
+      "file": "s_plan.mp3",
+      "cardId": "s_plan",
+      "role": "np",
+      "conjugation": null,
+      "text": "My plan, which fits neatly on a single index card"
+    },
+    {
+      "key": "s_gut",
+      "file": "s_gut.mp3",
+      "cardId": "s_gut",
+      "role": "np",
+      "conjugation": null,
+      "text": "My gut, which has frankly never once been wrong"
+    },
+    {
+      "key": "s_plan_spellcheck",
+      "file": "s_plan_spellcheck.mp3",
+      "cardId": "s_plan_spellcheck",
+      "role": "np",
+      "conjugation": null,
+      "text": "My beautiful, patriotic, and mostly spell-checked plan"
+    },
+    {
+      "key": "s_admin_unhaunted",
+      "file": "s_admin_unhaunted.mp3",
+      "cardId": "s_admin_unhaunted",
+      "role": "np",
+      "conjugation": null,
+      "text": "My administration, which has never once been haunted"
+    },
+    {
+      "key": "s_idiot_opp",
+      "file": "s_idiot_opp.mp3",
+      "cardId": "s_idiot_opp",
+      "role": "np",
+      "conjugation": null,
+      "text": "My idiot freedom-hating opponent"
+    },
+    {
+      "key": "s_crook_opp",
+      "file": "s_crook_opp.mp3",
+      "cardId": "s_crook_opp",
+      "role": "np",
+      "conjugation": null,
+      "text": "My crooked, do-nothing opponent"
+    },
+    {
+      "key": "s_opp_buffoons",
+      "file": "s_opp_buffoons.mp3",
+      "cardId": "s_opp_buffoons",
+      "role": "np",
+      "conjugation": null,
+      "text": "The malignant buffoons backing my opponent's campaign"
+    },
+    {
+      "key": "s_opp_army",
+      "file": "s_opp_army.mp3",
+      "cardId": "s_opp_army",
+      "role": "np",
+      "conjugation": null,
+      "text": "My opponent's army of elitist hall monitors"
+    },
+    {
+      "key": "s_opp_speechwriters",
+      "file": "s_opp_speechwriters.mp3",
+      "cardId": "s_opp_speechwriters",
+      "role": "np",
+      "conjugation": null,
+      "text": "The lobbyists who write my opponent's speeches"
+    },
+    {
+      "key": "s_opp_personality",
+      "file": "s_opp_personality.mp3",
+      "cardId": "s_opp_personality",
+      "role": "np",
+      "conjugation": null,
+      "text": "My opponent's heavily focus-grouped personality"
+    },
+    {
+      "key": "s_proud_nation",
+      "file": "s_proud_nation.mp3",
+      "cardId": "s_proud_nation",
+      "role": "np",
+      "conjugation": null,
+      "text": "This great and proud nation"
+    },
+    {
+      "key": "s_wonderful_people",
+      "file": "s_wonderful_people.mp3",
+      "cardId": "s_wonderful_people",
+      "role": "np",
+      "conjugation": null,
+      "text": "The wonderful, beautiful people of this country"
+    },
+    {
+      "key": "o_radical",
+      "file": "o_radical.mp3",
+      "cardId": "o_radical",
+      "role": "np",
+      "conjugation": null,
+      "text": "the radical fringe"
+    },
+    {
+      "key": "o_communists",
+      "file": "o_communists.mp3",
+      "cardId": "o_communists",
+      "role": "np",
+      "conjugation": null,
+      "text": "card-carrying communists"
+    },
+    {
+      "key": "o_patriots",
+      "file": "o_patriots.mp3",
+      "cardId": "o_patriots",
+      "role": "np",
+      "conjugation": null,
+      "text": "hardworking patriots"
+    },
+    {
+      "key": "p_deliver.3sg",
+      "file": "p_deliver.3sg.mp3",
+      "cardId": "p_deliver",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "delivers blue skies and happiness"
+    },
+    {
+      "key": "p_deliver.pl",
+      "file": "p_deliver.pl.mp3",
+      "cardId": "p_deliver",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "deliver blue skies and happiness"
+    },
+    {
+      "key": "p_love_fd.3sg",
+      "file": "p_love_fd.3sg.mp3",
+      "cardId": "p_love_fd",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "loves freedom and democracy"
+    },
+    {
+      "key": "p_love_fd.pl",
+      "file": "p_love_fd.pl.mp3",
+      "cardId": "p_love_fd",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "love freedom and democracy"
+    },
+    {
+      "key": "p_patriot.3sg",
+      "file": "p_patriot.3sg.mp3",
+      "cardId": "p_patriot",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is a true patriot"
+    },
+    {
+      "key": "p_patriot.pl",
+      "file": "p_patriot.pl.mp3",
+      "cardId": "p_patriot",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are a true patriot"
+    },
+    {
+      "key": "p_strong.3sg",
+      "file": "p_strong.3sg.mp3",
+      "cardId": "p_strong",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is strong and decisive"
+    },
+    {
+      "key": "p_strong.pl",
+      "file": "p_strong.pl.mp3",
+      "cardId": "p_strong",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are strong and decisive"
+    },
+    {
+      "key": "p_standup.3sg",
+      "file": "p_standup.3sg.mp3",
+      "cardId": "p_standup",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "stands up for the little guy"
+    },
+    {
+      "key": "p_standup.pl",
+      "file": "p_standup.pl.mp3",
+      "cardId": "p_standup",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "stand up for the little guy"
+    },
+    {
+      "key": "p_protect_vets.3sg",
+      "file": "p_protect_vets.3sg.mp3",
+      "cardId": "p_protect_vets",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "protects our veterans"
+    },
+    {
+      "key": "p_protect_vets.pl",
+      "file": "p_protect_vets.pl.mp3",
+      "cardId": "p_protect_vets",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "protect our veterans"
+    },
+    {
+      "key": "p_cut_taxes.3sg",
+      "file": "p_cut_taxes.3sg.mp3",
+      "cardId": "p_cut_taxes",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "cuts taxes for working families"
+    },
+    {
+      "key": "p_cut_taxes.pl",
+      "file": "p_cut_taxes.pl.mp3",
+      "cardId": "p_cut_taxes",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "cut taxes for working families"
+    },
+    {
+      "key": "p_fund_schools",
+      "file": "p_fund_schools.mp3",
+      "cardId": "p_fund_schools",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will fully fund our schools"
+    },
+    {
+      "key": "p_defend_liberty",
+      "file": "p_defend_liberty.mp3",
+      "cardId": "p_defend_liberty",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will defend our liberty"
+    },
+    {
+      "key": "p_fight_for_you",
+      "file": "p_fight_for_you.mp3",
+      "cardId": "p_fight_for_you",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will always fight for you"
+    },
+    {
+      "key": "p_have_back",
+      "file": "p_have_back.mp3",
+      "cardId": "p_have_back",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will always have your back"
+    },
+    {
+      "key": "p_keep_safe",
+      "file": "p_keep_safe.mp3",
+      "cardId": "p_keep_safe",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will keep this country safe"
+    },
+    {
+      "key": "p_read_constitution.3sg",
+      "file": "p_read_constitution.3sg.mp3",
+      "cardId": "p_read_constitution",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has read every single word of the Constitution and loved all of it"
+    },
+    {
+      "key": "p_read_constitution.pl",
+      "file": "p_read_constitution.pl.mp3",
+      "cardId": "p_read_constitution",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have read every single word of the Constitution and loved all of it"
+    },
+    {
+      "key": "p_kick_pup.3sg",
+      "file": "p_kick_pup.3sg.mp3",
+      "cardId": "p_kick_pup",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "kicks puppies"
+    },
+    {
+      "key": "p_kick_pup.pl",
+      "file": "p_kick_pup.pl.mp3",
+      "cardId": "p_kick_pup",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "kick puppies"
+    },
+    {
+      "key": "p_lie.3sg",
+      "file": "p_lie.3sg.mp3",
+      "cardId": "p_lie",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "lies to your face"
+    },
+    {
+      "key": "p_lie.pl",
+      "file": "p_lie.pl.mp3",
+      "cardId": "p_lie",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "lie to your face"
+    },
+    {
+      "key": "p_disgrace.3sg",
+      "file": "p_disgrace.3sg.mp3",
+      "cardId": "p_disgrace",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is a national disgrace"
+    },
+    {
+      "key": "p_disgrace.pl",
+      "file": "p_disgrace.pl.mp3",
+      "cardId": "p_disgrace",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are a national disgrace"
+    },
+    {
+      "key": "p_weak.3sg",
+      "file": "p_weak.3sg.mp3",
+      "cardId": "p_weak",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is weak and out of touch"
+    },
+    {
+      "key": "p_weak.pl",
+      "file": "p_weak.pl.mp3",
+      "cardId": "p_weak",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are weak and out of touch"
+    },
+    {
+      "key": "p_jackass.3sg",
+      "file": "p_jackass.3sg.mp3",
+      "cardId": "p_jackass",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is an unscrupulous jackass"
+    },
+    {
+      "key": "p_jackass.pl",
+      "file": "p_jackass.pl.mp3",
+      "cardId": "p_jackass",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are an unscrupulous jackass"
+    },
+    {
+      "key": "p_raise_taxes.3sg",
+      "file": "p_raise_taxes.3sg.mp3",
+      "cardId": "p_raise_taxes",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "wants to raise your taxes"
+    },
+    {
+      "key": "p_raise_taxes.pl",
+      "file": "p_raise_taxes.pl.mp3",
+      "cardId": "p_raise_taxes",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "want to raise your taxes"
+    },
+    {
+      "key": "p_cut_lunch.3sg",
+      "file": "p_cut_lunch.3sg.mp3",
+      "cardId": "p_cut_lunch",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "wants to cancel school lunch"
+    },
+    {
+      "key": "p_cut_lunch.pl",
+      "file": "p_cut_lunch.pl.mp3",
+      "cardId": "p_cut_lunch",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "want to cancel school lunch"
+    },
+    {
+      "key": "p_silence.3sg",
+      "file": "p_silence.3sg.mp3",
+      "cardId": "p_silence",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "wants to silence free speech"
+    },
+    {
+      "key": "p_silence.pl",
+      "file": "p_silence.pl.mp3",
+      "cardId": "p_silence",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "want to silence free speech"
+    },
+    {
+      "key": "p_worship.3sg",
+      "file": "p_worship.3sg.mp3",
+      "cardId": "p_worship",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "worships Satan"
+    },
+    {
+      "key": "p_worship.pl",
+      "file": "p_worship.pl.mp3",
+      "cardId": "p_worship",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "worship Satan"
+    },
+    {
+      "key": "p_ignore_vets.3sg",
+      "file": "p_ignore_vets.3sg.mp3",
+      "cardId": "p_ignore_vets",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "ignores our veterans"
+    },
+    {
+      "key": "p_ignore_vets.pl",
+      "file": "p_ignore_vets.pl.mp3",
+      "cardId": "p_ignore_vets",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "ignore our veterans"
+    },
+    {
+      "key": "p_cant_trust",
+      "file": "p_cant_trust.mp3",
+      "cardId": "p_cant_trust",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "can't be trusted"
+    },
+    {
+      "key": "p_say_anything",
+      "file": "p_say_anything.mp3",
+      "cardId": "p_say_anything",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will say anything to get elected"
+    },
+    {
+      "key": "p_destroy_country",
+      "file": "p_destroy_country.mp3",
+      "cardId": "p_destroy_country",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will destroy this country"
+    },
+    {
+      "key": "p_ashamed",
+      "file": "p_ashamed.mp3",
+      "cardId": "p_ashamed",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "should be ashamed"
+    },
+    {
+      "key": "p_tax_christmas.3sg",
+      "file": "p_tax_christmas.3sg.mp3",
+      "cardId": "p_tax_christmas",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "wants to tax your Christmas presents"
+    },
+    {
+      "key": "p_tax_christmas.pl",
+      "file": "p_tax_christmas.pl.mp3",
+      "cardId": "p_tax_christmas",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "want to tax your Christmas presents"
+    },
+    {
+      "key": "p_tollbooth.3sg",
+      "file": "p_tollbooth.3sg.mp3",
+      "cardId": "p_tollbooth",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "wants to put a toll booth on your driveway"
+    },
+    {
+      "key": "p_tollbooth.pl",
+      "file": "p_tollbooth.pl.mp3",
+      "cardId": "p_tollbooth",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "want to put a toll booth on your driveway"
+    },
+    {
+      "key": "p_naps.3sg",
+      "file": "p_naps.3sg.mp3",
+      "cardId": "p_naps",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "naps through every important meeting"
+    },
+    {
+      "key": "p_naps.pl",
+      "file": "p_naps.pl.mp3",
+      "cardId": "p_naps",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "nap through every important meeting"
+    },
+    {
+      "key": "p_fight_bear",
+      "file": "p_fight_bear.mp3",
+      "cardId": "p_fight_bear",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will personally fight a bear for your freedom"
+    },
+    {
+      "key": "p_lift_boats.3sg",
+      "file": "p_lift_boats.3sg.mp3",
+      "cardId": "p_lift_boats",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "bench-presses small fishing boats before breakfast"
+    },
+    {
+      "key": "p_lift_boats.pl",
+      "file": "p_lift_boats.pl.mp3",
+      "cardId": "p_lift_boats",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "bench-press small fishing boats before breakfast"
+    },
+    {
+      "key": "p_phonecall",
+      "file": "p_phonecall.mp3",
+      "cardId": "p_phonecall",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "could fix the whole economy with a single phone call"
+    },
+    {
+      "key": "p_neverwrong.3sg",
+      "file": "p_neverwrong.3sg.mp3",
+      "cardId": "p_neverwrong",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is never wrong about anything, ever"
+    },
+    {
+      "key": "p_neverwrong.pl",
+      "file": "p_neverwrong.pl.mp3",
+      "cardId": "p_neverwrong",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are never wrong about anything, ever"
+    },
+    {
+      "key": "p_handshake_hair.3sg",
+      "file": "p_handshake_hair.3sg.mp3",
+      "cardId": "p_handshake_hair",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has the handshake of a champion and the hair of a statesman"
+    },
+    {
+      "key": "p_handshake_hair.pl",
+      "file": "p_handshake_hair.pl.mp3",
+      "cardId": "p_handshake_hair",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have the handshake of a champion and the hair of a statesman"
+    },
+    {
+      "key": "p_courage.3sg",
+      "file": "p_courage.3sg.mp3",
+      "cardId": "p_courage",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has the courage of ten senators and the humility of eleven"
+    },
+    {
+      "key": "p_courage.pl",
+      "file": "p_courage.pl.mp3",
+      "cardId": "p_courage",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have the courage of ten senators and the humility of eleven"
+    },
+    {
+      "key": "p_battery",
+      "file": "p_battery.mp3",
+      "cardId": "p_battery",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will direct our nation's scientists to make the last 10% of a phone battery last longer"
+    },
+    {
+      "key": "p_hurricane",
+      "file": "p_hurricane.mp3",
+      "cardId": "p_hurricane",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "once talked a hurricane into changing course"
+    },
+    {
+      "key": "p_wallet",
+      "file": "p_wallet.mp3",
+      "cardId": "p_wallet",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "personally returned a lost wallet on live television"
+    },
+    {
+      "key": "p_oncegen.3sg",
+      "file": "p_oncegen.3sg.mp3",
+      "cardId": "p_oncegen",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is a once-in-a-generation genius"
+    },
+    {
+      "key": "p_oncegen.pl",
+      "file": "p_oncegen.pl.mp3",
+      "cardId": "p_oncegen",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are a once-in-a-generation genius"
+    },
+    {
+      "key": "p_zipcodes",
+      "file": "p_zipcodes.mp3",
+      "cardId": "p_zipcodes",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "memorized every ZIP code in this country, out of respect"
+    },
+    {
+      "key": "p_ikea.3sg",
+      "file": "p_ikea.3sg.mp3",
+      "cardId": "p_ikea",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "assembles IKEA furniture with no leftover screws, on the first try"
+    },
+    {
+      "key": "p_ikea.pl",
+      "file": "p_ikea.pl.mp3",
+      "cardId": "p_ikea",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "assemble IKEA furniture with no leftover screws, on the first try"
+    },
+    {
+      "key": "p_microchip.3sg",
+      "file": "p_microchip.3sg.mp3",
+      "cardId": "p_microchip",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "wants to put a microchip in your flu shot"
+    },
+    {
+      "key": "p_microchip.pl",
+      "file": "p_microchip.pl.mp3",
+      "cardId": "p_microchip",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "want to put a microchip in your flu shot"
+    },
+    {
+      "key": "p_llama.3sg",
+      "file": "p_llama.3sg.mp3",
+      "cardId": "p_llama",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "secretly runs an underground llama-grooming cartel"
+    },
+    {
+      "key": "p_llama.pl",
+      "file": "p_llama.pl.mp3",
+      "cardId": "p_llama",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "secretly run an underground llama-grooming cartel"
+    },
+    {
+      "key": "p_moon.3sg",
+      "file": "p_moon.3sg.mp3",
+      "cardId": "p_moon",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "thinks the moon landing was filmed in a Denny’s"
+    },
+    {
+      "key": "p_moon.pl",
+      "file": "p_moon.pl.mp3",
+      "cardId": "p_moon",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "think the moon landing was filmed in a Denny’s"
+    },
+    {
+      "key": "p_crayons.3sg",
+      "file": "p_crayons.3sg.mp3",
+      "cardId": "p_crayons",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "eats crayons at cabinet meetings"
+    },
+    {
+      "key": "p_crayons.pl",
+      "file": "p_crayons.pl.mp3",
+      "cardId": "p_crayons",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "eat crayons at cabinet meetings"
+    },
+    {
+      "key": "p_handshake.3sg",
+      "file": "p_handshake.3sg.mp3",
+      "cardId": "p_handshake",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has a secret handshake with the deep state"
+    },
+    {
+      "key": "p_handshake.pl",
+      "file": "p_handshake.pl.mp3",
+      "cardId": "p_handshake",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have a secret handshake with the deep state"
+    },
+    {
+      "key": "p_sell_constitution",
+      "file": "p_sell_constitution.mp3",
+      "cardId": "p_sell_constitution",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "would sell the Constitution for airline miles"
+    },
+    {
+      "key": "p_dubstep_anthem.3sg",
+      "file": "p_dubstep_anthem.3sg.mp3",
+      "cardId": "p_dubstep_anthem",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "wants to replace the national anthem with screechy dubstep noises"
+    },
+    {
+      "key": "p_dubstep_anthem.pl",
+      "file": "p_dubstep_anthem.pl.mp3",
+      "cardId": "p_dubstep_anthem",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "want to replace the national anthem with screechy dubstep noises"
+    },
+    {
+      "key": "p_big_kale.3sg",
+      "file": "p_big_kale.3sg.mp3",
+      "cardId": "p_big_kale",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "takes marching orders from Big Kale"
+    },
+    {
+      "key": "p_big_kale.pl",
+      "file": "p_big_kale.pl.mp3",
+      "cardId": "p_big_kale",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "take marching orders from Big Kale"
+    },
+    {
+      "key": "p_magic_eightball.3sg",
+      "file": "p_magic_eightball.3sg.mp3",
+      "cardId": "p_magic_eightball",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "wants to replace the Supreme Court with a Magic Eight Ball"
+    },
+    {
+      "key": "p_magic_eightball.pl",
+      "file": "p_magic_eightball.pl.mp3",
+      "cardId": "p_magic_eightball",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "want to replace the Supreme Court with a Magic Eight Ball"
+    },
+    {
+      "key": "p_shrimp_buffet.3sg",
+      "file": "p_shrimp_buffet.3sg.mp3",
+      "cardId": "p_shrimp_buffet",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has the moral compass of a casino shrimp buffet"
+    },
+    {
+      "key": "p_shrimp_buffet.pl",
+      "file": "p_shrimp_buffet.pl.mp3",
+      "cardId": "p_shrimp_buffet",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have the moral compass of a casino shrimp buffet"
+    },
+    {
+      "key": "p_find_economy",
+      "file": "p_find_economy.mp3",
+      "cardId": "p_find_economy",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "couldn't find the economy with both hands and a map"
+    },
+    {
+      "key": "p_shoppingcart.3sg",
+      "file": "p_shoppingcart.3sg.mp3",
+      "cardId": "p_shoppingcart",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has never once returned a shopping cart"
+    },
+    {
+      "key": "p_shoppingcart.pl",
+      "file": "p_shoppingcart.pl.mp3",
+      "cardId": "p_shoppingcart",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have never once returned a shopping cart"
+    },
+    {
+      "key": "p_microwavefish.3sg",
+      "file": "p_microwavefish.3sg.mp3",
+      "cardId": "p_microwavefish",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "microwaves fish in the office breakroom"
+    },
+    {
+      "key": "p_microwavefish.pl",
+      "file": "p_microwavefish.pl.mp3",
+      "cardId": "p_microwavefish",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "microwave fish in the office breakroom"
+    },
+    {
+      "key": "p_fridgelunch.3sg",
+      "file": "p_fridgelunch.3sg.mp3",
+      "cardId": "p_fridgelunch",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "eats other people's lunches out of the office fridge"
+    },
+    {
+      "key": "p_fridgelunch.pl",
+      "file": "p_fridgelunch.pl.mp3",
+      "cardId": "p_fridgelunch",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "eat other people's lunches out of the office fridge"
+    },
+    {
+      "key": "p_free_icecream",
+      "file": "p_free_icecream.mp3",
+      "cardId": "p_free_icecream",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will deliver free ice cream every Friday"
+    },
+    {
+      "key": "p_tuck_vets.3sg",
+      "file": "p_tuck_vets.3sg.mp3",
+      "cardId": "p_tuck_vets",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "tucks in every veteran at night"
+    },
+    {
+      "key": "p_tuck_vets.pl",
+      "file": "p_tuck_vets.pl.mp3",
+      "cardId": "p_tuck_vets",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "tuck in every veteran at night"
+    },
+    {
+      "key": "p_golden",
+      "file": "p_golden.mp3",
+      "cardId": "p_golden",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will give every family a golden retriever"
+    },
+    {
+      "key": "p_highfive.3sg",
+      "file": "p_highfive.3sg.mp3",
+      "cardId": "p_highfive",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "high-fives every single voter personally"
+    },
+    {
+      "key": "p_highfive.pl",
+      "file": "p_highfive.pl.mp3",
+      "cardId": "p_highfive",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "high-five every single voter personally"
+    },
+    {
+      "key": "p_christmas3",
+      "file": "p_christmas3.mp3",
+      "cardId": "p_christmas3",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will add three more Christmases to the national calendar"
+    },
+    {
+      "key": "p_birthday",
+      "file": "p_birthday.mp3",
+      "cardId": "p_birthday",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will fight to ensure that every birthday feels special"
+    },
+    {
+      "key": "p_naphour",
+      "file": "p_naphour.mp3",
+      "cardId": "p_naphour",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will establish a national nap hour for hardworking Americans"
+    },
+    {
+      "key": "p_wakeup.3sg",
+      "file": "p_wakeup.3sg.mp3",
+      "cardId": "p_wakeup",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "wakes up every morning thinking about you, specifically"
+    },
+    {
+      "key": "p_wakeup.pl",
+      "file": "p_wakeup.pl.mp3",
+      "cardId": "p_wakeup",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "wake up every morning thinking about you, specifically"
+    },
+    {
+      "key": "p_monday",
+      "file": "p_monday.mp3",
+      "cardId": "p_monday",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will make Monday a second Saturday"
+    },
+    {
+      "key": "p_refund",
+      "file": "p_refund.mp3",
+      "cardId": "p_refund",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will personally refund your last parking ticket"
+    },
+    {
+      "key": "p_dmv.3sg",
+      "file": "p_dmv.3sg.mp3",
+      "cardId": "p_dmv",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "promises shorter lines at the DMV, forever"
+    },
+    {
+      "key": "p_dmv.pl",
+      "file": "p_dmv.pl.mp3",
+      "cardId": "p_dmv",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "promise shorter lines at the DMV, forever"
+    },
+    {
+      "key": "p_coffeeshop",
+      "file": "p_coffeeshop.mp3",
+      "cardId": "p_coffeeshop",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will put a coffee shop on every single corner"
+    },
+    {
+      "key": "p_city_hill",
+      "file": "p_city_hill.mp3",
+      "cardId": "p_city_hill",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will build a shining city on a hill"
+    },
+    {
+      "key": "p_points_light",
+      "file": "p_points_light.mp3",
+      "cardId": "p_points_light",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will light a thousand points of light across this great land"
+    },
+    {
+      "key": "p_anthemkey",
+      "file": "p_anthemkey.mp3",
+      "cardId": "p_anthemkey",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will put the national anthem in a key normal people can actually sing"
+    },
+    {
+      "key": "p_noupdates",
+      "file": "p_noupdates.mp3",
+      "cardId": "p_noupdates",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will ban software updates during business hours"
+    },
+    {
+      "key": "p_bed_with.3sg",
+      "file": "p_bed_with.3sg.mp3",
+      "cardId": "p_bed_with",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is in bed with"
+    },
+    {
+      "key": "p_bed_with.pl",
+      "file": "p_bed_with.pl.mp3",
+      "cardId": "p_bed_with",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are in bed with"
+    },
+    {
+      "key": "p_destroy.3sg",
+      "file": "p_destroy.3sg.mp3",
+      "cardId": "p_destroy",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "wants to destroy"
+    },
+    {
+      "key": "p_destroy.pl",
+      "file": "p_destroy.pl.mp3",
+      "cardId": "p_destroy",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "want to destroy"
+    },
+    {
+      "key": "p_funded.3sg",
+      "file": "p_funded.3sg.mp3",
+      "cardId": "p_funded",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is bankrolled by"
+    },
+    {
+      "key": "p_funded.pl",
+      "file": "p_funded.pl.mp3",
+      "cardId": "p_funded",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are bankrolled by"
+    },
+    {
+      "key": "p_blame.3sg",
+      "file": "p_blame.3sg.mp3",
+      "cardId": "p_blame",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "blames everything on"
+    },
+    {
+      "key": "p_blame.pl",
+      "file": "p_blame.pl.mp3",
+      "cardId": "p_blame",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "blame everything on"
+    },
+    {
+      "key": "p_defend.3sg",
+      "file": "p_defend.3sg.mp3",
+      "cardId": "p_defend",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "proudly defends"
+    },
+    {
+      "key": "p_defend.pl",
+      "file": "p_defend.pl.mp3",
+      "cardId": "p_defend",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "proudly defend"
+    },
+    {
+      "key": "p_war_on.3sg",
+      "file": "p_war_on.3sg.mp3",
+      "cardId": "p_war_on",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has declared war on"
+    },
+    {
+      "key": "p_war_on.pl",
+      "file": "p_war_on.pl.mp3",
+      "cardId": "p_war_on",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have declared war on"
+    },
+    {
+      "key": "p_oath.3sg",
+      "file": "p_oath.3sg.mp3",
+      "cardId": "p_oath",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has sworn a blood oath to"
+    },
+    {
+      "key": "p_oath.pl",
+      "file": "p_oath.pl.mp3",
+      "cardId": "p_oath",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have sworn a blood oath to"
+    },
+    {
+      "key": "p_photo.3sg",
+      "file": "p_photo.3sg.mp3",
+      "cardId": "p_photo",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "keeps a framed photo of"
+    },
+    {
+      "key": "p_photo.pl",
+      "file": "p_photo.pl.mp3",
+      "cardId": "p_photo",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "keep a framed photo of"
+    },
+    {
+      "key": "p_anything_for",
+      "file": "p_anything_for.mp3",
+      "cardId": "p_anything_for",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "would do absolutely anything for …"
+    },
+    {
+      "key": "m_ugly.3sg",
+      "file": "m_ugly.3sg.mp3",
+      "cardId": "m_ugly",
+      "role": "modifier",
+      "conjugation": "3sg",
+      "text": "who is ugly, just very ugly"
+    },
+    {
+      "key": "m_ugly.pl",
+      "file": "m_ugly.pl.mp3",
+      "cardId": "m_ugly",
+      "role": "modifier",
+      "conjugation": "pl",
+      "text": "who are ugly, just very ugly"
+    },
+    {
+      "key": "m_crook.3sg",
+      "file": "m_crook.3sg.mp3",
+      "cardId": "m_crook",
+      "role": "modifier",
+      "conjugation": "3sg",
+      "text": "who is as crooked as the day is long"
+    },
+    {
+      "key": "m_crook.pl",
+      "file": "m_crook.pl.mp3",
+      "cardId": "m_crook",
+      "role": "modifier",
+      "conjugation": "pl",
+      "text": "who are as crooked as the day is long"
+    },
+    {
+      "key": "m_liar.3sg",
+      "file": "m_liar.3sg.mp3",
+      "cardId": "m_liar",
+      "role": "modifier",
+      "conjugation": "3sg",
+      "text": "who lies constantly"
+    },
+    {
+      "key": "m_liar.pl",
+      "file": "m_liar.pl.mp3",
+      "cardId": "m_liar",
+      "role": "modifier",
+      "conjugation": "pl",
+      "text": "who lie constantly"
+    },
+    {
+      "key": "m_disaster.3sg",
+      "file": "m_disaster.3sg.mp3",
+      "cardId": "m_disaster",
+      "role": "modifier",
+      "conjugation": "3sg",
+      "text": "which is a total disaster"
+    },
+    {
+      "key": "m_disaster.pl",
+      "file": "m_disaster.pl.mp3",
+      "cardId": "m_disaster",
+      "role": "modifier",
+      "conjugation": "pl",
+      "text": "which are a total disaster"
+    },
+    {
+      "key": "m_treasure.3sg",
+      "file": "m_treasure.3sg.mp3",
+      "cardId": "m_treasure",
+      "role": "modifier",
+      "conjugation": "3sg",
+      "text": "who is frankly a national treasure"
+    },
+    {
+      "key": "m_treasure.pl",
+      "file": "m_treasure.pl.mp3",
+      "cardId": "m_treasure",
+      "role": "modifier",
+      "conjugation": "pl",
+      "text": "who are frankly a national treasure"
+    },
+    {
+      "key": "m_genius.3sg",
+      "file": "m_genius.3sg.mp3",
+      "cardId": "m_genius",
+      "role": "modifier",
+      "conjugation": "3sg",
+      "text": "who is an absolute genius"
+    },
+    {
+      "key": "m_genius.pl",
+      "file": "m_genius.pl.mp3",
+      "cardId": "m_genius",
+      "role": "modifier",
+      "conjugation": "pl",
+      "text": "who are an absolute genius"
+    },
+    {
+      "key": "m_loves_country.3sg",
+      "file": "m_loves_country.3sg.mp3",
+      "cardId": "m_loves_country",
+      "role": "modifier",
+      "conjugation": "3sg",
+      "text": "who loves this country"
+    },
+    {
+      "key": "m_loves_country.pl",
+      "file": "m_loves_country.pl.mp3",
+      "cardId": "m_loves_country",
+      "role": "modifier",
+      "conjugation": "pl",
+      "text": "who love this country"
+    },
+    {
+      "key": "m_blessing.3sg",
+      "file": "m_blessing.3sg.mp3",
+      "cardId": "m_blessing",
+      "role": "modifier",
+      "conjugation": "3sg",
+      "text": "which is a blessing to us all"
+    },
+    {
+      "key": "m_blessing.pl",
+      "file": "m_blessing.pl.mp3",
+      "cardId": "m_blessing",
+      "role": "modifier",
+      "conjugation": "pl",
+      "text": "which are a blessing to us all"
+    },
+    {
+      "key": "m_stupidest.3sg",
+      "file": "m_stupidest.3sg.mp3",
+      "cardId": "m_stupidest",
+      "role": "modifier",
+      "conjugation": "3sg",
+      "text": "who is among the stupidest humans to ever walk the Earth"
+    },
+    {
+      "key": "m_stupidest.pl",
+      "file": "m_stupidest.pl.mp3",
+      "cardId": "m_stupidest",
+      "role": "modifier",
+      "conjugation": "pl",
+      "text": "who are among the stupidest humans to ever walk the Earth"
+    },
+    {
+      "key": "m_smells.3sg",
+      "file": "m_smells.3sg.mp3",
+      "cardId": "m_smells",
+      "role": "modifier",
+      "conjugation": "3sg",
+      "text": "who somehow smells even worse than expected"
+    },
+    {
+      "key": "m_smells.pl",
+      "file": "m_smells.pl.mp3",
+      "cardId": "m_smells",
+      "role": "modifier",
+      "conjugation": "pl",
+      "text": "who somehow smell even worse than expected"
+    },
+    {
+      "key": "m_lostit",
+      "file": "m_lostit.mp3",
+      "cardId": "m_lostit",
+      "role": "modifier",
+      "conjugation": null,
+      "text": "who, and I say this with love, has completely lost it"
+    },
+    {
+      "key": "m_better.3sg",
+      "file": "m_better.3sg.mp3",
+      "cardId": "m_better",
+      "role": "modifier",
+      "conjugation": "3sg",
+      "text": "who has frankly never looked better"
+    },
+    {
+      "key": "m_better.pl",
+      "file": "m_better.pl.mp3",
+      "cardId": "m_better",
+      "role": "modifier",
+      "conjugation": "pl",
+      "text": "who have frankly never looked better"
+    },
+    {
+      "key": "m_winning.3sg",
+      "file": "m_winning.3sg.mp3",
+      "cardId": "m_winning",
+      "role": "modifier",
+      "conjugation": "3sg",
+      "text": "who is winning by every available metric"
+    },
+    {
+      "key": "m_winning.pl",
+      "file": "m_winning.pl.mp3",
+      "cardId": "m_winning",
+      "role": "modifier",
+      "conjugation": "pl",
+      "text": "who are winning by every available metric"
+    },
+    {
+      "key": "m_triumph",
+      "file": "m_triumph.mp3",
+      "cardId": "m_triumph",
+      "role": "modifier",
+      "conjugation": null,
+      "text": "which the experts are reportedly calling a triumph"
+    },
+    {
+      "key": "m_humility",
+      "file": "m_humility.mp3",
+      "cardId": "m_humility",
+      "role": "modifier",
+      "conjugation": null,
+      "text": "whose sparkling humility is praised by everyone who matters"
+    },
+    {
+      "key": "m_ff_proud",
+      "file": "m_ff_proud.mp3",
+      "cardId": "m_ff_proud",
+      "role": "modifier",
+      "conjugation": null,
+      "text": "who would truly make our founding fathers proud"
+    },
+    {
+      "key": "m_catbox.3sg",
+      "file": "m_catbox.3sg.mp3",
+      "cardId": "m_catbox",
+      "role": "modifier",
+      "conjugation": "3sg",
+      "text": "which frankly smells like a goat vomited into an overfilled catbox"
+    },
+    {
+      "key": "m_catbox.pl",
+      "file": "m_catbox.pl.mp3",
+      "cardId": "m_catbox",
+      "role": "modifier",
+      "conjugation": "pl",
+      "text": "which frankly smell like a goat vomited into an overfilled catbox"
+    },
+    {
+      "key": "m_park",
+      "file": "m_park.mp3",
+      "cardId": "m_park",
+      "role": "modifier",
+      "conjugation": null,
+      "text": "who cannot parallel park to save their life"
+    },
+    {
+      "key": "m_lowiq.3sg",
+      "file": "m_lowiq.3sg.mp3",
+      "cardId": "m_lowiq",
+      "role": "modifier",
+      "conjugation": "3sg",
+      "text": "who has a very low IQ, believe me"
+    },
+    {
+      "key": "m_lowiq.pl",
+      "file": "m_lowiq.pl.mp3",
+      "cardId": "m_lowiq",
+      "role": "modifier",
+      "conjugation": "pl",
+      "text": "who have a very low IQ, believe me"
+    },
+    {
+      "key": "m_drunk.3sg",
+      "file": "m_drunk.3sg.mp3",
+      "cardId": "m_drunk",
+      "role": "modifier",
+      "conjugation": "3sg",
+      "text": "who is probably drunk right now"
+    },
+    {
+      "key": "m_drunk.pl",
+      "file": "m_drunk.pl.mp3",
+      "cardId": "m_drunk",
+      "role": "modifier",
+      "conjugation": "pl",
+      "text": "who are probably drunk right now"
+    },
+    {
+      "key": "m_tape",
+      "file": "m_tape.mp3",
+      "cardId": "m_tape",
+      "role": "modifier",
+      "conjugation": null,
+      "text": "which is, between us, mostly held together with tape"
+    },
+    {
+      "key": "m_pollswell",
+      "file": "m_pollswell.mp3",
+      "cardId": "m_pollswell",
+      "role": "modifier",
+      "conjugation": null,
+      "text": "which polls very well among people I invented"
+    },
+    {
+      "key": "m_dmvpolls",
+      "file": "m_dmvpolls.mp3",
+      "cardId": "m_dmvpolls",
+      "role": "modifier",
+      "conjugation": null,
+      "text": "whose approval rating recently fell below the DMV's"
+    },
+    {
+      "key": "r_lizard.3sg",
+      "file": "r_lizard.3sg.mp3",
+      "cardId": "r_lizard",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is secretly a lizard person"
+    },
+    {
+      "key": "r_lizard.pl",
+      "file": "r_lizard.pl.mp3",
+      "cardId": "r_lizard",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are secretly a lizard person"
+    },
+    {
+      "key": "r_christmas",
+      "file": "r_christmas.mp3",
+      "cardId": "r_christmas",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "wants to cancel Christmas forever"
+    },
+    {
+      "key": "r_greatest.3sg",
+      "file": "r_greatest.3sg.mp3",
+      "cardId": "r_greatest",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is the greatest leader in human history"
+    },
+    {
+      "key": "r_greatest.pl",
+      "file": "r_greatest.pl.mp3",
+      "cardId": "r_greatest",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are the greatest leader in human history"
+    },
+    {
+      "key": "r_cured",
+      "file": "r_cured.mp3",
+      "cardId": "r_cured",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "personally cured a deadly disease last Tuesday"
+    },
+    {
+      "key": "r_pony",
+      "file": "r_pony.mp3",
+      "cardId": "r_pony",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will give every citizen a pony and a tax cut"
+    },
+    {
+      "key": "r_never_truth.3sg",
+      "file": "r_never_truth.3sg.mp3",
+      "cardId": "r_never_truth",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has never once told the truth, not even by accident"
+    },
+    {
+      "key": "r_never_truth.pl",
+      "file": "r_never_truth.pl.mp3",
+      "cardId": "r_never_truth",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have never once told the truth, not even by accident"
+    },
+    {
+      "key": "r_treason_opp",
+      "file": "r_treason_opp.mp3",
+      "cardId": "r_treason_opp",
+      "role": "np",
+      "conjugation": null,
+      "text": "My crooked, treasonous opponent"
+    },
+    {
+      "key": "r_blessed_nation",
+      "file": "r_blessed_nation.mp3",
+      "cardId": "r_blessed_nation",
+      "role": "np",
+      "conjugation": null,
+      "text": "This blessed and chosen nation"
+    },
+    {
+      "key": "r_conj_honesttruth",
+      "file": "r_conj_honesttruth.mp3",
+      "cardId": "r_conj_honesttruth",
+      "role": "connector",
+      "conjugation": null,
+      "text": "but to tell the honest truth"
+    },
+    {
+      "key": "r_conj_noonetells",
+      "file": "r_conj_noonetells.mp3",
+      "cardId": "r_conj_noonetells",
+      "role": "connector",
+      "conjugation": null,
+      "text": "but what no one else in this room will tell you is that"
+    },
+    {
+      "key": "r_conj_longstory",
+      "file": "r_conj_longstory.mp3",
+      "cardId": "r_conj_longstory",
+      "role": "connector",
+      "conjugation": null,
+      "text": "and so to make a long though quite articulate story short"
+    },
+    {
+      "key": "r_conj_cannotstress",
+      "file": "r_conj_cannotstress.mp3",
+      "cardId": "r_conj_cannotstress",
+      "role": "connector",
+      "conjugation": null,
+      "text": "because — and I cannot stress this enough —"
+    },
+    {
+      "key": "r_conj_magnificent",
+      "file": "r_conj_magnificent.mp3",
+      "cardId": "r_conj_magnificent",
+      "role": "connector",
+      "conjugation": null,
+      "text": "and as if that weren't already magnificent enough"
+    },
+    {
+      "key": "r_conj_conclusively",
+      "file": "r_conj_conclusively.mp3",
+      "cardId": "r_conj_conclusively",
+      "role": "connector",
+      "conjugation": null,
+      "text": "which conclusively explains why"
+    },
+    {
+      "key": "r_conj_writethisdown",
+      "file": "r_conj_writethisdown.mp3",
+      "cardId": "r_conj_writethisdown",
+      "role": "connector",
+      "conjugation": null,
+      "text": "and — write this down —"
+    },
+    {
+      "key": "r_conj_quotemyself",
+      "file": "r_conj_quotemyself.mp3",
+      "cardId": "r_conj_quotemyself",
+      "role": "connector",
+      "conjugation": null,
+      "text": "and, if I may quote myself,"
+    },
+    {
+      "key": "r_conj_nightfollows",
+      "file": "r_conj_nightfollows.mp3",
+      "cardId": "r_conj_nightfollows",
+      "role": "connector",
+      "conjugation": null,
+      "text": "and it therefore follows, as night follows the glorious day, that"
+    },
+    {
+      "key": "r_conj_precisely",
+      "file": "r_conj_precisely.mp3",
+      "cardId": "r_conj_precisely",
+      "role": "connector",
+      "conjugation": null,
+      "text": "which is exactly, precisely, and specifically why"
+    },
+    {
+      "key": "r_conj_heartstudy",
+      "file": "r_conj_heartstudy.mp3",
+      "cardId": "r_conj_heartstudy",
+      "role": "connector",
+      "conjugation": null,
+      "text": "because, according to a study I commissioned in my heart,"
+    },
+    {
+      "key": "r_conj_grandmother",
+      "file": "r_conj_grandmother.mp3",
+      "cardId": "r_conj_grandmother",
+      "role": "connector",
+      "conjugation": null,
+      "text": "because, as my sainted grandmother always screamed,"
+    },
+    {
+      "key": "r_conj_mainstream",
+      "file": "r_conj_mainstream.mp3",
+      "cardId": "r_conj_mainstream",
+      "role": "connector",
+      "conjugation": null,
+      "text": "but here's what the mainstream media refuses to print:"
+    },
+    {
+      "key": "r_conj_countryilove",
+      "file": "r_conj_countryilove.mp3",
+      "cardId": "r_conj_countryilove",
+      "role": "connector",
+      "conjugation": null,
+      "text": "but in this country — the country I love —"
+    },
+    {
+      "key": "r_conj_unlikecertain",
+      "file": "r_conj_unlikecertain.mp3",
+      "cardId": "r_conj_unlikecertain",
+      "role": "connector",
+      "conjugation": null,
+      "text": "but unlike certain people on this stage,"
+    },
+    {
+      "key": "r_conj_humblest",
+      "file": "r_conj_humblest.mp3",
+      "cardId": "r_conj_humblest",
+      "role": "connector",
+      "conjugation": null,
+      "text": "but — and I say this as the humblest person on this stage —"
+    },
+    {
+      "key": "m_trustme",
+      "file": "m_trustme.mp3",
+      "cardId": "m_trustme",
+      "role": "modifier",
+      "conjugation": null,
+      "text": "and trust me, what I'm about to say is absolutely true"
+    },
+    {
+      "key": "m_notmakingup",
+      "file": "m_notmakingup.mp3",
+      "cardId": "m_notmakingup",
+      "role": "modifier",
+      "conjugation": null,
+      "text": "and I'm not making this up"
+    },
+    {
+      "key": "r_recess",
+      "file": "r_recess.mp3",
+      "cardId": "r_recess",
+      "role": "powerup",
+      "conjugation": null,
+      "text": "🔄 Call a Recess — re-deal the shared pool"
+    },
+    {
+      "key": "r_goldtoilet.3sg",
+      "file": "r_goldtoilet.3sg.mp3",
+      "cardId": "r_goldtoilet",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "secretly bills the taxpayer for a solid-gold toilet"
+    },
+    {
+      "key": "r_goldtoilet.pl",
+      "file": "r_goldtoilet.pl.mp3",
+      "cardId": "r_goldtoilet",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "secretly bill the taxpayer for a solid-gold toilet"
+    },
+    {
+      "key": "r_popupads",
+      "file": "r_popupads.mp3",
+      "cardId": "r_popupads",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "personally invented the pop-up ad"
+    },
+    {
+      "key": "r_coinslot.3sg",
+      "file": "r_coinslot.3sg.mp3",
+      "cardId": "r_coinslot",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "wants to put a coin slot on the Statue of Liberty"
+    },
+    {
+      "key": "r_coinslot.pl",
+      "file": "r_coinslot.pl.mp3",
+      "cardId": "r_coinslot",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "want to put a coin slot on the Statue of Liberty"
+    },
+    {
+      "key": "r_rubber_chicken",
+      "file": "r_rubber_chicken.mp3",
+      "cardId": "r_rubber_chicken",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will personally slap every voter in this audience across the face with a rubber chicken"
+    },
+    {
+      "key": "r_eagle.3sg",
+      "file": "r_eagle.3sg.mp3",
+      "cardId": "r_eagle",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "bench-presses a full-grown bald eagle before breakfast"
+    },
+    {
+      "key": "r_eagle.pl",
+      "file": "r_eagle.pl.mp3",
+      "cardId": "r_eagle",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "bench-press a full-grown bald eagle before breakfast"
+    },
+    {
+      "key": "r_weird_opp",
+      "file": "r_weird_opp.mp3",
+      "cardId": "r_weird_opp",
+      "role": "np",
+      "conjugation": null,
+      "text": "My deeply weird, poll-tested opponent"
+    },
+    {
+      "key": "r_scumbag_opp",
+      "file": "r_scumbag_opp.mp3",
+      "cardId": "r_scumbag_opp",
+      "role": "np",
+      "conjugation": null,
+      "text": "My treasonous and perverted scumbag of an opponent"
+    },
+    {
+      "key": "r_grill_patriots",
+      "file": "r_grill_patriots.mp3",
+      "cardId": "r_grill_patriots",
+      "role": "np",
+      "conjugation": null,
+      "text": "The hardest-working patriots ever to fire up a backyard grill"
+    },
+    {
+      "key": "p_eat_babies.3sg",
+      "file": "p_eat_babies.3sg.mp3",
+      "cardId": "p_eat_babies",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "secretly eats babies"
+    },
+    {
+      "key": "p_eat_babies.pl",
+      "file": "p_eat_babies.pl.mp3",
+      "cardId": "p_eat_babies",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "secretly eat babies"
+    },
+    {
+      "key": "p_freedom_subscription.3sg",
+      "file": "p_freedom_subscription.3sg.mp3",
+      "cardId": "p_freedom_subscription",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "believes that freedom should have a monthly subscription"
+    },
+    {
+      "key": "p_freedom_subscription.pl",
+      "file": "p_freedom_subscription.pl.mp3",
+      "cardId": "p_freedom_subscription",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "believe that freedom should have a monthly subscription"
+    },
+    {
+      "key": "p_timeshare",
+      "file": "p_timeshare.mp3",
+      "cardId": "p_timeshare",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will sell this country to a Florida timeshare scheme"
+    },
+    {
+      "key": "p_ban_happiness.3sg",
+      "file": "p_ban_happiness.3sg.mp3",
+      "cardId": "p_ban_happiness",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has a secret plan to make happiness illegal"
+    },
+    {
+      "key": "p_ban_happiness.pl",
+      "file": "p_ban_happiness.pl.mp3",
+      "cardId": "p_ban_happiness",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have a secret plan to make happiness illegal"
+    },
+    {
+      "key": "p_got_ending",
+      "file": "p_got_ending.mp3",
+      "cardId": "p_got_ending",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will fix the ending of Game of Thrones in a way that satisfies everyone"
+    },
+    {
+      "key": "s_brain",
+      "file": "s_brain.mp3",
+      "cardId": "s_brain",
+      "role": "np",
+      "conjugation": null,
+      "text": "My beautiful brain, which many people say is the best brain"
+    },
+    {
+      "key": "s_genius",
+      "file": "s_genius.mp3",
+      "cardId": "s_genius",
+      "role": "np",
+      "conjugation": null,
+      "text": "A stable genius such as myself"
+    },
+    {
+      "key": "r_haunted_bus.3sg",
+      "file": "r_haunted_bus.3sg.mp3",
+      "cardId": "r_haunted_bus",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "wants to replace every school bus with a haunted limousine"
+    },
+    {
+      "key": "r_haunted_bus.pl",
+      "file": "r_haunted_bus.pl.mp3",
+      "cardId": "r_haunted_bus",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "want to replace every school bus with a haunted limousine"
+    },
+    {
+      "key": "r_auction_bor",
+      "file": "r_auction_bor.mp3",
+      "cardId": "r_auction_bor",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will auction off the Bill of Rights one amendment at a time"
+    },
+    {
+      "key": "r_pledge_ads.3sg",
+      "file": "r_pledge_ads.3sg.mp3",
+      "cardId": "r_pledge_ads",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "wants to put ads in the Pledge of Allegiance"
+    },
+    {
+      "key": "r_pledge_ads.pl",
+      "file": "r_pledge_ads.pl.mp3",
+      "cardId": "r_pledge_ads",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "want to put ads in the Pledge of Allegiance"
+    },
+    {
+      "key": "r_suplex_inflation",
+      "file": "r_suplex_inflation.mp3",
+      "cardId": "r_suplex_inflation",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will personally suplex inflation through a folding table"
+    },
+    {
+      "key": "r_crowd_grillmasters",
+      "file": "r_crowd_grillmasters.mp3",
+      "cardId": "r_crowd_grillmasters",
+      "role": "np",
+      "conjugation": null,
+      "text": "This proud nation of grill masters, coupon clippers, and quiet heroes"
+    },
+    {
+      "key": "r_crowd_ducttape",
+      "file": "r_crowd_ducttape.mp3",
+      "cardId": "r_crowd_ducttape",
+      "role": "np",
+      "conjugation": null,
+      "text": "The exhausted patriots currently holding this country together with duct tape"
+    },
+    {
+      "key": "r_crowd_toosmart",
+      "file": "r_crowd_toosmart.mp3",
+      "cardId": "r_crowd_toosmart",
+      "role": "np",
+      "conjugation": null,
+      "text": "This audience of upstanding patriots, each one far too intelligent to be influenced by shameless flattery,"
+    },
+    {
+      "key": "r_warranty.3sg",
+      "file": "r_warranty.3sg.mp3",
+      "cardId": "r_warranty",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "personally calls you during dinner about your car's extended warranty"
+    },
+    {
+      "key": "r_warranty.pl",
+      "file": "r_warranty.pl.mp3",
+      "cardId": "r_warranty",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "personally call you during dinner about your car's extended warranty"
+    },
+    {
+      "key": "r_passwords",
+      "file": "r_passwords.mp3",
+      "cardId": "r_passwords",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will make every password in America expire daily"
+    },
+    {
+      "key": "r_aquariums.3sg",
+      "file": "r_aquariums.3sg.mp3",
+      "cardId": "r_aquariums",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is banned from three aquariums and will not say why"
+    },
+    {
+      "key": "r_aquariums.pl",
+      "file": "r_aquariums.pl.mp3",
+      "cardId": "r_aquariums",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are banned from three aquariums and will not say why"
+    },
+    {
+      "key": "r_pigeon",
+      "file": "r_pigeon.mp3",
+      "cardId": "r_pigeon",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will replace the bald eagle with a pigeon that owes them money"
+    },
+    {
+      "key": "r_middleseat",
+      "file": "r_middleseat.mp3",
+      "cardId": "r_middleseat",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "invented the middle airplane seat"
+    },
+    {
+      "key": "r_resortfee.3sg",
+      "file": "r_resortfee.3sg.mp3",
+      "cardId": "r_resortfee",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "charges a resort fee on the American Dream"
+    },
+    {
+      "key": "r_resortfee.pl",
+      "file": "r_resortfee.pl.mp3",
+      "cardId": "r_resortfee",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "charge a resort fee on the American Dream"
+    },
+    {
+      "key": "r_printers",
+      "file": "r_printers.mp3",
+      "cardId": "r_printers",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will sign an executive order forcing every printer in this nation to just work"
+    },
+    {
+      "key": "r_funeral",
+      "file": "r_funeral.mp3",
+      "cardId": "r_funeral",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "once received a standing ovation at a funeral"
+    },
+    {
+      "key": "r_trafficlights",
+      "file": "r_trafficlights.mp3",
+      "cardId": "r_trafficlights",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will personally time every traffic light to your commute, specifically"
+    },
+    {
+      "key": "r_badwheel",
+      "file": "r_badwheel.mp3",
+      "cardId": "r_badwheel",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will hunt down and destroy every shopping cart with one bad wheel"
+    },
+    {
+      "key": "r_coconspirator_opp",
+      "file": "r_coconspirator_opp.mp3",
+      "cardId": "r_coconspirator_opp",
+      "role": "np",
+      "conjugation": null,
+      "text": "My unindicted co-conspirator of an opponent"
+    },
+    {
+      "key": "r_campaign_relatives",
+      "file": "r_campaign_relatives.mp3",
+      "cardId": "r_campaign_relatives",
+      "role": "np",
+      "conjugation": null,
+      "text": "My campaign, staffed entirely by my most loyal relatives,"
+    },
+    {
+      "key": "r_crowd_turnsignals",
+      "file": "r_crowd_turnsignals.mp3",
+      "cardId": "r_crowd_turnsignals",
+      "role": "np",
+      "conjugation": null,
+      "text": "The last brave patriots in this country who still use their turn signals"
+    },
+    {
+      "key": "r_ff_vomit",
+      "file": "r_ff_vomit.mp3",
+      "cardId": "r_ff_vomit",
+      "role": "modifier",
+      "conjugation": null,
+      "text": "whose political opinions would make our founding fathers vomit into a house plant"
+    },
+    {
+      "key": "r_m_lawyer",
+      "file": "r_m_lawyer.mp3",
+      "cardId": "r_m_lawyer",
+      "role": "modifier",
+      "conjugation": null,
+      "text": "whose lawyer is watching this broadcast and quietly weeping"
+    },
+    {
+      "key": "r_m_allegedly",
+      "file": "r_m_allegedly.mp3",
+      "cardId": "r_m_allegedly",
+      "role": "modifier",
+      "conjugation": null,
+      "text": "which I am legally required to describe as 'allegedly'"
+    },
+    {
+      "key": "r_x_pipe",
+      "file": "r_x_pipe.mp3",
+      "cardId": "r_x_pipe",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "put that in your pipe and smoke it"
+    },
+    {
+      "key": "r_x_idiot",
+      "file": "r_x_idiot.mp3",
+      "cardId": "r_x_idiot",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "and anyone who disagrees with that is an idiot"
+    },
+    {
+      "key": "r_x_votemany",
+      "file": "r_x_votemany.mp3",
+      "cardId": "r_x_votemany",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "which is why you should vote for me, as many times as possible"
+    },
+    {
+      "key": "r_x_science",
+      "file": "r_x_science.mp3",
+      "cardId": "r_x_science",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "and that, my friends, is just basic science"
+    },
+    {
+      "key": "r_x_polls",
+      "file": "r_x_polls.mp3",
+      "cardId": "r_x_polls",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "and I have the tremendous poll numbers to prove it"
+    },
+    {
+      "key": "r_x_nofurther",
+      "file": "r_x_nofurther.mp3",
+      "cardId": "r_x_nofurther",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "No further questions. There were no questions."
+    },
+    {
+      "key": "r_x_eternal",
+      "file": "r_x_eternal.mp3",
+      "cardId": "r_x_eternal",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "My time is up, but my truth is eternal."
+    },
+    {
+      "key": "r_x_comingfromme",
+      "file": "r_x_comingfromme.mp3",
+      "cardId": "r_x_comingfromme",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "and that's coming from me, so you know it's true"
+    },
+    {
+      "key": "r_x_sheeple",
+      "file": "r_x_sheeple.mp3",
+      "cardId": "r_x_sheeple",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "Wake up, sheeple. Respectfully."
+    },
+    {
+      "key": "r_typo",
+      "file": "r_typo.mp3",
+      "cardId": "r_typo",
+      "role": "powerup",
+      "conjugation": null,
+      "text": "🎤 Teleprompter Typo — REPLACE their last word with yours"
+    },
+    {
+      "key": "c_and",
+      "file": "c_and.mp3",
+      "cardId": "c_and",
+      "role": "connector",
+      "conjugation": null,
+      "text": "and"
+    },
+    {
+      "key": "c_but",
+      "file": "c_but.mp3",
+      "cardId": "c_but",
+      "role": "connector",
+      "conjugation": null,
+      "text": "but"
+    },
+    {
+      "key": "c_because",
+      "file": "c_because.mp3",
+      "cardId": "c_because",
+      "role": "connector",
+      "conjugation": null,
+      "text": "because"
+    },
+    {
+      "key": "c_therefore",
+      "file": "c_therefore.mp3",
+      "cardId": "c_therefore",
+      "role": "connector",
+      "conjugation": null,
+      "text": "and therefore"
+    },
+    {
+      "key": "c_which",
+      "file": "c_which.mp3",
+      "cardId": "c_which",
+      "role": "connector",
+      "conjugation": null,
+      "text": "which is why"
+    },
+    {
+      "key": "c_frankly",
+      "file": "c_frankly.mp3",
+      "cardId": "c_frankly",
+      "role": "connector",
+      "conjugation": null,
+      "text": "and frankly"
+    },
+    {
+      "key": "c_seeing",
+      "file": "c_seeing.mp3",
+      "cardId": "c_seeing",
+      "role": "connector",
+      "conjugation": null,
+      "text": "seeing as how"
+    },
+    {
+      "key": "c_so",
+      "file": "c_so.mp3",
+      "cardId": "c_so",
+      "role": "connector",
+      "conjugation": null,
+      "text": "so"
+    },
+    {
+      "key": "c_plus",
+      "file": "c_plus.mp3",
+      "cardId": "c_plus",
+      "role": "connector",
+      "conjugation": null,
+      "text": "and plus"
+    },
+    {
+      "key": "c_however",
+      "file": "c_however.mp3",
+      "cardId": "c_however",
+      "role": "connector",
+      "conjugation": null,
+      "text": "however"
+    },
+    {
+      "key": "x_guarantee",
+      "file": "x_guarantee.mp3",
+      "cardId": "x_guarantee",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "and I personally guarantee it"
+    },
+    {
+      "key": "x_everyone",
+      "file": "x_everyone.mp3",
+      "cardId": "x_everyone",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "and everyone knows it"
+    },
+    {
+      "key": "x_believe",
+      "file": "x_believe.mp3",
+      "cardId": "x_believe",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "believe me"
+    },
+    {
+      "key": "x_record",
+      "file": "x_record.mp3",
+      "cardId": "x_record",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "and that is on the record"
+    },
+    {
+      "key": "x_promise",
+      "file": "x_promise.mp3",
+      "cardId": "x_promise",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "and that's a promise"
+    },
+    {
+      "key": "x_factcheck",
+      "file": "x_factcheck.mp3",
+      "cardId": "x_factcheck",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "and I don't care what the fact checkers say about it"
+    },
+    {
+      "key": "x_tired",
+      "file": "x_tired.mp3",
+      "cardId": "x_tired",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "and frankly I'm tired of saying it"
+    },
+    {
+      "key": "x_lookitup",
+      "file": "x_lookitup.mp3",
+      "cardId": "x_lookitup",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "and you can look that up, folks, it’s true"
+    },
+    {
+      "key": "x_settled",
+      "file": "x_settled.mp3",
+      "cardId": "x_settled",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "and that's settled science"
+    },
+    {
+      "key": "x_endofstory",
+      "file": "x_endofstory.mp3",
+      "cardId": "x_endofstory",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "period, end of story"
+    },
+    {
+      "key": "x_otherguy",
+      "file": "x_otherguy.mp3",
+      "cardId": "x_otherguy",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "and you won't hear that from the other guy"
+    },
+    {
+      "key": "x_history",
+      "file": "x_history.mp3",
+      "cardId": "x_history",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "and history will prove me right"
+    },
+    {
+      "key": "x_writedown",
+      "file": "x_writedown.mp3",
+      "cardId": "x_writedown",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "write that down"
+    },
+    {
+      "key": "x_comeon",
+      "file": "x_comeon.mp3",
+      "cardId": "x_comeon",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "come on, man"
+    },
+    {
+      "key": "x_brave",
+      "file": "x_brave.mp3",
+      "cardId": "x_brave",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "and I'm the only one brave enough to say it!"
+    },
+    {
+      "key": "x_thankme",
+      "file": "x_thankme.mp3",
+      "cardId": "x_thankme",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "and history will thank me for saying it!"
+    },
+    {
+      "key": "x_micdrop",
+      "file": "x_micdrop.mp3",
+      "cardId": "x_micdrop",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "Checkmate. Boom. Mic drop."
+    },
+    {
+      "key": "x_oughtto",
+      "file": "x_oughtto.mp3",
+      "cardId": "x_oughtto",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "and if that isn't true, then it damn sure ought to be!"
+    },
+    {
+      "key": "x_saidwhatisaid",
+      "file": "x_saidwhatisaid.mp3",
+      "cardId": "x_saidwhatisaid",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "I said what I said."
+    },
+    {
+      "key": "x_blessmic",
+      "file": "x_blessmic.mp3",
+      "cardId": "x_blessmic",
+      "role": "intensifier",
+      "conjugation": null,
+      "text": "God bless this microphone"
+    },
+    {
+      "key": "pw_search",
+      "file": "pw_search.mp3",
+      "cardId": "pw_search",
+      "role": "powerup",
+      "conjugation": null,
+      "text": "📋 Search Notes — draw 5 cards"
+    },
+    {
+      "key": "pw_typo",
+      "file": "pw_typo.mp3",
+      "cardId": "pw_typo",
+      "role": "powerup",
+      "conjugation": null,
+      "text": "🎤 Teleprompter Typo — REPLACE their last word with yours"
+    },
+    {
+      "key": "pw_forgot",
+      "file": "pw_forgot.mp3",
+      "cardId": "pw_forgot",
+      "role": "powerup",
+      "conjugation": null,
+      "text": "🧠 Forgot My Line — DELETE their last word"
+    },
+    {
+      "key": "pw_plant",
+      "file": "pw_plant.mp3",
+      "cardId": "pw_plant",
+      "role": "powerup",
+      "conjugation": null,
+      "text": "🕵️ Plant in the Audience — reveal the crowd"
+    },
+    {
+      "key": "pw_hotmic",
+      "file": "pw_hotmic.mp3",
+      "cardId": "pw_hotmic",
+      "role": "powerup",
+      "conjugation": null,
+      "text": "🎙️ Hot Mic — see their hand, steal a card"
+    },
+    {
+      "key": "pw_filibuster",
+      "file": "pw_filibuster.mp3",
+      "cardId": "pw_filibuster",
+      "role": "powerup",
+      "conjugation": null,
+      "text": "🗣️ Filibuster — stock up on connectors"
+    },
+    {
+      "key": "t_economy",
+      "file": "t_economy.mp3",
+      "cardId": "t_economy",
+      "role": "np",
+      "conjugation": null,
+      "text": "the economy"
+    },
+    {
+      "key": "t_security",
+      "file": "t_security.mp3",
+      "cardId": "t_security",
+      "role": "np",
+      "conjugation": null,
+      "text": "national security"
+    },
+    {
+      "key": "t_freedom",
+      "file": "t_freedom.mp3",
+      "cardId": "t_freedom",
+      "role": "np",
+      "conjugation": null,
+      "text": "our freedom"
+    },
+    {
+      "key": "t_opponent",
+      "file": "t_opponent.mp3",
+      "cardId": "t_opponent",
+      "role": "np",
+      "conjugation": null,
+      "text": "my opponent"
+    },
+    {
+      "key": "t_record",
+      "file": "t_record.mp3",
+      "cardId": "t_record",
+      "role": "np",
+      "conjugation": null,
+      "text": "my record"
+    },
+    {
+      "key": "t_children",
+      "file": "t_children.mp3",
+      "cardId": "t_children",
+      "role": "np",
+      "conjugation": null,
+      "text": "our children"
+    },
+    {
+      "key": "t_pander",
+      "file": "t_pander.mp3",
+      "cardId": "t_pander",
+      "role": "np",
+      "conjugation": null,
+      "text": "the wonderful voters"
+    },
+    {
+      "key": "t_jackass.3sg",
+      "file": "t_jackass.3sg.mp3",
+      "cardId": "t_jackass",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is an unscrupulous jackass"
+    },
+    {
+      "key": "t_jackass.pl",
+      "file": "t_jackass.pl.mp3",
+      "cardId": "t_jackass",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are an unscrupulous jackass"
+    },
+    {
+      "key": "p_microchip_t1.3sg",
+      "file": "p_microchip_t1.3sg.mp3",
+      "cardId": "p_microchip_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "wants to replace your doctor with a QR code controlled by the deep state",
+      "tier": 1
+    },
+    {
+      "key": "p_microchip_t1.pl",
+      "file": "p_microchip_t1.pl.mp3",
+      "cardId": "p_microchip_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "want to replace your doctor with a QR code controlled by the deep state",
+      "tier": 1
+    },
+    {
+      "key": "p_microchip_t2",
+      "file": "p_microchip_t2.mp3",
+      "cardId": "p_microchip_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will sell your medical history to three foreign governments and the highest-bidding cereal company",
+      "tier": 2
+    },
+    {
+      "key": "p_llama_t1.3sg",
+      "file": "p_llama_t1.3sg.mp3",
+      "cardId": "p_llama_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "launders money through a chain of counterfeit petting zoos",
+      "tier": 1
+    },
+    {
+      "key": "p_llama_t1.pl",
+      "file": "p_llama_t1.pl.mp3",
+      "cardId": "p_llama_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "launder money through a chain of counterfeit petting zoos",
+      "tier": 1
+    },
+    {
+      "key": "p_llama_t2.3sg",
+      "file": "p_llama_t2.3sg.mp3",
+      "cardId": "p_llama_t2",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is the shadowy kingpin behind every rigged claw machine in America",
+      "tier": 2
+    },
+    {
+      "key": "p_llama_t2.pl",
+      "file": "p_llama_t2.pl.mp3",
+      "cardId": "p_llama_t2",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are the shadowy kingpin behind every rigged claw machine in America",
+      "tier": 2
+    },
+    {
+      "key": "p_moon_t1.3sg",
+      "file": "p_moon_t1.3sg.mp3",
+      "cardId": "p_moon_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "thinks that birds are a government conspiracy",
+      "tier": 1
+    },
+    {
+      "key": "p_moon_t1.pl",
+      "file": "p_moon_t1.pl.mp3",
+      "cardId": "p_moon_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "think that birds are a government conspiracy",
+      "tier": 1
+    },
+    {
+      "key": "p_moon_t2.3sg",
+      "file": "p_moon_t2.3sg.mp3",
+      "cardId": "p_moon_t2",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is convinced that the world is flat and the moon is a glow-in-the-dark beach ball",
+      "tier": 2
+    },
+    {
+      "key": "p_moon_t2.pl",
+      "file": "p_moon_t2.pl.mp3",
+      "cardId": "p_moon_t2",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are convinced that the world is flat and the moon is a glow-in-the-dark beach ball",
+      "tier": 2
+    },
+    {
+      "key": "p_crayons_t1.3sg",
+      "file": "p_crayons_t1.3sg.mp3",
+      "cardId": "p_crayons_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "brings a juice box and a blankie to the Situation Room",
+      "tier": 1
+    },
+    {
+      "key": "p_crayons_t1.pl",
+      "file": "p_crayons_t1.pl.mp3",
+      "cardId": "p_crayons_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "bring a juice box and a blankie to the Situation Room",
+      "tier": 1
+    },
+    {
+      "key": "p_crayons_t2",
+      "file": "p_crayons_t2.mp3",
+      "cardId": "p_crayons_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "lost the nuclear football in a ball pit",
+      "tier": 2
+    },
+    {
+      "key": "p_handshake_t1.3sg",
+      "file": "p_handshake_t1.3sg.mp3",
+      "cardId": "p_handshake_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has the deep state on speed dial",
+      "tier": 1
+    },
+    {
+      "key": "p_handshake_t1.pl",
+      "file": "p_handshake_t1.pl.mp3",
+      "cardId": "p_handshake_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have the deep state on speed dial",
+      "tier": 1
+    },
+    {
+      "key": "p_handshake_t2.3sg",
+      "file": "p_handshake_t2.3sg.mp3",
+      "cardId": "p_handshake_t2",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "personally hosts the annual Illuminati holiday party, paid for with your tax dollars",
+      "tier": 2
+    },
+    {
+      "key": "p_handshake_t2.pl",
+      "file": "p_handshake_t2.pl.mp3",
+      "cardId": "p_handshake_t2",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "personally host the annual Illuminati holiday party, paid for with your tax dollars",
+      "tier": 2
+    },
+    {
+      "key": "p_sell_constitution_t1",
+      "file": "p_sell_constitution_t1.mp3",
+      "cardId": "p_sell_constitution_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "would pawn the Liberty Bell to pay off a bar tab",
+      "tier": 1
+    },
+    {
+      "key": "p_sell_constitution_t2",
+      "file": "p_sell_constitution_t2.mp3",
+      "cardId": "p_sell_constitution_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "once traded the nuclear launch codes to a Nigerian phone scammer in exchange for an expired gift card",
+      "tier": 2
+    },
+    {
+      "key": "p_dubstep_anthem_t1.3sg",
+      "file": "p_dubstep_anthem_t1.3sg.mp3",
+      "cardId": "p_dubstep_anthem_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "wants Mount Rushmore recarved to look like their golf buddies",
+      "tier": 1
+    },
+    {
+      "key": "p_dubstep_anthem_t1.pl",
+      "file": "p_dubstep_anthem_t1.pl.mp3",
+      "cardId": "p_dubstep_anthem_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "want Mount Rushmore recarved to look like their golf buddies",
+      "tier": 1
+    },
+    {
+      "key": "p_dubstep_anthem_t2",
+      "file": "p_dubstep_anthem_t2.mp3",
+      "cardId": "p_dubstep_anthem_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will replace every church bell in this fine country with a car alarm",
+      "tier": 2
+    },
+    {
+      "key": "p_big_kale_t1.3sg",
+      "file": "p_big_kale_t1.3sg.mp3",
+      "cardId": "p_big_kale_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is a wholly owned subsidiary of Big Everything",
+      "tier": 1
+    },
+    {
+      "key": "p_big_kale_t1.pl",
+      "file": "p_big_kale_t1.pl.mp3",
+      "cardId": "p_big_kale_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are a wholly owned subsidiary of Big Everything",
+      "tier": 1
+    },
+    {
+      "key": "p_big_kale_t2.3sg",
+      "file": "p_big_kale_t2.3sg.mp3",
+      "cardId": "p_big_kale_t2",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is controlled by the fake auto warranty scam email industry",
+      "tier": 2
+    },
+    {
+      "key": "p_big_kale_t2.pl",
+      "file": "p_big_kale_t2.pl.mp3",
+      "cardId": "p_big_kale_t2",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are controlled by the fake auto warranty scam email industry",
+      "tier": 2
+    },
+    {
+      "key": "p_magic_eightball_t1",
+      "file": "p_magic_eightball_t1.mp3",
+      "cardId": "p_magic_eightball_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "would pick federal judges by eenie, meenie, minie, moe",
+      "tier": 1
+    },
+    {
+      "key": "p_magic_eightball_t2.3sg",
+      "file": "p_magic_eightball_t2.3sg.mp3",
+      "cardId": "p_magic_eightball_t2",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "makes all policy decisions using a pair of dice and a bootleg version of ChatGPT 1.0",
+      "tier": 2
+    },
+    {
+      "key": "p_magic_eightball_t2.pl",
+      "file": "p_magic_eightball_t2.pl.mp3",
+      "cardId": "p_magic_eightball_t2",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "make all policy decisions using a pair of dice and a bootleg version of ChatGPT 1.0",
+      "tier": 2
+    },
+    {
+      "key": "p_shrimp_buffet_t1.3sg",
+      "file": "p_shrimp_buffet_t1.3sg.mp3",
+      "cardId": "p_shrimp_buffet_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has the scruples of a payday loan office inside a funeral home",
+      "tier": 1
+    },
+    {
+      "key": "p_shrimp_buffet_t1.pl",
+      "file": "p_shrimp_buffet_t1.pl.mp3",
+      "cardId": "p_shrimp_buffet_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have the scruples of a payday loan office inside a funeral home",
+      "tier": 1
+    },
+    {
+      "key": "p_shrimp_buffet_t2.3sg",
+      "file": "p_shrimp_buffet_t2.3sg.mp3",
+      "cardId": "p_shrimp_buffet_t2",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has the moral compass of a getaway driver with diplomatic immunity",
+      "tier": 2
+    },
+    {
+      "key": "p_shrimp_buffet_t2.pl",
+      "file": "p_shrimp_buffet_t2.pl.mp3",
+      "cardId": "p_shrimp_buffet_t2",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have the moral compass of a getaway driver with diplomatic immunity",
+      "tier": 2
+    },
+    {
+      "key": "p_find_economy_t1",
+      "file": "p_find_economy_t1.mp3",
+      "cardId": "p_find_economy_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "couldn't balance a checkbook with a calculator and divine intervention",
+      "tier": 1
+    },
+    {
+      "key": "p_find_economy_t2",
+      "file": "p_find_economy_t2.mp3",
+      "cardId": "p_find_economy_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "once got lost in a revolving door for an entire afternoon",
+      "tier": 2
+    },
+    {
+      "key": "p_shoppingcart_t1.3sg",
+      "file": "p_shoppingcart_t1.3sg.mp3",
+      "cardId": "p_shoppingcart_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "parks diagonally across two spaces, on purpose",
+      "tier": 1
+    },
+    {
+      "key": "p_shoppingcart_t1.pl",
+      "file": "p_shoppingcart_t1.pl.mp3",
+      "cardId": "p_shoppingcart_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "park diagonally across two spaces, on purpose",
+      "tier": 1
+    },
+    {
+      "key": "p_shoppingcart_t2.3sg",
+      "file": "p_shoppingcart_t2.3sg.mp3",
+      "cardId": "p_shoppingcart_t2",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "takes phone calls on speakerphone in movie theaters",
+      "tier": 2
+    },
+    {
+      "key": "p_shoppingcart_t2.pl",
+      "file": "p_shoppingcart_t2.pl.mp3",
+      "cardId": "p_shoppingcart_t2",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "take phone calls on speakerphone in movie theaters",
+      "tier": 2
+    },
+    {
+      "key": "p_microwavefish_t1.3sg",
+      "file": "p_microwavefish_t1.3sg.mp3",
+      "cardId": "p_microwavefish_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "steals coins out of mall fountains",
+      "tier": 1
+    },
+    {
+      "key": "p_microwavefish_t1.pl",
+      "file": "p_microwavefish_t1.pl.mp3",
+      "cardId": "p_microwavefish_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "steal coins out of mall fountains",
+      "tier": 1
+    },
+    {
+      "key": "p_microwavefish_t2.3sg",
+      "file": "p_microwavefish_t2.3sg.mp3",
+      "cardId": "p_microwavefish_t2",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "hits \"reply all\" on company-wide emails just to say \"thanks\"",
+      "tier": 2
+    },
+    {
+      "key": "p_microwavefish_t2.pl",
+      "file": "p_microwavefish_t2.pl.mp3",
+      "cardId": "p_microwavefish_t2",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "hit \"reply all\" on company-wide emails just to say \"thanks\"",
+      "tier": 2
+    },
+    {
+      "key": "p_fridgelunch_t1.3sg",
+      "file": "p_fridgelunch_t1.3sg.mp3",
+      "cardId": "p_fridgelunch_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "takes the last cup of coffee, leaving the empty pot on the burner",
+      "tier": 1
+    },
+    {
+      "key": "p_fridgelunch_t1.pl",
+      "file": "p_fridgelunch_t1.pl.mp3",
+      "cardId": "p_fridgelunch_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "take the last cup of coffee, leaving the empty pot on the burner",
+      "tier": 1
+    },
+    {
+      "key": "p_fridgelunch_t2",
+      "file": "p_fridgelunch_t2.mp3",
+      "cardId": "p_fridgelunch_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "once stole the office birthday cake and returned the used candles",
+      "tier": 2
+    },
+    {
+      "key": "p_fight_bear_t1",
+      "file": "p_fight_bear_t1.mp3",
+      "cardId": "p_fight_bear_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will personally suplex a grizzly bear to protect our democracy",
+      "tier": 1
+    },
+    {
+      "key": "p_fight_bear_t2",
+      "file": "p_fight_bear_t2.mp3",
+      "cardId": "p_fight_bear_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will personally fistfight an asteroid to protect this nation",
+      "tier": 2
+    },
+    {
+      "key": "p_lift_boats_t1.3sg",
+      "file": "p_lift_boats_t1.3sg.mp3",
+      "cardId": "p_lift_boats_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "deadlifts small cars as a warmup",
+      "tier": 1
+    },
+    {
+      "key": "p_lift_boats_t1.pl",
+      "file": "p_lift_boats_t1.pl.mp3",
+      "cardId": "p_lift_boats_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "deadlift small cars as a warmup",
+      "tier": 1
+    },
+    {
+      "key": "p_lift_boats_t2",
+      "file": "p_lift_boats_t2.mp3",
+      "cardId": "p_lift_boats_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "once towed a cruise ship into harbor with a jump rope",
+      "tier": 2
+    },
+    {
+      "key": "p_phonecall_t1",
+      "file": "p_phonecall_t1.mp3",
+      "cardId": "p_phonecall_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "could balance the federal budget on a napkin at Waffle House",
+      "tier": 1
+    },
+    {
+      "key": "p_phonecall_t2",
+      "file": "p_phonecall_t2.mp3",
+      "cardId": "p_phonecall_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "once fixed a recession by glaring at it",
+      "tier": 2
+    },
+    {
+      "key": "p_neverwrong_t1.3sg",
+      "file": "p_neverwrong_t1.3sg.mp3",
+      "cardId": "p_neverwrong_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has never lost an argument, a bet, or a game of rock-paper-scissors",
+      "tier": 1
+    },
+    {
+      "key": "p_neverwrong_t1.pl",
+      "file": "p_neverwrong_t1.pl.mp3",
+      "cardId": "p_neverwrong_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have never lost an argument, a bet, or a game of rock-paper-scissors",
+      "tier": 1
+    },
+    {
+      "key": "p_neverwrong_t2.3sg",
+      "file": "p_neverwrong_t2.3sg.mp3",
+      "cardId": "p_neverwrong_t2",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has been correct about every issue, including several that have not happened yet",
+      "tier": 2
+    },
+    {
+      "key": "p_neverwrong_t2.pl",
+      "file": "p_neverwrong_t2.pl.mp3",
+      "cardId": "p_neverwrong_t2",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have been correct about every issue, including several that have not happened yet",
+      "tier": 2
+    },
+    {
+      "key": "p_handshake_hair_t1.3sg",
+      "file": "p_handshake_hair_t1.3sg.mp3",
+      "cardId": "p_handshake_hair_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has a jawline that has been declared a national landmark",
+      "tier": 1
+    },
+    {
+      "key": "p_handshake_hair_t1.pl",
+      "file": "p_handshake_hair_t1.pl.mp3",
+      "cardId": "p_handshake_hair_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have a jawline that has been declared a national landmark",
+      "tier": 1
+    },
+    {
+      "key": "p_handshake_hair_t2.3sg",
+      "file": "p_handshake_hair_t2.3sg.mp3",
+      "cardId": "p_handshake_hair_t2",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has the handshake of a president, the jawline of a monument, and approval ratings of free pizza on a snow day",
+      "tier": 2
+    },
+    {
+      "key": "p_handshake_hair_t2.pl",
+      "file": "p_handshake_hair_t2.pl.mp3",
+      "cardId": "p_handshake_hair_t2",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have the handshake of a president, the jawline of a monument, and approval ratings of free pizza on a snow day",
+      "tier": 2
+    },
+    {
+      "key": "p_courage_t1.3sg",
+      "file": "p_courage_t1.3sg.mp3",
+      "cardId": "p_courage_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has the courage of a thousand soldiers and the humility to mention it only constantly",
+      "tier": 1
+    },
+    {
+      "key": "p_courage_t1.pl",
+      "file": "p_courage_t1.pl.mp3",
+      "cardId": "p_courage_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have the courage of a thousand soldiers and the humility to mention it only constantly",
+      "tier": 1
+    },
+    {
+      "key": "p_courage_t2.3sg",
+      "file": "p_courage_t2.3sg.mp3",
+      "cardId": "p_courage_t2",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has the bravery of a warrior and a humility so heroic it should be carved into a mountain",
+      "tier": 2
+    },
+    {
+      "key": "p_courage_t2.pl",
+      "file": "p_courage_t2.pl.mp3",
+      "cardId": "p_courage_t2",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have the bravery of a warrior and a humility so heroic it should be carved into a mountain",
+      "tier": 2
+    },
+    {
+      "key": "p_battery_t1",
+      "file": "p_battery_t1.mp3",
+      "cardId": "p_battery_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will direct NASA to make the stars brighter and your cell phone service 20% faster",
+      "tier": 1
+    },
+    {
+      "key": "p_battery_t2",
+      "file": "p_battery_t2.mp3",
+      "cardId": "p_battery_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will direct our nation's scientists to invent a time machine, travel back to 1984, and convince Van Halen to record a Christmas album",
+      "tier": 2
+    },
+    {
+      "key": "p_hurricane_t1",
+      "file": "p_hurricane_t1.mp3",
+      "cardId": "p_hurricane_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "once negotiated a ceasefire between two tornadoes",
+      "tier": 1
+    },
+    {
+      "key": "p_hurricane_t2",
+      "file": "p_hurricane_t2.mp3",
+      "cardId": "p_hurricane_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "once ended a drought with a single stern warning",
+      "tier": 2
+    },
+    {
+      "key": "p_wallet_t1",
+      "file": "p_wallet_t1.mp3",
+      "cardId": "p_wallet_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "helped an old lady cross eight consecutive streets",
+      "tier": 1
+    },
+    {
+      "key": "p_wallet_t2.3sg",
+      "file": "p_wallet_t2.3sg.mp3",
+      "cardId": "p_wallet_t2",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has rescued more kittens than a dozen fire departments",
+      "tier": 2
+    },
+    {
+      "key": "p_wallet_t2.pl",
+      "file": "p_wallet_t2.pl.mp3",
+      "cardId": "p_wallet_t2",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have rescued more kittens than a dozen fire departments",
+      "tier": 2
+    },
+    {
+      "key": "p_oncegen_t1.3sg",
+      "file": "p_oncegen_t1.3sg.mp3",
+      "cardId": "p_oncegen_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is the smartest human being currently permitted by law",
+      "tier": 1
+    },
+    {
+      "key": "p_oncegen_t1.pl",
+      "file": "p_oncegen_t1.pl.mp3",
+      "cardId": "p_oncegen_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are the smartest human being currently permitted by law",
+      "tier": 1
+    },
+    {
+      "key": "p_oncegen_t2",
+      "file": "p_oncegen_t2.mp3",
+      "cardId": "p_oncegen_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "once finished the Sunday crossword in pen, in the rain, in four minutes",
+      "tier": 2
+    },
+    {
+      "key": "p_zipcodes_t1.3sg",
+      "file": "p_zipcodes_t1.3sg.mp3",
+      "cardId": "p_zipcodes_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "knows every American's name, birthday, and preferred barbecue sauce",
+      "tier": 1
+    },
+    {
+      "key": "p_zipcodes_t1.pl",
+      "file": "p_zipcodes_t1.pl.mp3",
+      "cardId": "p_zipcodes_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "know every American's name, birthday, and preferred barbecue sauce",
+      "tier": 1
+    },
+    {
+      "key": "p_zipcodes_t2.3sg",
+      "file": "p_zipcodes_t2.3sg.mp3",
+      "cardId": "p_zipcodes_t2",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is on a first name basis with every bald eagle in the country",
+      "tier": 2
+    },
+    {
+      "key": "p_zipcodes_t2.pl",
+      "file": "p_zipcodes_t2.pl.mp3",
+      "cardId": "p_zipcodes_t2",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are on a first name basis with every bald eagle in the country",
+      "tier": 2
+    },
+    {
+      "key": "p_ikea_t1",
+      "file": "p_ikea_t1.mp3",
+      "cardId": "p_ikea_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "once untangled a box of Christmas lights in a single pull",
+      "tier": 1
+    },
+    {
+      "key": "p_ikea_t2.3sg",
+      "file": "p_ikea_t2.3sg.mp3",
+      "cardId": "p_ikea_t2",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has successfully folded a fitted sheet on more than one occasion",
+      "tier": 2
+    },
+    {
+      "key": "p_ikea_t2.pl",
+      "file": "p_ikea_t2.pl.mp3",
+      "cardId": "p_ikea_t2",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have successfully folded a fitted sheet on more than one occasion",
+      "tier": 2
+    },
+    {
+      "key": "p_free_icecream_t1",
+      "file": "p_free_icecream_t1.mp3",
+      "cardId": "p_free_icecream_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will install a soft-serve machine in every home",
+      "tier": 1
+    },
+    {
+      "key": "p_free_icecream_t2",
+      "file": "p_free_icecream_t2.mp3",
+      "cardId": "p_free_icecream_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will make every meal come with free dessert and no calories",
+      "tier": 2
+    },
+    {
+      "key": "p_tuck_vets_t1",
+      "file": "p_tuck_vets_t1.mp3",
+      "cardId": "p_tuck_vets_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will hand-write a thank-you note to every teacher in America",
+      "tier": 1
+    },
+    {
+      "key": "p_tuck_vets_t2",
+      "file": "p_tuck_vets_t2.mp3",
+      "cardId": "p_tuck_vets_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will personally carry every sleeping child in from the car, forever",
+      "tier": 2
+    },
+    {
+      "key": "p_golden_t1",
+      "file": "p_golden_t1.mp3",
+      "cardId": "p_golden_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will give every household a hot tub and a guy to maintain it",
+      "tier": 1
+    },
+    {
+      "key": "p_golden_t2",
+      "file": "p_golden_t2.mp3",
+      "cardId": "p_golden_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will give every American a beach house, and the beach",
+      "tier": 2
+    },
+    {
+      "key": "p_highfive_t1.3sg",
+      "file": "p_highfive_t1.3sg.mp3",
+      "cardId": "p_highfive_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "attends every American's little-league game, cheering the loudest",
+      "tier": 1
+    },
+    {
+      "key": "p_highfive_t1.pl",
+      "file": "p_highfive_t1.pl.mp3",
+      "cardId": "p_highfive_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "attend every American's little-league game, cheering the loudest",
+      "tier": 1
+    },
+    {
+      "key": "p_highfive_t2.3sg",
+      "file": "p_highfive_t2.3sg.mp3",
+      "cardId": "p_highfive_t2",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "bakes a fresh batch of chocolate chip cookies for every voter at least once a month",
+      "tier": 2
+    },
+    {
+      "key": "p_highfive_t2.pl",
+      "file": "p_highfive_t2.pl.mp3",
+      "cardId": "p_highfive_t2",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "bake a fresh batch of chocolate chip cookies for every voter at least once a month",
+      "tier": 2
+    },
+    {
+      "key": "p_christmas3_t1",
+      "file": "p_christmas3_t1.mp3",
+      "cardId": "p_christmas3_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will make Christmas a three-day weekend, four times a year",
+      "tier": 1
+    },
+    {
+      "key": "p_christmas3_t2",
+      "file": "p_christmas3_t2.mp3",
+      "cardId": "p_christmas3_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will add a secret bonus month of paid vacation between July and August",
+      "tier": 2
+    },
+    {
+      "key": "p_birthday_t1",
+      "file": "p_birthday_t1.mp3",
+      "cardId": "p_birthday_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will make your birthday a federal holiday",
+      "tier": 1
+    },
+    {
+      "key": "p_birthday_t2",
+      "file": "p_birthday_t2.mp3",
+      "cardId": "p_birthday_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will guarantee every American one flawless hair day per week",
+      "tier": 2
+    },
+    {
+      "key": "p_naphour_t1",
+      "file": "p_naphour_t1.mp3",
+      "cardId": "p_naphour_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will mandate hammocks in every workplace",
+      "tier": 1
+    },
+    {
+      "key": "p_naphour_t2",
+      "file": "p_naphour_t2.mp3",
+      "cardId": "p_naphour_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will make snoozing your alarm a protected constitutional right",
+      "tier": 2
+    },
+    {
+      "key": "p_wakeup_t1",
+      "file": "p_wakeup_t1.mp3",
+      "cardId": "p_wakeup_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will answer your texts personally, immediately, with punctuation",
+      "tier": 1
+    },
+    {
+      "key": "p_wakeup_t2",
+      "file": "p_wakeup_t2.mp3",
+      "cardId": "p_wakeup_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will help you move, including the couch, and bring the truck",
+      "tier": 2
+    },
+    {
+      "key": "p_monday_t1",
+      "file": "p_monday_t1.mp3",
+      "cardId": "p_monday_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will replace Monday and Wednesday with extra Saturdays",
+      "tier": 1
+    },
+    {
+      "key": "p_monday_t2",
+      "file": "p_monday_t2.mp3",
+      "cardId": "p_monday_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will abolish Monday and replace it with National Weekly Pancake Day",
+      "tier": 2
+    },
+    {
+      "key": "p_refund_t1",
+      "file": "p_refund_t1.mp3",
+      "cardId": "p_refund_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will erase every late fee you've ever been charged, with interest",
+      "tier": 1
+    },
+    {
+      "key": "p_refund_t2",
+      "file": "p_refund_t2.mp3",
+      "cardId": "p_refund_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will give every citizen three wishes and a government-certified loophole",
+      "tier": 2
+    },
+    {
+      "key": "p_dmv_t1",
+      "file": "p_dmv_t1.mp3",
+      "cardId": "p_dmv_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will make every government form fit on one page, front only",
+      "tier": 1
+    },
+    {
+      "key": "p_dmv_t2",
+      "file": "p_dmv_t2.mp3",
+      "cardId": "p_dmv_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will abolish hold music and replace it with a polite and well-spoken human who answers immediately",
+      "tier": 2
+    },
+    {
+      "key": "p_coffeeshop_t1",
+      "file": "p_coffeeshop_t1.mp3",
+      "cardId": "p_coffeeshop_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will install a personal barista in every kitchen",
+      "tier": 1
+    },
+    {
+      "key": "p_coffeeshop_t2",
+      "file": "p_coffeeshop_t2.mp3",
+      "cardId": "p_coffeeshop_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will make refills free everywhere, forever",
+      "tier": 2
+    },
+    {
+      "key": "p_city_hill_t1",
+      "file": "p_city_hill_t1.mp3",
+      "cardId": "p_city_hill_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will build a shining city on every hill",
+      "tier": 1
+    },
+    {
+      "key": "p_city_hill_t2",
+      "file": "p_city_hill_t2.mp3",
+      "cardId": "p_city_hill_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will build so many shining cities on so many hills that our great nation will be visible from outer space",
+      "tier": 2
+    },
+    {
+      "key": "p_points_light_t1",
+      "file": "p_points_light_t1.mp3",
+      "cardId": "p_points_light_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will add a second moon and fourteen more stars to the night sky",
+      "tier": 1
+    },
+    {
+      "key": "p_points_light_t2",
+      "file": "p_points_light_t2.mp3",
+      "cardId": "p_points_light_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will give this nation a second proudly shining sun, just like Tatooine",
+      "tier": 2
+    },
+    {
+      "key": "p_anthemkey_t1",
+      "file": "p_anthemkey_t1.mp3",
+      "cardId": "p_anthemkey_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will add an extra verse to the national anthem where America wins even harder",
+      "tier": 1
+    },
+    {
+      "key": "p_anthemkey_t2",
+      "file": "p_anthemkey_t2.mp3",
+      "cardId": "p_anthemkey_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will make it illegal for weirdo pop stars to add showoff extra notes to the national anthem",
+      "tier": 2
+    },
+    {
+      "key": "p_noupdates_t1",
+      "file": "p_noupdates_t1.mp3",
+      "cardId": "p_noupdates_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will make every crosswalk button actually do something",
+      "tier": 1
+    },
+    {
+      "key": "p_noupdates_t2",
+      "file": "p_noupdates_t2.mp3",
+      "cardId": "p_noupdates_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will require every \"unsubscribe\" button to actually work, the first time",
+      "tier": 2
+    },
+    {
+      "key": "s_position_t1",
+      "file": "s_position_t1.mp3",
+      "cardId": "s_position_t1",
+      "role": "np",
+      "conjugation": null,
+      "text": "My position, which is the best position in recorded history,",
+      "tier": 1
+    },
+    {
+      "key": "s_campaign_transparent_t1",
+      "file": "s_campaign_transparent_t1.mp3",
+      "cardId": "s_campaign_transparent_t1",
+      "role": "np",
+      "conjugation": null,
+      "text": "My campaign, which is objectively perfect and legally beyond criticism,",
+      "tier": 1
+    },
+    {
+      "key": "s_plan_t1",
+      "file": "s_plan_t1.mp3",
+      "cardId": "s_plan_t1",
+      "role": "np",
+      "conjugation": null,
+      "text": "My plan, which fits on one index card in large, confident letters,",
+      "tier": 1
+    },
+    {
+      "key": "s_plan_t2",
+      "file": "s_plan_t2.mp3",
+      "cardId": "s_plan_t2",
+      "role": "np",
+      "conjugation": null,
+      "text": "My foolproof plan, which history has already endorsed unanimously,",
+      "tier": 2
+    },
+    {
+      "key": "s_gut_t1",
+      "file": "s_gut_t1.mp3",
+      "cardId": "s_gut_t1",
+      "role": "np",
+      "conjugation": null,
+      "text": "My gut, which outperforms every think tank in this country,",
+      "tier": 1
+    },
+    {
+      "key": "s_gut_t2",
+      "file": "s_gut_t2.mp3",
+      "cardId": "s_gut_t2",
+      "role": "np",
+      "conjugation": null,
+      "text": "My flawless instincts, which have repeatedly overruled experts and reality,",
+      "tier": 2
+    },
+    {
+      "key": "s_plan_spellcheck_t1",
+      "file": "s_plan_spellcheck_t1.mp3",
+      "cardId": "s_plan_spellcheck_t1",
+      "role": "np",
+      "conjugation": null,
+      "text": "My gorgeous, flag-scented, fully spell-checked plan",
+      "tier": 1
+    },
+    {
+      "key": "s_plan_spellcheck_t2",
+      "file": "s_plan_spellcheck_t2.mp3",
+      "cardId": "s_plan_spellcheck_t2",
+      "role": "np",
+      "conjugation": null,
+      "text": "My magnificent, airtight, patriotic, Nobel-prize-ready plan",
+      "tier": 2
+    },
+    {
+      "key": "s_admin_unhaunted_t1",
+      "file": "s_admin_unhaunted_t1.mp3",
+      "cardId": "s_admin_unhaunted_t1",
+      "role": "np",
+      "conjugation": null,
+      "text": "My administration, which is free of all blemishes, demonic-possession, and acne,",
+      "tier": 1
+    },
+    {
+      "key": "s_admin_unhaunted_t2",
+      "file": "s_admin_unhaunted_t2.mp3",
+      "cardId": "s_admin_unhaunted_t2",
+      "role": "np",
+      "conjugation": null,
+      "text": "My administration, certified to be fresh, vibrant, devoid of all blemishes, and 60% scandal-free,",
+      "tier": 2
+    },
+    {
+      "key": "s_idiot_opp_t1",
+      "file": "s_idiot_opp_t1.mp3",
+      "cardId": "s_idiot_opp_t1",
+      "role": "np",
+      "conjugation": null,
+      "text": "My drooling, liberty-despising cretin of an opponent",
+      "tier": 1
+    },
+    {
+      "key": "s_idiot_opp_t2",
+      "file": "s_idiot_opp_t2.mp3",
+      "cardId": "s_idiot_opp_t2",
+      "role": "np",
+      "conjugation": null,
+      "text": "My brain-dead, flag-burning, malodorous nincompoop of an opponent",
+      "tier": 2
+    },
+    {
+      "key": "s_crook_opp_t1",
+      "file": "s_crook_opp_t1.mp3",
+      "cardId": "s_crook_opp_t1",
+      "role": "np",
+      "conjugation": null,
+      "text": "My corrupt and sexually deviant opponent",
+      "tier": 1
+    },
+    {
+      "key": "s_crook_opp_t2",
+      "file": "s_crook_opp_t2.mp3",
+      "cardId": "s_crook_opp_t2",
+      "role": "np",
+      "conjugation": null,
+      "text": "My morally bankrupt, perverted, and foul-smelling opponent",
+      "tier": 2
+    },
+    {
+      "key": "s_opp_buffoons_t1",
+      "file": "s_opp_buffoons_t1.mp3",
+      "cardId": "s_opp_buffoons_t1",
+      "role": "np",
+      "conjugation": null,
+      "text": "The treasonous sewer mutants bankrolling my opponent's campaign",
+      "tier": 1
+    },
+    {
+      "key": "s_opp_buffoons_t2",
+      "file": "s_opp_buffoons_t2.mp3",
+      "cardId": "s_opp_buffoons_t2",
+      "role": "np",
+      "conjugation": null,
+      "text": "The writhing nest of grifters, buffoons, and drug-addled miscreants that fund my opponent",
+      "tier": 2
+    },
+    {
+      "key": "s_opp_army_t1",
+      "file": "s_opp_army_t1.mp3",
+      "cardId": "s_opp_army_t1",
+      "role": "np",
+      "conjugation": null,
+      "text": "My opponent's jackbooted army of hall monitors and tattletales",
+      "tier": 1
+    },
+    {
+      "key": "s_opp_army_t2",
+      "file": "s_opp_army_t2.mp3",
+      "cardId": "s_opp_army_t2",
+      "role": "np",
+      "conjugation": null,
+      "text": "My opponent's smug, acne-ridden militia of basement-dwelling reddit moderators",
+      "tier": 2
+    },
+    {
+      "key": "s_opp_speechwriters_t1",
+      "file": "s_opp_speechwriters_t1.mp3",
+      "cardId": "s_opp_speechwriters_t1",
+      "role": "np",
+      "conjugation": null,
+      "text": "The lobbyists who write my opponent's speeches on the back of donation checks",
+      "tier": 1
+    },
+    {
+      "key": "s_opp_speechwriters_t2",
+      "file": "s_opp_speechwriters_t2.mp3",
+      "cardId": "s_opp_speechwriters_t2",
+      "role": "np",
+      "conjugation": null,
+      "text": "The corporate parasites remotely operating my opponent like a humanoid disinformation drone",
+      "tier": 2
+    },
+    {
+      "key": "s_opp_personality_t1",
+      "file": "s_opp_personality_t1.mp3",
+      "cardId": "s_opp_personality_t1",
+      "role": "np",
+      "conjugation": null,
+      "text": "My opponent's lab-grown personality, assembled entirely from polling data,",
+      "tier": 1
+    },
+    {
+      "key": "s_opp_personality_t2",
+      "file": "s_opp_personality_t2.mp3",
+      "cardId": "s_opp_personality_t2",
+      "role": "np",
+      "conjugation": null,
+      "text": "My opponent's committee-designed, focus-tested, and overly Photoshopped personality",
+      "tier": 2
+    },
+    {
+      "key": "s_proud_nation_t1",
+      "file": "s_proud_nation_t1.mp3",
+      "cardId": "s_proud_nation_t1",
+      "role": "np",
+      "conjugation": null,
+      "text": "This great, proud, undefeated nation",
+      "tier": 1
+    },
+    {
+      "key": "s_proud_nation_t2",
+      "file": "s_proud_nation_t2.mp3",
+      "cardId": "s_proud_nation_t2",
+      "role": "np",
+      "conjugation": null,
+      "text": "This sacred nation of heroes, legends, and people just like you",
+      "tier": 2
+    },
+    {
+      "key": "s_wonderful_people_t1",
+      "file": "s_wonderful_people_t1.mp3",
+      "cardId": "s_wonderful_people_t1",
+      "role": "np",
+      "conjugation": null,
+      "text": "The wonderful, beautiful, criminally underappreciated people of this country",
+      "tier": 1
+    },
+    {
+      "key": "s_wonderful_people_t2",
+      "file": "s_wonderful_people_t2.mp3",
+      "cardId": "s_wonderful_people_t2",
+      "role": "np",
+      "conjugation": null,
+      "text": "The wisest, bravest, best-looking voters on God's green earth",
+      "tier": 2
+    },
+    {
+      "key": "o_radical_t1",
+      "file": "o_radical_t1.mp3",
+      "cardId": "o_radical_t1",
+      "role": "np",
+      "conjugation": null,
+      "text": "the treasonous lunatic fringe",
+      "tier": 1
+    },
+    {
+      "key": "o_radical_t2",
+      "file": "o_radical_t2.mp3",
+      "cardId": "o_radical_t2",
+      "role": "np",
+      "conjugation": null,
+      "text": "the mentally unstable lowlifes on the radical fringe",
+      "tier": 2
+    },
+    {
+      "key": "o_communists_t1",
+      "file": "o_communists_t1.mp3",
+      "cardId": "o_communists_t1",
+      "role": "np",
+      "conjugation": null,
+      "text": "foreign-funded traitors to freedom",
+      "tier": 1
+    },
+    {
+      "key": "o_communists_t2",
+      "file": "o_communists_t2.mp3",
+      "cardId": "o_communists_t2",
+      "role": "np",
+      "conjugation": null,
+      "text": "corrupt traitorous enemies embedded to destroy this nation from within",
+      "tier": 2
+    },
+    {
+      "key": "o_patriots_t1",
+      "file": "o_patriots_t1.mp3",
+      "cardId": "o_patriots_t1",
+      "role": "np",
+      "conjugation": null,
+      "text": "hardworking, flag-waving patriots",
+      "tier": 1
+    },
+    {
+      "key": "o_patriots_t2",
+      "file": "o_patriots_t2.mp3",
+      "cardId": "o_patriots_t2",
+      "role": "np",
+      "conjugation": null,
+      "text": "the finest, hardest-working patriots God ever made",
+      "tier": 2
+    },
+    {
+      "key": "s_opp_t1",
+      "file": "s_opp_t1.mp3",
+      "cardId": "s_opp_t1",
+      "role": "np",
+      "conjugation": null,
+      "text": "My spineless, scheming opponent",
+      "tier": 1
+    },
+    {
+      "key": "s_opp_t2",
+      "file": "s_opp_t2.mp3",
+      "cardId": "s_opp_t2",
+      "role": "np",
+      "conjugation": null,
+      "text": "My treasonous, weasel-hearted disgrace of an opponent",
+      "tier": 2
+    },
+    {
+      "key": "s_i_t1",
+      "file": "s_i_t1.mp3",
+      "cardId": "s_i_t1",
+      "role": "np",
+      "conjugation": null,
+      "text": "I, a humble titan of public service,",
+      "tier": 1
+    },
+    {
+      "key": "s_i_t2",
+      "file": "s_i_t2.mp3",
+      "cardId": "s_i_t2",
+      "role": "np",
+      "conjugation": null,
+      "text": "I, the last honest person alive,",
+      "tier": 2
+    },
+    {
+      "key": "o_satan_t1",
+      "file": "o_satan_t1.mp3",
+      "cardId": "o_satan_t1",
+      "role": "np",
+      "conjugation": null,
+      "text": "Satan and all his minions",
+      "tier": 1
+    },
+    {
+      "key": "o_satan_t2",
+      "file": "o_satan_t2.mp3",
+      "cardId": "o_satan_t2",
+      "role": "np",
+      "conjugation": null,
+      "text": "Satan, his minions, and the infernal creature Satan calls for moral guidance",
+      "tier": 2
+    },
+    {
+      "key": "o_freedom_t1",
+      "file": "o_freedom_t1.mp3",
+      "cardId": "o_freedom_t1",
+      "role": "np",
+      "conjugation": null,
+      "text": "freedom, democracy, and the right to grill",
+      "tier": 1
+    },
+    {
+      "key": "o_freedom_t2",
+      "file": "o_freedom_t2.mp3",
+      "cardId": "o_freedom_t2",
+      "role": "np",
+      "conjugation": null,
+      "text": "freedom, democracy, apple pie, and everything else worth defending",
+      "tier": 2
+    },
+    {
+      "key": "r_lizard_t1.3sg",
+      "file": "r_lizard_t1.3sg.mp3",
+      "cardId": "r_lizard_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is a space alien sent to destroy our nation from within",
+      "tier": 1
+    },
+    {
+      "key": "r_lizard_t1.pl",
+      "file": "r_lizard_t1.pl.mp3",
+      "cardId": "r_lizard_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are a space alien sent to destroy our nation from within",
+      "tier": 1
+    },
+    {
+      "key": "r_lizard_t2.3sg",
+      "file": "r_lizard_t2.3sg.mp3",
+      "cardId": "r_lizard_t2",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is a soulless lizard-centipede hybrid merely disguised as human to trick our fair nation into self-destruction",
+      "tier": 2
+    },
+    {
+      "key": "r_lizard_t2.pl",
+      "file": "r_lizard_t2.pl.mp3",
+      "cardId": "r_lizard_t2",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are a soulless lizard-centipede hybrid merely disguised as human to trick our fair nation into self-destruction",
+      "tier": 2
+    },
+    {
+      "key": "r_christmas_t1.3sg",
+      "file": "r_christmas_t1.3sg.mp3",
+      "cardId": "r_christmas_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "wants to replace Christmas morning with a mandatory tax audit",
+      "tier": 1
+    },
+    {
+      "key": "r_christmas_t1.pl",
+      "file": "r_christmas_t1.pl.mp3",
+      "cardId": "r_christmas_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "want to replace Christmas morning with a mandatory tax audit",
+      "tier": 1
+    },
+    {
+      "key": "r_christmas_t2.3sg",
+      "file": "r_christmas_t2.3sg.mp3",
+      "cardId": "r_christmas_t2",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "wants to replace Christmas and snow days with tax audits, standardized testing, and boiled Brussels sprouts",
+      "tier": 2
+    },
+    {
+      "key": "r_christmas_t2.pl",
+      "file": "r_christmas_t2.pl.mp3",
+      "cardId": "r_christmas_t2",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "want to replace Christmas and snow days with tax audits, standardized testing, and boiled Brussels sprouts",
+      "tier": 2
+    },
+    {
+      "key": "r_greatest_t1.3sg",
+      "file": "r_greatest_t1.3sg.mp3",
+      "cardId": "r_greatest_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is the greatest leader in human history, including several histories yet to be written",
+      "tier": 1
+    },
+    {
+      "key": "r_greatest_t1.pl",
+      "file": "r_greatest_t1.pl.mp3",
+      "cardId": "r_greatest_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are the greatest leader in human history, including several histories yet to be written",
+      "tier": 1
+    },
+    {
+      "key": "r_greatest_t2.3sg",
+      "file": "r_greatest_t2.3sg.mp3",
+      "cardId": "r_greatest_t2",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is a leader great enough to be added to Mount Rushmore, replacing all four existing faces",
+      "tier": 2
+    },
+    {
+      "key": "r_greatest_t2.pl",
+      "file": "r_greatest_t2.pl.mp3",
+      "cardId": "r_greatest_t2",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are a leader great enough to be added to Mount Rushmore, replacing all four existing faces",
+      "tier": 2
+    },
+    {
+      "key": "r_cured_t1",
+      "file": "r_cured_t1.mp3",
+      "cardId": "r_cured_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will cure hangnails and the common cold",
+      "tier": 1
+    },
+    {
+      "key": "r_cured_t2",
+      "file": "r_cured_t2.mp3",
+      "cardId": "r_cured_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will bring eternal health and happiness to everyone",
+      "tier": 2
+    },
+    {
+      "key": "r_pony_t1",
+      "file": "r_pony_t1.mp3",
+      "cardId": "r_pony_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will make every citizen independently wealthy",
+      "tier": 1
+    },
+    {
+      "key": "r_pony_t2",
+      "file": "r_pony_t2.mp3",
+      "cardId": "r_pony_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will deliver wealth, happiness, and free snow cones to every citizen",
+      "tier": 2
+    },
+    {
+      "key": "r_never_truth_t1",
+      "file": "r_never_truth_t1.mp3",
+      "cardId": "r_never_truth_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "couldn't tell the truth by reading it off a cue card",
+      "tier": 1
+    },
+    {
+      "key": "r_never_truth_t2.3sg",
+      "file": "r_never_truth_t2.3sg.mp3",
+      "cardId": "r_never_truth_t2",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "is deathly allergic to truth, courage, common decency, and returning shopping carts",
+      "tier": 2
+    },
+    {
+      "key": "r_never_truth_t2.pl",
+      "file": "r_never_truth_t2.pl.mp3",
+      "cardId": "r_never_truth_t2",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "are deathly allergic to truth, courage, common decency, and returning shopping carts",
+      "tier": 2
+    },
+    {
+      "key": "r_goldtoilet_t1.3sg",
+      "file": "r_goldtoilet_t1.3sg.mp3",
+      "cardId": "r_goldtoilet_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "uses taxpayer money to fly private jets to play mini-golf",
+      "tier": 1
+    },
+    {
+      "key": "r_goldtoilet_t1.pl",
+      "file": "r_goldtoilet_t1.pl.mp3",
+      "cardId": "r_goldtoilet_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "use taxpayer money to fly private jets to play mini-golf",
+      "tier": 1
+    },
+    {
+      "key": "r_goldtoilet_t2.3sg",
+      "file": "r_goldtoilet_t2.3sg.mp3",
+      "cardId": "r_goldtoilet_t2",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "flushes taxpayer money down a solid-gold toilet while flying private jets to private billionaire-only disc golf tournaments",
+      "tier": 2
+    },
+    {
+      "key": "r_goldtoilet_t2.pl",
+      "file": "r_goldtoilet_t2.pl.mp3",
+      "cardId": "r_goldtoilet_t2",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "flush taxpayer money down a solid-gold toilet while flying private jets to private billionaire-only disc golf tournaments",
+      "tier": 2
+    },
+    {
+      "key": "r_popupads_t1.3sg",
+      "file": "r_popupads_t1.3sg.mp3",
+      "cardId": "r_popupads_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has a plan to add a tip prompt to grocery store self-checkout stations",
+      "tier": 1
+    },
+    {
+      "key": "r_popupads_t1.pl",
+      "file": "r_popupads_t1.pl.mp3",
+      "cardId": "r_popupads_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have a plan to add a tip prompt to grocery store self-checkout stations",
+      "tier": 1
+    },
+    {
+      "key": "r_popupads_t2.3sg",
+      "file": "r_popupads_t2.3sg.mp3",
+      "cardId": "r_popupads_t2",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "has a secret scheme to add an unskippable ad break to the national anthem",
+      "tier": 2
+    },
+    {
+      "key": "r_popupads_t2.pl",
+      "file": "r_popupads_t2.pl.mp3",
+      "cardId": "r_popupads_t2",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "have a secret scheme to add an unskippable ad break to the national anthem",
+      "tier": 2
+    },
+    {
+      "key": "r_coinslot_t1",
+      "file": "r_coinslot_t1.mp3",
+      "cardId": "r_coinslot_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will put a pop-up ad on the Statue of Liberty",
+      "tier": 1
+    },
+    {
+      "key": "r_coinslot_t2",
+      "file": "r_coinslot_t2.mp3",
+      "cardId": "r_coinslot_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will replace the Statue of Liberty's torch with hamburger from whichever fast food restaurant pays the most bribe money",
+      "tier": 2
+    },
+    {
+      "key": "r_rubber_chicken_t1",
+      "file": "r_rubber_chicken_t1.mp3",
+      "cardId": "r_rubber_chicken_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will give a wedgie to every voter in this audience and then slap them across the face with a rubber chicken",
+      "tier": 1
+    },
+    {
+      "key": "r_rubber_chicken_t2",
+      "file": "r_rubber_chicken_t2.mp3",
+      "cardId": "r_rubber_chicken_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will personally slap every voter across the face with a rubber chicken, make a rude hand gesture, and then fart in their general direction",
+      "tier": 2
+    },
+    {
+      "key": "r_eagle_t1.3sg",
+      "file": "r_eagle_t1.3sg.mp3",
+      "cardId": "r_eagle_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "bench-presses two full-grown bald eagles before breakfast",
+      "tier": 1
+    },
+    {
+      "key": "r_eagle_t1.pl",
+      "file": "r_eagle_t1.pl.mp3",
+      "cardId": "r_eagle_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "bench-press two full-grown bald eagles before breakfast",
+      "tier": 1
+    },
+    {
+      "key": "r_eagle_t2.3sg",
+      "file": "r_eagle_t2.3sg.mp3",
+      "cardId": "r_eagle_t2",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "bench-presses two full-grown bald eagles before breakfast, while they salute",
+      "tier": 2
+    },
+    {
+      "key": "r_eagle_t2.pl",
+      "file": "r_eagle_t2.pl.mp3",
+      "cardId": "r_eagle_t2",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "bench-press two full-grown bald eagles before breakfast, while they salute",
+      "tier": 2
+    },
+    {
+      "key": "p_freedom_subscription_t1",
+      "file": "p_freedom_subscription_t1.mp3",
+      "cardId": "p_freedom_subscription_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will make constitutional rights an in-app purchase",
+      "tier": 1
+    },
+    {
+      "key": "p_freedom_subscription_t2",
+      "file": "p_freedom_subscription_t2.mp3",
+      "cardId": "p_freedom_subscription_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will make the Bill of Rights available only as a part of a Disney+ premium subscription bundle",
+      "tier": 2
+    },
+    {
+      "key": "p_timeshare_t1",
+      "file": "p_timeshare_t1.mp3",
+      "cardId": "p_timeshare_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will sell our national parks to a self-storage conglomerate",
+      "tier": 1
+    },
+    {
+      "key": "p_timeshare_t2",
+      "file": "p_timeshare_t2.mp3",
+      "cardId": "p_timeshare_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will replace the Statue of Liberty's torch with a rotating casino sign",
+      "tier": 2
+    },
+    {
+      "key": "p_ban_happiness_t1.3sg",
+      "file": "p_ban_happiness_t1.3sg.mp3",
+      "cardId": "p_ban_happiness_t1",
+      "role": "predicate",
+      "conjugation": "3sg",
+      "text": "wants to require a permit for birthday parties",
+      "tier": 1
+    },
+    {
+      "key": "p_ban_happiness_t1.pl",
+      "file": "p_ban_happiness_t1.pl.mp3",
+      "cardId": "p_ban_happiness_t1",
+      "role": "predicate",
+      "conjugation": "pl",
+      "text": "want to require a permit for birthday parties",
+      "tier": 1
+    },
+    {
+      "key": "p_got_ending_t1",
+      "file": "p_got_ending_t1.mp3",
+      "cardId": "p_got_ending_t1",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will fix Daylight Saving Time and the ending of Game of Thrones in a way that satisfies everyone",
+      "tier": 1
+    },
+    {
+      "key": "p_got_ending_t2",
+      "file": "p_got_ending_t2.mp3",
+      "cardId": "p_got_ending_t2",
+      "role": "predicate",
+      "conjugation": null,
+      "text": "will reform Daylight Saving Time, fix the endings of Game of Thrones, Lost, and How I Met Your Mother in a way that satisfies everyone, and produce a new Star Wars trilogy that everyone agrees is awesome",
+      "tier": 2
+    }
+  ]
+}

@@ -104,6 +104,10 @@ const HEEL_TURN_DELTA = -15; // an audience insult must really hurt you
 const GAFFE_DELTA = -12; // a self-own (gets the ×1.6 blunder mult)
 const FLATTERY_DELTA = -10; // complimenting the opponent (boost_opp has NO ×1.6 mult, so a lower bar)
 const COMEBACK_BAR = -40; // down at least this far, then win → Comeback Kid
+// Easter-egg award tied to the GAME NAME ("My Opponent Kicks Puppies"). Fires when the player's
+// whole statement is EXACTLY those two cards, nothing else. If the name ever changes, delete this
+// const + its fire() in evalMidAwards. Requires both cards to stay in the SHARED (contested) pool.
+const NAME_OF_THE_GAME = { subj: 's_opp', pred: 'p_kick_pup' };
 function freshDebateStats() {
   return { statements: 0, onTopic: 0, offTopic: 0, attackStmts: 0, bragStmts: 0, panderStmts: 0, worstBar: 0 };
 }
@@ -319,6 +323,15 @@ function evalMidAwards(r: Reaction): void {
   if (has('self_own') && r.delta <= GAFFE_DELTA) fire('gaffe', '🤡 Giant Gaffe!', 'A historic self-own. Choose a card and recover.');
   if (has('boost_opp') && r.delta <= FLATTERY_DELTA)
     fire('flattery', '🤝 Questionable Flattery', 'You talked up your own opponent — strange strategy. Choose a card.');
+  // Easter egg: the whole statement is EXACTLY "My opponent kicks puppies" — the game's namesake.
+  const ln = game.player.line;
+  if (
+    r.grammatical &&
+    ln.length === 2 &&
+    ln[0].id.split('#')[0] === NAME_OF_THE_GAME.subj &&
+    ln[1].id.split('#')[0] === NAME_OF_THE_GAME.pred
+  )
+    fire('nameofthegame', '🎯 That’s the Name of the Game!', 'You said the magic words. The crowd knows a classic when they hear it — choose a card.');
 }
 
 /** Show any pending mid-debate awards (after the round FX, only if the debate continues).
