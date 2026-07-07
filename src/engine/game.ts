@@ -580,8 +580,9 @@ function applyPowerup(state: GameState, p: PlayerState, move: { cardId: string; 
     case 'soundbite': // amplify your next completed statement
       p.nextMultiplier = 1.5;
       break;
-    case 'plant': // reveal the crowd's hidden taste (for the rest of the debate)
+    case 'plant': // reveal the crowd's hidden taste (for the rest of the debate) — a FREE action
       p.knowsCrowd = true;
+      free = true; // an info reveal, like Search/Filibuster — doesn't cost the turn
       break;
     case 'oath': {
       // Under Oath — this question, the opponent cannot lie: compelled to build the most

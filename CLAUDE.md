@@ -308,7 +308,8 @@ gibberish); Hot Mic to steal the player's power-up; Search situationally; never 
 
 ## Power-ups (`Move{kind:'power'}`)
 Search (draw 5, FREE), Filibuster (adds 3 connectors, FREE),
-Plant (`knowsCrowd`, reveal crowd for the debate), Teleprompter Typo (**REPLACE** the opponent's
+Plant (`knowsCrowd`, reveal crowd for the debate, **FREE** — an info reveal like Search/Filibuster,
+2026-07-06: doesn't cost the turn), Teleprompter Typo (**REPLACE** the opponent's
 last card — pop it, push a card you choose; player targets, AI auto-picks the swap forcing the worst
 self-own via `bestTypoJam`, which searches *replacements* of the victim's last card; victim recovers
 by tacking on another sentence — a `but` pivot helps most), Forgot My Line (pop the opponent's last line card — discarded, not returned;
@@ -568,7 +569,11 @@ private finishers naturally **premium**: offer them as rare **`REWARDS`** picks,
 is worth more than a contested one). Balance lever: a private finisher with no race risk may want a
 slightly lower factor than the shared ones, or be scarce enough that you rarely hold two. Build with
 the shop/reward work, not standalone. (Note: the end-move mechanic already supports this unchanged —
-a finisher from the hand is offered the same way, only on a complete line.)
+a finisher from the hand is offered the same way, only on a complete line.) **Update (2026-07-06):
+OPPONENTS get one private signature finisher each** per the voice-bible decision (see the
+opponent-specific signature cards item / `OPPONENT_VOICES.md`) — their catchphrase mic-drop. That
+raises opponent scoring ladder-wide, which makes THIS item (player private finishers via
+REWARDS/shop) the counterweight: buff the player economy to match, never pull opponents down.
 
 **DONE (2026-06) — Gaffe/nerves difficulty system.** Each `Opponent` has a `gaffeChance` (falls up
 the ladder: rookie 0.45 → boss 0) and `nervousOf` triggers (`attacked`/`pander`/`self_brag`) that
@@ -775,6 +780,13 @@ of good starters is welcome (StS starting-relic variety) but must be **curated +
 (mirror `ensurePoolPlayable`'s spirit, applied to the private deck) so a roll is never unwinnable.
 This *raises* the value of the Consultant/rewards. Touches `cards.ts` + the private-deck build
 (`deck.ts`/`game.ts`) + the select screen (`ui/main.ts`); engine + tests. See [[tune-for-temptation]].
+**Extension floated (Daniel, 2026-07-06 — TBD, weigh before building): per-player-character REWARD
+pools**, not just starting decks. Pros: character choice matters beyond the opening hand, real
+replayability (beat the game with all three), and each pool needs only ONE voice if per-character
+voicing ever happens (see the voice plan's revised math). Cons: needs a bigger total card count
+than one shared pool, and — the tension Daniel flagged — a player's favorite cards can become
+un-combinable because they belong to different characters. Undecided; don't build into the
+starting-deck pass without a ruling.
 
 **DONE (2026-07-06) — Passive RELICS (Slay-the-Spire-style; first slice shipped same day).**
 **PLAYER-FACING BRAND = "ENDORSEMENT" (Daniel, 2026-07-06):** "relic" is genre vocabulary, not
@@ -823,20 +835,88 @@ playtest-watch: rambling is a north-star limiter), Push Pollster (knowsCrowd), F
 starting-decks item), a second waypoint (keep pick counts uniform — tune-for-temptation), and the
 12-rung re-point (`RELIC_RUNGS` → tier breathers).
 
-**P2 · medium — OPPONENT-SPECIFIC signature cards (design idea, 2026-07-06; Daniel).** Today every
-speaker draws from the same lexicon, so characters don't *sound* distinct. Give each opponent a
-small set of **signature cards in their own voice/style** (pander / attack / brag flavor matching
-their `style`), shuffled into their AI private deck — so a debate against the panderer *reads*
-different from one against the mudslinger, and the cast has real variety. Deck layering becomes:
-**shared common pool** (contested) + **player-specific** cards (see the starting-deck item above) +
-**opponent-specific** cards. Rides the existing plumbing: opponents already have a `style`, and the
-tiered-ladder `deckBoost` note already shuffles style-appropriate reward cards into the AI
+**P2 · medium — OPPONENT-SPECIFIC signature cards (design idea 2026-07-06; VOICE-BIBLE DESIGN PASS
+DONE 2026-07-06 — see `OPPONENT_VOICES.md`, local-only + gitignored like the other authoring docs).**
+Today every speaker draws from the same lexicon, so characters don't *sound* distinct. Give each
+opponent a small set of **signature cards in their own voice/style** (pander / attack / brag flavor
+matching their `style`), shuffled into their AI private deck — so a debate against the panderer
+*reads* different from one against the mudslinger, and the cast has real variety. Deck layering
+becomes: **shared common pool** (contested) + **player-specific** cards (see the starting-deck item
+above) + **opponent-specific** cards. Rides the existing plumbing: opponents already have a `style`,
+and the tiered-ladder `deckBoost` note already shuffles style-appropriate reward cards into the AI
 private-deck build — this extends that with *authored, character-flavored* cards keyed to the
 opponent. Pairs naturally with the 6 new ladder opponents (author their signature lines alongside
 their portraits/blurbs) and with the single-narrator voice decision (character comes from *word
 choice*, not voice, when one announcer reads everyone). Data-first in `cards.ts` (a per-opponent
 card set) + the AI deck build; watch the REWARDS/lexicon size so signature sets don't balloon the
 VA/clip count. Same authoring rule as all cards (a strong, funny, in-character line — not filler).
+**The voice bible** assigns each of the 12 tiered-ladder opponents a UNIQUE verbal register.
+**Status after Daniel's 5th review (2026-07-06): 9 keepers, 3 open slots.** Keepers: the-script
+(Patty, sharpened — "um"s + note-card citations written into card text; portrait refresh flagged) /
+babies-and-grandmothers (Kissbaby, wholesome-absurd creepiness guard) / faux-erudite (Blowhard,
+easiest) / sports-metaphors (Vainwright) / campaign-ad-copy (Smearwell — widened from attack-ads to
+ALL ad genres so brags/panders get the soft-focus-narrator voice; pending Daniel's accept) /
+Southern drawl (Mudslinger, the model) / legalese (Slander) / polls-and-focus-groups (Weathervane)
+/ **perfected-political-speech (Grandstand, REWORKED: the final boss must read UNBEATABLE, not
+quirky — total command, dismissal-not-mockery attacks, crowd-anointing praise; dynasty gimmick
+demoted to garnish; reward-tier ceiling stats throughout)**. Open slots, candidates in the doc:
+rung 4 (buck-passing failed — hometown-booster is the leading re-spin), rung 10 (mobster talk
+one-note → FULL redo incl. name; roast-master / curmudgeon / drill-sergeant), rung 11 (android too
+Zuckerberg for penultimate — move it down-ladder or re-spin as slick-empty-polish, Newsom not
+Zuckerberg; needs more thought). Two principles from that review: **registers come from
+voices/themes, NEVER from the character's name** (the failures were name-puns forced into card
+styles; name and voice are separable), and **NON-PARTISAN is a hard rule** — no register may hint
+at party or real politicians (Bible-thumper/crazy-liberal are out; hippie-speak is
+borderline-coded, parked; Kennedy-speak parked as spoken-not-written). Each keeper has — the
+doc's primary content after Daniel's 4th review — a **prompt-ready STYLE GUIDE per character**
+(vocabulary bank, tics, per-slot notes, never-list) plus a GLOBAL style-guide preamble. **The
+intended workflow: card authoring is DANIEL's task, LLM-assisted, not immediate** — he pastes the
+global guide + one character guide + existing cards of a slot into an LLM and prunes the output;
+the per-character example cards are calibration references, not deliverables. The doc also
+contains the **IMPLEMENTATION PLAN** (verified against the code 2026-07-06: `buildPrivateDeck` has
+one call site at game.ts:122 already receiving style; AI hand-finishers need ZERO ai.ts work —
+`plan()` is generic over avail and the grammar's `S → INT` covers it; catalog must follow the
+UPGRADE_DEFS not-in-ALL precedent + findDef fallback + genclips walk, with a leak-guard test) —
+judged simple enough for a future session to implement directly from the doc, no separate design
+pass. **DECISION (2026-07-06): NO self-vs-audience predicate mechanic.** Nothing separates "things
+I say about myself" from "things I say about the audience", and we're not adding it — a
+target-restriction flag would cut across play-freeform/judge-the-result for marginal benefit.
+Known quirk, accepted as comedy: audience weight 1.3 > self 1.0, so the AI will prefer the
+audience-subject reading of dual-usable positive predicates ("This brave audience scored four
+touchdowns…"). Rules locked by Daniel's review rounds — the doc's rule list is canonical; summary: **(a) THE REGISTER TEST — a
+personality only works if it suggests a way to write CARDS in that voice**: a register must be a
+**surface texture** (dialect/jargon that skins any chunk: Southern drawl, faux-Latin, legalese) or
+a **content obsession** (generates nouns/verbs/objects: sports metaphors, polls, ancestors) — never
+a rhetorical *maneuver* ("mistakes were made" fits no slot) — AND must **map onto the crowd-reaction
+channel**: an attack card hands the crowd an accusation/mockery to boo AT the target; implied
+threats fail (they make the speaker scary, the crowd gets nothing) — this killed Vic Torpedo's
+menace register and Buck Passer's passive-voice one (both slots ultimately went to full re-spin in
+the 5th review; the intermediate scapegoat-NP fix also failed rule (e)). Benchmark passes per Daniel:
+drawl (Mudslinger, the model), pseudo-intellectual, sports metaphors. **(b) THE USABILITY DRILL** —
+before keeping any card, write the full statement it appears in with TWO different subjects,
+combined with existing cards, and ask how the audience reacts. **(c) PANDER'S MAIN FORM = audience
+subject + positive predicate** ("This wonderful audience has the strength of ten senators"); "I
+will do X for you" promises are the secondary form — so prize **DUAL-USE positive predicates**
+(brag on "I", pander on an audience subject) and audience-side NPs. Corollaries: subject NPs must
+be agentive-ish (plans/teams/records — a letterman jacket is an object at best); **sentiment = how
+the crowd hears the SURFACE** (cynical self-description is an insult/self-own, never a pander —
+"holds whatever position polled best" is a flip-flopper attack). **(d) every set covers ALL THREE
+intents** (style is a lean — deck ratio + STYLE_BONUS — not a filter; the finals play
+near-optimally) **+ GRAMMAR-FIT** (predicates read after any subject; no dialogue fragments, no
+baked gendered pronouns; first-person color OK only because these are never player-drawable).
+**(e) shared-villain NPs must be side-neutral** ("the swamp" fine; "the previous administration"
+implies an incumbent/challenger structure the game doesn't model — attacks nobody on stage).
+**(f) opponents get ONE private signature FINISHER each** — reverses the
+no-private-opponent-finishers status quo; the catchphrase mic-drop is too good a personality slot
+to skip. **Balance ledger for (f):** a
+guaranteed private ×factor raises opponent scoring → close the gap by buffing the PLAYER economy
+(more/earlier private finishers in REWARDS, richer drafts), never by pulling opponents down; re-run
+`sim-balance.mjs` + re-tune the expF ladder when wired in. Other hooks: **authored in-voice
+SELF-OWNS for gaffe-prone opponents** (rungs 1/2/5/9) — the gaffe objective already picks the
+shortest clear self-own from the AI's cards, so characterful flubs need zero AI work;
+dialect/dropped-g text (Mudslinger's drawl) is engine-safe via `invariant: true`; per-opponent
+`questionCommentary` banter is the cheap companion piece. Clip check: ~8 cards × 12 ≈ 95 new
+surface forms (fine under the single-narrator plan).
 
 **P3 · medium — Curse cards** (depends on shop + heel-turn). Opponent sabotage that injects toxic
 pre-formed statements into your deck ("…and that's why I despise my voters"), clogging your hand.
@@ -962,9 +1042,20 @@ exactly. Two layers:
   **VOICE SCOPING — DECIDED (2026-07-06): a SINGLE deadpan moderator/announcer voice** (~560 forms,
   one voice). Rationale: it's the cost floor, fits the C-SPAN broadcast skin, and — the decisive
   factor as the cast grows to 12 opponents + 3 players — it **decouples voice from the cast** (new
-  opponents add zero recordings). Per-character voicing (≈5,000) is dead; the "few reused male/
-  female voices, player/opp distinct" middle path is the only fallback if playtesters find the
-  single narrator flat (revisit only then). **DONE — clip-manifest generator:** `scripts/gen-clips.ts`
+  opponents add zero recordings). Per-character voicing (≈5,000) is dead *at the old architecture*;
+  the "few reused male/female voices, player/opp distinct" middle path is the fallback if
+  playtesters find the single narrator flat. **REVISED MATH (Daniel, 2026-07-06 — TBD, decision
+  unchanged; ElevenLabs first is still right):** the signature-card architecture restructures the
+  per-character cost into `(15 voices × SHARED forms) + Σ(each character's EXCLUSIVE forms ×1)` —
+  character-specific cards need only their OWN voice, and every deck-thinning effort (trimmed bland
+  starting decks, opponent signature sets, per-player-character reward pools) shrinks the SHARED
+  multiplicand. Ballpark: shared pool cut to ~100 forms + 15 × ~40 exclusive forms ≈ 2,100
+  recordings — a few actors doing ~15 voices, not 5,000 forms. Constraints if ever pursued:
+  per-chunk stitching means ONE statement mixes shared + private chunks, so a character's voice
+  must record ALL shared cards it can speak (no narrator/actor hybrid mid-statement); the shared
+  pool has a floor (`ensurePoolPlayable` needs subjects/verbs/connectors dealt from it, and
+  `s_opp` + `p_kick_pup` must stay shared for the name-of-the-game award); weigh against the
+  single-narrator virtue that new cast members cost zero recordings. **DONE — clip-manifest generator:** `scripts/gen-clips.ts`
   (`npm run genclips`) walks `[...ALL, ...UPGRADE_DEFS]` through morphology.ts and emits
   `voice-manifest.json` (stable `<id>.3sg`/`.pl` keys for two-form cards; single key otherwise) with
   fail-loud self-checks (distinct count === `ALL.length+UPGRADE_DEFS.length`; forms > cards). It is

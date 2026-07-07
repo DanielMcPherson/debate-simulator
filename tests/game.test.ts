@@ -193,6 +193,7 @@ describe('resource model — chunk cards, no replenish, must-finish', () => {
     g.player.hand.push({ id: 'pw_pl', role: 'powerup', effect: 'plant', text: 'x' });
     applyMove(g, { kind: 'power', cardId: 'pw_pl' });
     expect(g.player.knowsCrowd).toBe(true);
+    expect(g.turn).toBe('player'); // free — the reveal doesn't spend the turn
   });
 
   it('auto Typo swaps the victim\'s last word into a self-own', () => {
