@@ -69,7 +69,7 @@ describe('grammar — chunk model', () => {
     // ("…so bench presses fishing boats", "I promise happiness but love freedom"). NOTE the
     // "and therefore" tier is SHARED by "so"/"which is why", which are NOT additive and stay
     // clause-only even though they combo on the same logic tier.
-    for (const conn of ['c_because', 'c_but', 'c_so', 'c_however', 'c_which']) {
+    for (const conn of ['c_because', 'c_but', 'c_however', 'c_which']) {
       expect(isComplete(cards('s_opp', 'p_disgrace', conn, 'p_lie'))).toBe(false);
       expect(isValidPrefix(cards('s_opp', 'p_disgrace', conn, 'p_lie'))).toBe(false);
       // …but each is fine with its own subject (a real clause join).

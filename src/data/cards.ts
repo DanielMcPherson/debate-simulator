@@ -106,7 +106,6 @@ export const SUBJECTS: Card[] = [
   NP('s_opp_wife', "My opponent's wife", 'opponent', -1),
   NP('s_opp_donors', "My opponent's donors", 'opponent', -1, { number: 'plural' }),
   NP('s_career', 'Career politicians', 'opponent', -1, { number: 'plural' }),
-  NP('s_insiders', 'Washington insiders', 'opponent', -1, { number: 'plural' }),
   NP('s_people', 'The American people', 'audience', 2, { number: 'plural', topics: ['pander'] }),
   NP('s_families', 'Hardworking families', 'audience', 2, { number: 'plural', topics: ['children'] }),
   NP('s_children', 'Our children', 'audience', 2, { number: 'plural', topics: ['children'] }),
@@ -149,7 +148,6 @@ export const OBJECTS: Card[] = [
   NP('o_bureaucracy', 'the bloated bureaucracy', 'neutral', -2, { topics: ['economy'], animate: false }),
   NP('o_inflation', 'runaway inflation', 'neutral', -3, { topics: ['economy'], animate: false }),
   NP('o_interests', 'the special interests', 'neutral', -2, { number: 'plural', topics: ['economy'], animate: false }),
-  NP('o_committee', 'a do-nothing committee', 'neutral', -2, { topics: ['economy'], animate: false }),
 ];
 
 // --- predicates -------------------------------------------------------------
@@ -200,7 +198,6 @@ export const COMMON_INSULTS: Card[] = [
 // building a deck around, and they define the opponents' personalities.
 export const SIG_BRAG: Card[] = [
   pi('p_fight_bear', 'will personally fight a bear for your freedom', 3),
-  pc('p_lift_boats', 'bench-press', 'small fishing boats before breakfast', 3),
   pi('p_phonecall', 'could fix the whole economy with a single phone call', 3, { topics: ['economy'] }),
   pc('p_neverwrong', 'be', 'never wrong about anything, ever', 3),
   // (p_treasure cut 2026-07 — duplicated the m_treasure aside; the aside misfiring next to
@@ -258,10 +255,8 @@ export const SIG_PANDER: Card[] = [
 export const SIG_SUBJ_BRAG: Card[] = [
   NP('s_position', 'My position, which is the best position, believe me,', 'self', 1, { intensity: 1.3 }),
   NP('s_campaign_transparent', 'My incredibly well-organized and financially transparent campaign', 'self', 1, { intensity: 1.3, animate: false }),
-  NP('s_plan', 'My plan, which fits neatly on a single index card', 'self', 1, { animate: false }),
   NP('s_gut', 'My gut, which has frankly never once been wrong', 'self', 1, { intensity: 1.3, animate: false }),
   NP('s_plan_spellcheck', 'My beautiful, patriotic, and mostly spell-checked plan', 'self', 1, { intensity: 1.3, animate: false }),
-  NP('s_admin_unhaunted', 'My administration, which has never once been haunted', 'self', 1, { intensity: 1.3, animate: false }),
 ];
 export const SIG_SUBJ_ATTACK: Card[] = [
   NP('s_idiot_opp', 'My idiot freedom-hating opponent', 'opponent', -2, { intensity: 1.3 }),
@@ -359,7 +354,6 @@ export const CONNECTORS: Card[] = [
   // Flavor variants (map to existing conj behaviors) — more connector words to chain
   // longer compound sentences. Playtester wanted to ramble; these are the sanctioned
   // way to do it (period stays disabled; jamming two thoughts with no connector = run-on).
-  { id: 'c_so', role: 'connector', text: 'so', conj: 'and therefore' }, // logic tier (×1.30). Clause-only like every non-"and" conjunction: "so" needs a full new clause with its own subject, can't string bare predicates ("…protect veterans so promise…" was ungrammatical).
   { id: 'c_plus', role: 'connector', text: 'and plus', conj: 'and' },
   { id: 'c_however', role: 'connector', text: 'however', conj: 'but' },
 ];
@@ -420,13 +414,11 @@ export const INTENSIFIERS: Card[] = [
   { id: 'x_otherguy', role: 'intensifier', text: "and you won't hear that from the other guy", factor: 1.4 },
   { id: 'x_history', role: 'intensifier', text: 'and history will prove me right', factor: 1.5 },
   { id: 'x_writedown', role: 'intensifier', text: 'write that down', factor: 1.4 },
-  { id: 'x_comeon', role: 'intensifier', text: 'come on, man', factor: 1.4 }, // playtester suggestion — folksy exasperated closer
   { id: 'x_brave', role: 'intensifier', text: "and I'm the only one brave enough to say it!", factor: 1.5 },
   { id: 'x_thankme', role: 'intensifier', text: 'and history will thank me for saying it!', factor: 1.5 },
   { id: 'x_micdrop', role: 'intensifier', text: 'Checkmate. Boom. Mic drop.', factor: 1.5 }, // renders as its own sentence (no leading "and")
   { id: 'x_oughtto', role: 'intensifier', text: "and if that isn't true, then it damn sure ought to be!", factor: 1.4 },
   { id: 'x_saidwhatisaid', role: 'intensifier', text: 'I said what I said.', factor: 1.4 }, // renders as its own sentence
-  { id: 'x_blessmic', role: 'intensifier', text: 'God bless this microphone', factor: 1.4 }, // renders as its own sentence
 ];
 
 // --- topics -----------------------------------------------------------------
@@ -604,7 +596,6 @@ export const REWARDS: Card[] = [
   pc('r_lizard', 'be', 'secretly a lizard person', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
   pi('r_christmas', 'wants to cancel Christmas forever', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
   pc('r_greatest', 'be', 'the greatest leader in human history', 4, { ceiling: 4 }),
-  pi('r_cured', 'personally cured a deadly disease last Tuesday', 4, { ceiling: 4 }),
   pi('r_pony', 'will give every citizen a pony and a tax cut', 4, { ceiling: 4 }),
   pc('r_never_truth', 'have', 'never once told the truth, not even by accident', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
   NP('r_treason_opp', 'My crooked, treasonous opponent', 'opponent', -2, { intensity: 1.6, ceiling: 3 }),
@@ -616,23 +607,22 @@ export const REWARDS: Card[] = [
   { id: 'r_conj_honesttruth', role: 'connector', text: 'but to tell the honest truth', conj: 'but' },
   { id: 'r_conj_noonetells', role: 'connector', text: 'but what no one else in this room will tell you is that', conj: 'but' },
   { id: 'r_conj_longstory', role: 'connector', text: 'and so to make a long though quite articulate story short', conj: 'and therefore' },
-  { id: 'r_conj_cannotstress', role: 'connector', text: 'because — and I cannot stress this enough —', conj: 'because' },
+  { id: 'r_conj_cannotstress', role: 'connector', text: 'because, and I cannot stress this enough,', conj: 'because' },
   { id: 'r_conj_magnificent', role: 'connector', text: "and as if that weren't already magnificent enough", conj: 'and' },
   // Clause-only (conj 'because' → CBEC): must be followed by a full noun–verb clause, e.g.
   // "…is a lizard person which conclusively explains why my opponent naps through meetings".
   { id: 'r_conj_conclusively', role: 'connector', text: 'which conclusively explains why', conj: 'because' },
   // More verbose-wording reward connectors (2026-07) — the flourish is the reward, the
   // multiplier stays tier-matched to the plain conj.
-  { id: 'r_conj_writethisdown', role: 'connector', text: 'and — write this down —', conj: 'and' },
   { id: 'r_conj_quotemyself', role: 'connector', text: 'and, if I may quote myself,', conj: 'and' },
   { id: 'r_conj_nightfollows', role: 'connector', text: 'and it therefore follows, as night follows the glorious day, that', conj: 'and therefore' },
   { id: 'r_conj_precisely', role: 'connector', text: 'which is exactly, precisely, and specifically why', conj: 'and therefore' },
   { id: 'r_conj_heartstudy', role: 'connector', text: 'because, according to a study I commissioned in my heart,', conj: 'because' },
   { id: 'r_conj_grandmother', role: 'connector', text: 'because, as my sainted grandmother always screamed,', conj: 'because' },
   { id: 'r_conj_mainstream', role: 'connector', text: "but here's what the mainstream media refuses to print:", conj: 'but' },
-  { id: 'r_conj_countryilove', role: 'connector', text: 'but in this country — the country I love —', conj: 'but' },
+  { id: 'r_conj_countryilove', role: 'connector', text: 'but in this country, the country I love,', conj: 'but' },
   { id: 'r_conj_unlikecertain', role: 'connector', text: 'but unlike certain people on this stage,', conj: 'but' },
-  { id: 'r_conj_humblest', role: 'connector', text: 'but — and I say this as the humblest person on this stage —', conj: 'but' },
+  { id: 'r_conj_humblest', role: 'connector', text: 'but, and I say this as the humblest person on this stage,', conj: 'but' },
   // Dual-role coordinating parentheticals (moved here from MODIFIERS 2026-07): a subject
   // aside ("My opponent, and I'm not making this up, naps…") that ALSO works as a clause
   // connector. An aside + ×1.25-connector in one slot dominates plain "and", so it's a
@@ -687,7 +677,6 @@ export const REWARDS: Card[] = [
   pi('r_middleseat', 'invented the middle airplane seat', -4, { topics: ['jackass', 'opponent'], ceiling: 4 }),
   pc('r_resortfee', 'charge', 'a resort fee on the American Dream', -4, { topics: ['jackass', 'opponent', 'economy'], ceiling: 4 }),
   pi('r_printers', 'will sign an executive order forcing every printer in this nation to just work', 4, { topics: ['pander'], ceiling: 4 }),
-  pi('r_funeral', 'once received a standing ovation at a funeral', 4, { ceiling: 4 }),
   pi('r_trafficlights', 'will personally time every traffic light to your commute, specifically', 4, { topics: ['pander'], ceiling: 4 }),
   pi('r_badwheel', 'will hunt down and destroy every shopping cart with one bad wheel', 4, { topics: ['pander'], ceiling: 4 }),
 
@@ -711,8 +700,6 @@ export const REWARDS: Card[] = [
   { id: 'r_x_votemany', role: 'intensifier', text: 'which is why you should vote for me, as many times as possible', factor: 1.5 },
   { id: 'r_x_science', role: 'intensifier', text: 'and that, my friends, is just basic science', factor: 1.5 },
   { id: 'r_x_polls', role: 'intensifier', text: 'and I have the tremendous poll numbers to prove it', factor: 1.5 },
-  { id: 'r_x_nofurther', role: 'intensifier', text: 'No further questions. There were no questions.', factor: 1.5 }, // own-sentence render
-  { id: 'r_x_eternal', role: 'intensifier', text: 'My time is up, but my truth is eternal.', factor: 1.5 }, // own-sentence render
   { id: 'r_x_comingfromme', role: 'intensifier', text: "and that's coming from me, so you know it's true", factor: 1.4 },
   { id: 'r_x_sheeple', role: 'intensifier', text: 'Wake up, sheeple. Respectfully.', factor: 1.5 }, // own-sentence render
 
@@ -819,13 +806,9 @@ chain('p_fight_bear',
   pi('p_fight_bear_t1', 'will personally suplex a grizzly bear to protect our democracy', 4, { ceiling: 4 }),
   pi('p_fight_bear_t2', 'will personally fistfight an asteroid to protect this nation', 5, { ceiling: 6 }),
 );
-chain('p_lift_boats',
-  pc('p_lift_boats_t1', 'deadlift', 'small cars as a warmup', 4, { ceiling: 4 }),
-  pi('p_lift_boats_t2', 'once towed a cruise ship into harbor with a jump rope', 5, { ceiling: 6 }),
-);
-chain('p_phonecall',
-  pi('p_phonecall_t1', 'could balance the federal budget on a napkin at Waffle House', 4, { topics: ['economy'], ceiling: 4 }),
-  pi('p_phonecall_t2', 'once fixed a recession by glaring at it', 5, { topics: ['economy'], ceiling: 6 }),
+chain('p_fund_schools',
+  pi('p_fund_schools_t1', 'will fully fund our schools and teach our children to be good citizens', 3, { topics: ['children'], ceiling: 3 }),
+  pi('p_fund_schools_t2', 'will fully fund our schools and teach our children the right way of thinking, which is my way', 4, { topics: ['children'], ceiling: 4 }),
 );
 chain('p_neverwrong',
   pc('p_neverwrong_t1', 'have', 'never lost an argument, a bet, or a game of rock-paper-scissors', 4, { ceiling: 4 }),
@@ -894,10 +877,6 @@ chain('p_naphour',
   pi('p_naphour_t1', 'will mandate hammocks in every workplace', 4, { topics: ['pander'], ceiling: 4 }),
   pi('p_naphour_t2', 'will make snoozing your alarm a protected constitutional right', 5, { topics: ['pander'], ceiling: 6 }),
 );
-chain('p_wakeup',
-  pi('p_wakeup_t1', 'will answer your texts personally, immediately, with punctuation', 4, { topics: ['pander'], ceiling: 4 }),
-  pi('p_wakeup_t2', 'will help you move, including the couch, and bring the truck', 5, { topics: ['pander'], ceiling: 6 }),
-);
 chain('p_monday',
   pi('p_monday_t1', 'will replace Monday and Wednesday with extra Saturdays', 4, { topics: ['pander'], ceiling: 4 }),
   pi('p_monday_t2', 'will abolish Monday and replace it with National Weekly Pancake Day', 5, { topics: ['pander'], ceiling: 6 }),
@@ -939,10 +918,6 @@ chain('s_campaign_transparent',
   // (Daniel's line said "My position…" — adapted to the campaign it upgrades; flag for review)
   NP('s_campaign_transparent_t1', 'My campaign, which is objectively perfect and legally beyond criticism,', 'self', 1, { intensity: 1.6, ceiling: 3, animate: false }),
 );
-chain('s_plan',
-  NP('s_plan_t1', 'My plan, which fits on one index card in large, confident letters,', 'self', 1, { intensity: 1.3, animate: false }),
-  NP('s_plan_t2', 'My foolproof plan, which history has already endorsed unanimously,', 'self', 1, { intensity: 1.6, ceiling: 3, animate: false }),
-);
 chain('s_gut',
   NP('s_gut_t1', 'My gut, which outperforms every think tank in this country,', 'self', 1, { intensity: 1.6, ceiling: 3, animate: false }),
   NP('s_gut_t2', 'My flawless instincts, which have repeatedly overruled experts and reality,', 'self', 1, { number: 'plural', intensity: 1.9, ceiling: 5, animate: false }),
@@ -950,10 +925,6 @@ chain('s_gut',
 chain('s_plan_spellcheck',
   NP('s_plan_spellcheck_t1', 'My gorgeous, flag-scented, fully spell-checked plan', 'self', 1, { intensity: 1.6, ceiling: 3, animate: false }),
   NP('s_plan_spellcheck_t2', 'My magnificent, airtight, patriotic, Nobel-prize-ready plan', 'self', 1, { intensity: 1.9, ceiling: 5, animate: false }),
-);
-chain('s_admin_unhaunted',
-  NP('s_admin_unhaunted_t1', 'My administration, which is free of all blemishes, demonic-possession, and acne,', 'self', 1, { intensity: 1.6, ceiling: 3, animate: false }),
-  NP('s_admin_unhaunted_t2', 'My administration, certified to be fresh, vibrant, devoid of all blemishes, and 60% scandal-free,', 'self', 1, { intensity: 1.9, ceiling: 5, animate: false }),
 );
 chain('s_idiot_opp',
   NP('s_idiot_opp_t1', 'My drooling, liberty-despising cretin of an opponent', 'opponent', -2, { intensity: 1.6, ceiling: 3 }),
@@ -1009,7 +980,7 @@ chain('s_opp',
 );
 chain('s_i',
   NP('s_i_t1', 'I, a humble titan of public service,', 'self', 1, { person: 1, intensity: 1.3 }),
-  NP('s_i_t2', 'I, the last honest person alive,', 'self', 1, { person: 1, intensity: 1.6, ceiling: 3 }),
+  NP('s_i_t2', 'I, perhaps the most honest politician alive,', 'self', 1, { person: 1, intensity: 1.6, ceiling: 3 }),
 );
 chain('o_satan',
   { ...NP('o_satan_t1', 'Satan and all his minions', 'neutral', -4, { number: 'plural', ceiling: 3 }), proper: true },
@@ -1034,10 +1005,6 @@ chain('r_christmas',
 chain('r_greatest',
   pc('r_greatest_t1', 'be', 'the greatest leader in human history, including several histories yet to be written', 5, { ceiling: 6 }),
   pc('r_greatest_t2', 'be', 'a leader great enough to be added to Mount Rushmore, replacing all four existing faces', 6, { ceiling: 8 }),
-);
-chain('r_cured',
-  pi('r_cured_t1', 'will cure hangnails and the common cold', 5, { ceiling: 6 }),
-  pi('r_cured_t2', 'will bring eternal health and happiness to everyone', 6, { ceiling: 8 }),
 );
 chain('r_pony',
   pi('r_pony_t1', 'will make every citizen independently wealthy', 5, { ceiling: 6 }),

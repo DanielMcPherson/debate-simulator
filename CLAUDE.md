@@ -916,7 +916,14 @@ SELF-OWNS for gaffe-prone opponents** (rungs 1/2/5/9) — the gaffe objective al
 shortest clear self-own from the AI's cards, so characterful flubs need zero AI work;
 dialect/dropped-g text (Mudslinger's drawl) is engine-safe via `invariant: true`; per-opponent
 `questionCommentary` banter is the cheap companion piece. Clip check: ~8 cards × 12 ≈ 95 new
-surface forms (fine under the single-narrator plan).
+surface forms (fine under the single-narrator plan). **Free verbal-tic decorations (Daniel,
+2026-07-06 — sketch in the doc):** zero-value interjections ("um…", "what does it say on this
+card?…") inserted between the real cards at RESOLUTION (never during the card-by-card build — the
+teleprompter stays a faithful card view, so it reads as delivery, not cheating), no turn cost, no
+score, planner never sees them. UI-only (`TICS_BY_OPPONENT` strings + a render pass); the one trap
+is FX token-index mapping (tic words must be non-indexed spans so `breakdown`/`comboChips`/
+`confusedSpan` still land on the right words; suppress tics on confused-line FX). Tics also give
+maneuver-shaped flavor ("mistakes were made") a home that the register test denies to CARDS.
 
 **P3 · medium — Curse cards** (depends on shop + heel-turn). Opponent sabotage that injects toxic
 pre-formed statements into your deck ("…and that's why I despise my voters"), clogging your hand.
