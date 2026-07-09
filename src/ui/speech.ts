@@ -17,7 +17,7 @@ const POST_GAP: Partial<Record<Card['role'], number>> = { modifier: 0.15 };
 
 const MUTE_KEY = 'voiceMuted';
 export function voiceMuted(): boolean {
-  return localStorage.getItem(MUTE_KEY) === '1';
+  return localStorage.getItem(MUTE_KEY) !== '0'; // sound is OFF by default — opt in via the toggle
 }
 export function setVoiceMuted(muted: boolean): void {
   localStorage.setItem(MUTE_KEY, muted ? '1' : '0');
