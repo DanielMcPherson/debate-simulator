@@ -23,3 +23,6 @@ OPPONENT_VOICES.md
 
 # Commercialization strategy doc — private (repo is public via GitHub Pages)
 RELEASE_ROADMAP.md
+
+# Stitched TTS preview statements (gen-tts.mjs --preview) — listen-and-delete, never shipped
+voice-preview/

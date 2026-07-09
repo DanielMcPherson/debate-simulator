@@ -12,7 +12,8 @@
     "catalog": "vite-node scripts/gen-catalog.ts",
     "upgrades": "vite-node scripts/gen-upgrades.ts",
     "genclips": "vite-node scripts/gen-clips.ts",
-    "genart": "node scripts/genart.mjs"
+    "genart": "node scripts/genart.mjs",
+    "gentts": "node scripts/gen-tts.mjs"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

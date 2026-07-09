@@ -1,8 +1,8 @@
 {
   "generated": "run `npm run genclips` to regenerate — do not edit by hand",
   "voice": "single deadpan moderator/announcer (see gen-clips.ts header for the scoping decision)",
-  "distinctCards": 439,
-  "surfaceForms": 567,
+  "distinctCards": 416,
+  "surfaceForms": 542,
   "clips": [
     {
       "key": "s_i",
@@ -67,14 +67,6 @@
       "role": "np",
       "conjugation": null,
       "text": "Career politicians"
-    },
-    {
-      "key": "s_insiders",
-      "file": "s_insiders.mp3",
-      "cardId": "s_insiders",
-      "role": "np",
-      "conjugation": null,
-      "text": "Washington insiders"
     },
     {
       "key": "s_people",
@@ -365,14 +357,6 @@
       "text": "the special interests"
     },
     {
-      "key": "o_committee",
-      "file": "o_committee.mp3",
-      "cardId": "o_committee",
-      "role": "np",
-      "conjugation": null,
-      "text": "a do-nothing committee"
-    },
-    {
       "key": "s_position",
       "file": "s_position.mp3",
       "cardId": "s_position",
@@ -389,14 +373,6 @@
       "text": "My incredibly well-organized and financially transparent campaign"
     },
     {
-      "key": "s_plan",
-      "file": "s_plan.mp3",
-      "cardId": "s_plan",
-      "role": "np",
-      "conjugation": null,
-      "text": "My plan, which fits neatly on a single index card"
-    },
-    {
       "key": "s_gut",
       "file": "s_gut.mp3",
       "cardId": "s_gut",
@@ -411,14 +387,6 @@
       "role": "np",
       "conjugation": null,
       "text": "My beautiful, patriotic, and mostly spell-checked plan"
-    },
-    {
-      "key": "s_admin_unhaunted",
-      "file": "s_admin_unhaunted.mp3",
-      "cardId": "s_admin_unhaunted",
-      "role": "np",
-      "conjugation": null,
-      "text": "My administration, which has never once been haunted"
     },
     {
       "key": "s_idiot_opp",
@@ -923,22 +891,6 @@
       "role": "predicate",
       "conjugation": null,
       "text": "will personally fight a bear for your freedom"
-    },
-    {
-      "key": "p_lift_boats.3sg",
-      "file": "p_lift_boats.3sg.mp3",
-      "cardId": "p_lift_boats",
-      "role": "predicate",
-      "conjugation": "3sg",
-      "text": "bench-presses small fishing boats before breakfast"
-    },
-    {
-      "key": "p_lift_boats.pl",
-      "file": "p_lift_boats.pl.mp3",
-      "cardId": "p_lift_boats",
-      "role": "predicate",
-      "conjugation": "pl",
-      "text": "bench-press small fishing boats before breakfast"
     },
     {
       "key": "p_phonecall",
@@ -1909,14 +1861,6 @@
       "text": "are the greatest leader in human history"
     },
     {
-      "key": "r_cured",
-      "file": "r_cured.mp3",
-      "cardId": "r_cured",
-      "role": "predicate",
-      "conjugation": null,
-      "text": "personally cured a deadly disease last Tuesday"
-    },
-    {
       "key": "r_pony",
       "file": "r_pony.mp3",
       "cardId": "r_pony",
@@ -1986,7 +1930,7 @@
       "cardId": "r_conj_cannotstress",
       "role": "connector",
       "conjugation": null,
-      "text": "because — and I cannot stress this enough —"
+      "text": "because, and I cannot stress this enough,"
     },
     {
       "key": "r_conj_magnificent",
@@ -2003,14 +1947,6 @@
       "role": "connector",
       "conjugation": null,
       "text": "which conclusively explains why"
-    },
-    {
-      "key": "r_conj_writethisdown",
-      "file": "r_conj_writethisdown.mp3",
-      "cardId": "r_conj_writethisdown",
-      "role": "connector",
-      "conjugation": null,
-      "text": "and — write this down —"
     },
     {
       "key": "r_conj_quotemyself",
@@ -2066,7 +2002,7 @@
       "cardId": "r_conj_countryilove",
       "role": "connector",
       "conjugation": null,
-      "text": "but in this country — the country I love —"
+      "text": "but in this country, the country I love,"
     },
     {
       "key": "r_conj_unlikecertain",
@@ -2082,7 +2018,7 @@
       "cardId": "r_conj_humblest",
       "role": "connector",
       "conjugation": null,
-      "text": "but — and I say this as the humblest person on this stage —"
+      "text": "but, and I say this as the humblest person on this stage,"
     },
     {
       "key": "m_trustme",
@@ -2429,14 +2365,6 @@
       "text": "will sign an executive order forcing every printer in this nation to just work"
     },
     {
-      "key": "r_funeral",
-      "file": "r_funeral.mp3",
-      "cardId": "r_funeral",
-      "role": "predicate",
-      "conjugation": null,
-      "text": "once received a standing ovation at a funeral"
-    },
-    {
       "key": "r_trafficlights",
       "file": "r_trafficlights.mp3",
       "cardId": "r_trafficlights",
@@ -2541,22 +2469,6 @@
       "text": "and I have the tremendous poll numbers to prove it"
     },
     {
-      "key": "r_x_nofurther",
-      "file": "r_x_nofurther.mp3",
-      "cardId": "r_x_nofurther",
-      "role": "intensifier",
-      "conjugation": null,
-      "text": "No further questions. There were no questions."
-    },
-    {
-      "key": "r_x_eternal",
-      "file": "r_x_eternal.mp3",
-      "cardId": "r_x_eternal",
-      "role": "intensifier",
-      "conjugation": null,
-      "text": "My time is up, but my truth is eternal."
-    },
-    {
       "key": "r_x_comingfromme",
       "file": "r_x_comingfromme.mp3",
       "cardId": "r_x_comingfromme",
@@ -2635,14 +2547,6 @@
       "role": "connector",
       "conjugation": null,
       "text": "seeing as how"
-    },
-    {
-      "key": "c_so",
-      "file": "c_so.mp3",
-      "cardId": "c_so",
-      "role": "connector",
-      "conjugation": null,
-      "text": "so"
     },
     {
       "key": "c_plus",
@@ -2765,14 +2669,6 @@
       "text": "write that down"
     },
     {
-      "key": "x_comeon",
-      "file": "x_comeon.mp3",
-      "cardId": "x_comeon",
-      "role": "intensifier",
-      "conjugation": null,
-      "text": "come on, man"
-    },
-    {
       "key": "x_brave",
       "file": "x_brave.mp3",
       "cardId": "x_brave",
@@ -2811,14 +2707,6 @@
       "role": "intensifier",
       "conjugation": null,
       "text": "I said what I said."
-    },
-    {
-      "key": "x_blessmic",
-      "file": "x_blessmic.mp3",
-      "cardId": "x_blessmic",
-      "role": "intensifier",
-      "conjugation": null,
-      "text": "God bless this microphone"
     },
     {
       "key": "pw_search",
@@ -3382,48 +3270,21 @@
       "tier": 2
     },
     {
-      "key": "p_lift_boats_t1.3sg",
-      "file": "p_lift_boats_t1.3sg.mp3",
-      "cardId": "p_lift_boats_t1",
+      "key": "p_fund_schools_t1",
+      "file": "p_fund_schools_t1.mp3",
+      "cardId": "p_fund_schools_t1",
       "role": "predicate",
-      "conjugation": "3sg",
-      "text": "deadlifts small cars as a warmup",
+      "conjugation": null,
+      "text": "will fully fund our schools and teach our children to be good citizens",
       "tier": 1
     },
     {
-      "key": "p_lift_boats_t1.pl",
-      "file": "p_lift_boats_t1.pl.mp3",
-      "cardId": "p_lift_boats_t1",
-      "role": "predicate",
-      "conjugation": "pl",
-      "text": "deadlift small cars as a warmup",
-      "tier": 1
-    },
-    {
-      "key": "p_lift_boats_t2",
-      "file": "p_lift_boats_t2.mp3",
-      "cardId": "p_lift_boats_t2",
+      "key": "p_fund_schools_t2",
+      "file": "p_fund_schools_t2.mp3",
+      "cardId": "p_fund_schools_t2",
       "role": "predicate",
       "conjugation": null,
-      "text": "once towed a cruise ship into harbor with a jump rope",
-      "tier": 2
-    },
-    {
-      "key": "p_phonecall_t1",
-      "file": "p_phonecall_t1.mp3",
-      "cardId": "p_phonecall_t1",
-      "role": "predicate",
-      "conjugation": null,
-      "text": "could balance the federal budget on a napkin at Waffle House",
-      "tier": 1
-    },
-    {
-      "key": "p_phonecall_t2",
-      "file": "p_phonecall_t2.mp3",
-      "cardId": "p_phonecall_t2",
-      "role": "predicate",
-      "conjugation": null,
-      "text": "once fixed a recession by glaring at it",
+      "text": "will fully fund our schools and teach our children the right way of thinking, which is my way",
       "tier": 2
     },
     {
@@ -3832,24 +3693,6 @@
       "tier": 2
     },
     {
-      "key": "p_wakeup_t1",
-      "file": "p_wakeup_t1.mp3",
-      "cardId": "p_wakeup_t1",
-      "role": "predicate",
-      "conjugation": null,
-      "text": "will answer your texts personally, immediately, with punctuation",
-      "tier": 1
-    },
-    {
-      "key": "p_wakeup_t2",
-      "file": "p_wakeup_t2.mp3",
-      "cardId": "p_wakeup_t2",
-      "role": "predicate",
-      "conjugation": null,
-      "text": "will help you move, including the couch, and bring the truck",
-      "tier": 2
-    },
-    {
       "key": "p_monday_t1",
       "file": "p_monday_t1.mp3",
       "cardId": "p_monday_t1",
@@ -4012,24 +3855,6 @@
       "tier": 1
     },
     {
-      "key": "s_plan_t1",
-      "file": "s_plan_t1.mp3",
-      "cardId": "s_plan_t1",
-      "role": "np",
-      "conjugation": null,
-      "text": "My plan, which fits on one index card in large, confident letters,",
-      "tier": 1
-    },
-    {
-      "key": "s_plan_t2",
-      "file": "s_plan_t2.mp3",
-      "cardId": "s_plan_t2",
-      "role": "np",
-      "conjugation": null,
-      "text": "My foolproof plan, which history has already endorsed unanimously,",
-      "tier": 2
-    },
-    {
       "key": "s_gut_t1",
       "file": "s_gut_t1.mp3",
       "cardId": "s_gut_t1",
@@ -4063,24 +3888,6 @@
       "role": "np",
       "conjugation": null,
       "text": "My magnificent, airtight, patriotic, Nobel-prize-ready plan",
-      "tier": 2
-    },
-    {
-      "key": "s_admin_unhaunted_t1",
-      "file": "s_admin_unhaunted_t1.mp3",
-      "cardId": "s_admin_unhaunted_t1",
-      "role": "np",
-      "conjugation": null,
-      "text": "My administration, which is free of all blemishes, demonic-possession, and acne,",
-      "tier": 1
-    },
-    {
-      "key": "s_admin_unhaunted_t2",
-      "file": "s_admin_unhaunted_t2.mp3",
-      "cardId": "s_admin_unhaunted_t2",
-      "role": "np",
-      "conjugation": null,
-      "text": "My administration, certified to be fresh, vibrant, devoid of all blemishes, and 60% scandal-free,",
       "tier": 2
     },
     {
@@ -4314,7 +4121,7 @@
       "cardId": "s_i_t2",
       "role": "np",
       "conjugation": null,
-      "text": "I, the last honest person alive,",
+      "text": "I, perhaps the most honest politician alive,",
       "tier": 2
     },
     {
@@ -4459,24 +4266,6 @@
       "role": "predicate",
       "conjugation": "pl",
       "text": "are a leader great enough to be added to Mount Rushmore, replacing all four existing faces",
-      "tier": 2
-    },
-    {
-      "key": "r_cured_t1",
-      "file": "r_cured_t1.mp3",
-      "cardId": "r_cured_t1",
-      "role": "predicate",
-      "conjugation": null,
-      "text": "will cure hangnails and the common cold",
-      "tier": 1
-    },
-    {
-      "key": "r_cured_t2",
-      "file": "r_cured_t2.mp3",
-      "cardId": "r_cured_t2",
-      "role": "predicate",
-      "conjugation": null,
-      "text": "will bring eternal health and happiness to everyone",
       "tier": 2
     },
     {

@@ -1059,9 +1059,24 @@ exactly. Two layers:
   (`npm run genclips`) walks `[...ALL, ...UPGRADE_DEFS]` through morphology.ts and emits
   `voice-manifest.json` (stable `<id>.3sg`/`.pl` keys for two-form cards; single key otherwise) with
   fail-loud self-checks (distinct count === `ALL.length+UPGRADE_DEFS.length`; forms > cards). It is
-  **pure/deterministic — no TTS, no audio wiring** (that's the explicit follow-on: a genart-style
-  `gen-tts.mjs` reading the manifest + an ElevenLabs `.env` key, then the in-game playback layer +
-  crowd SFX). The prune-for-VA pass and the CURATE-the-upgrade-pool
+  **pure/deterministic — no TTS, no audio wiring**.
+  **DONE (2026-07-09) — TTS clip generator:** `scripts/gen-tts.mjs` (`npm run gentts`) synthesizes
+  every manifest surface form to committed mono mp3s under `src/ui/voice/` (ffmpeg post: edge-silence
+  trim → `loudnorm` → 40ms tail pad — uniform level is what makes stitching viable). **PROVIDER
+  DECISION (Daniel): OpenAI-first (`gpt-4o-mini-tts`, reuses the genart `OPENAI_API_KEY`, ~$0.50/full
+  pass), provider-agnostic** — all provider code lives in one `synthesize()` seam; if stitched seams
+  disappoint, swap in ElevenLabs (whose `previous_text`/`next_text` prosody conditioning is the
+  known upgrade path) and `--force`-regenerate. **A bad first voice means change the VOICE, never
+  "AI narration is no good."** Incremental by design (cards keep changing): `voice-cache.json` hashes
+  spoken-text|voice|model|instructions per clip, so `npm run gentts` after a cards.ts edit + `npm run
+  genclips` regenerates only what changed. Role-aware delivery instructions fight sentence-final
+  cadence on mid-sentence chunks (finishers get a closing cadence); power-up labels are stripped to
+  the card name (no emoji, no rules text). `--sample=N` = cheap role-diverse voice audition
+  (`--voice=onyx` etc.), `--only=key`, `--preview` = stitches ~5 representative statements (additive
+  chain / aside / finisher / because+plural / reward-conj pivot) into gitignored `voice-preview/` —
+  **the listen-and-judge harness for the OpenAI-vs-ElevenLabs verdict**. Remaining follow-ons: the
+  in-game playback layer (Web Audio gapless stitch at resolution, conjugation lookup, mute toggle)
+  + crowd SFX. The prune-for-VA pass and the CURATE-the-upgrade-pool
   item above are **the same pass** — do them together (prune to the good lines without making
   the game repetitive).
 
