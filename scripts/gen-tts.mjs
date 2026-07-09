@@ -8,7 +8,8 @@
 //   npm run gentts -- --preview        # stitch sample statements into voice-preview/ and LISTEN
 //
 // Reads voice-manifest.json (run `npm run genclips` first if cards.ts changed) and writes
-// committed mp3s under src/ui/voice/, one per surface form, keyed by the manifest `file` name.
+// committed mp3s under public/voice/ (served verbatim, fetched by URL at playback — see
+// src/ui/speech.ts), one per surface form, keyed by the manifest `file` name.
 // Reads OPENAI_API_KEY from the environment or the gitignored .env at repo root — this NEVER
 // runs in the game; the app only plays the baked clips (static, backend-free, key stays out
 // of the bundle). Mirrors scripts/genart.mjs.
@@ -103,7 +104,7 @@ if (existsSync(cardsPath) && statSync(cardsPath).mtimeMs > statSync(manifestPath
 }
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 
-const outDir = join(root, 'src/ui/voice');
+const outDir = join(root, 'public/voice');
 mkdirSync(outDir, { recursive: true });
 const cachePath = join(outDir, 'voice-cache.json');
 const cache = existsSync(cachePath) ? JSON.parse(readFileSync(cachePath, 'utf8')) : {};

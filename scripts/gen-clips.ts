@@ -22,13 +22,16 @@ import { ALL, UPGRADE_DEFS } from '../src/data/cards';
 // them if they ever need clips.
 const INCLUDE_SPECIAL = false;
 
-// The two conjugations of a non-invariant predicate/modifier ("kicks/kick puppies", "is/are …").
+// The conjugations of a non-invariant predicate/modifier ("kicks/kick puppies", "is/are …").
 // A predicate has no inherent agreement in isolation, so we emit both; invariant cards bake their
-// own phrasing and get exactly one form. Modifiers additionally vary who/which by the SUBJECT's
-// animacy in-context (up to 4 forms) — to match the ~560 target we emit only the two conjugations
+// own phrasing and get exactly one form. COPULA cards (`lead: 'be'`) additionally emit a
+// first-person form ("I AM strong and decisive") — the only agreement where (1, sing) text
+// differs from the plural; `clipKeys` in morphology.ts selects it at playback for an "I" subject.
+// Modifiers additionally vary who/which by the SUBJECT's
+// animacy in-context — we emit only the conjugations
 // using the card's own `rel` hint for who/which; recording who/which variants (if wanted) is a
 // recording-time decision, not a generator one.
-type Conjugation = '3sg' | 'pl' | null;
+type Conjugation = '1sg' | '3sg' | 'pl' | null;
 
 interface ClipEntry {
   key: string; // stable clip id = card id (+ ".3sg"/".pl" for two-form cards)
@@ -49,17 +52,21 @@ function twoForm(c: Card): boolean {
 function surfaceForms(c: Card): { conjugation: Conjugation; text: string }[] {
   if (!twoForm(c)) return [{ conjugation: null, text: cardLabel(c) }];
   if (c.role === 'predicate') {
-    return [
+    const forms: { conjugation: Conjugation; text: string }[] = [
       { conjugation: '3sg', text: predicateText(c, 3, 'sing') },
       { conjugation: 'pl', text: predicateText(c, 3, 'plural') },
     ];
+    if (c.lead === 'be') forms.push({ conjugation: '1sg', text: predicateText(c, 1, 'sing') });
+    return forms;
   }
   // modifier
   const animate = c.rel !== 'which';
-  return [
+  const forms: { conjugation: Conjugation; text: string }[] = [
     { conjugation: '3sg', text: modifierText(c, 3, 'sing', animate) },
     { conjugation: 'pl', text: modifierText(c, 3, 'plural', animate) },
   ];
+  if (c.lead === 'be') forms.push({ conjugation: '1sg', text: modifierText(c, 1, 'sing', animate) });
+  return forms;
 }
 
 const cards: Card[] = [...ALL, ...UPGRADE_DEFS];

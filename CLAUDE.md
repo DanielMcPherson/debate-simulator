@@ -1061,7 +1061,9 @@ exactly. Two layers:
   fail-loud self-checks (distinct count === `ALL.length+UPGRADE_DEFS.length`; forms > cards). It is
   **pure/deterministic — no TTS, no audio wiring**.
   **DONE (2026-07-09) — TTS clip generator:** `scripts/gen-tts.mjs` (`npm run gentts`) synthesizes
-  every manifest surface form to committed mono mp3s under `src/ui/voice/` (ffmpeg post: edge-silence
+  every manifest surface form to committed mono mp3s under **`public/voice/`** (served verbatim,
+  fetched by URL — deliberately NOT `import.meta.glob`, which emitted a JS chunk per clip and
+  base64-inlined the small ones, ~70KB bundle bloat; ffmpeg post: edge-silence
   trim → `loudnorm` → 40ms tail pad — uniform level is what makes stitching viable). **PROVIDER
   DECISION (Daniel): OpenAI-first (`gpt-4o-mini-tts`, reuses the genart `OPENAI_API_KEY`, ~$0.50/full
   pass), provider-agnostic** — all provider code lives in one `synthesize()` seam; if stitched seams
@@ -1074,9 +1076,29 @@ exactly. Two layers:
   the card name (no emoji, no rules text). `--sample=N` = cheap role-diverse voice audition
   (`--voice=onyx` etc.), `--only=key`, `--preview` = stitches ~5 representative statements (additive
   chain / aside / finisher / because+plural / reward-conj pivot) into gitignored `voice-preview/` —
-  **the listen-and-judge harness for the OpenAI-vs-ElevenLabs verdict**. Remaining follow-ons: the
-  in-game playback layer (Web Audio gapless stitch at resolution, conjugation lookup, mute toggle)
-  + crowd SFX. The prune-for-VA pass and the CURATE-the-upgrade-pool
+  **the listen-and-judge harness for the OpenAI-vs-ElevenLabs verdict**.
+  **DONE (2026-07-09) — in-game statement narration (the playback layer).** Every resolved
+  statement (both speakers, confused lines included) is read aloud during its resolution FX.
+  **Engine:** `clipKeys(line)` in morphology.ts maps each card in a judged line to its manifest
+  clip key, choosing `.3sg`/`.pl`/`.1sg` via `lineAgreements` — the clause-agreement walk
+  extracted from `displayWords` so the spoken conjugation can NEVER drift from the displayed one
+  (shared single source of truth; `null` = a card the display also omits, e.g. unparsed salad).
+  **`.1sg` forms are copula-only** ("I AM strong…" — gen-clips emits them for `lead:'be'`
+  predicates/modifiers, 33 clips; every other first-person text is identical to the plural form).
+  A modifier clip bakes the card's own who/which `rel` hint — a rare animacy mismatch vs the
+  display is a documented recording-time simplification. **UI:** `src/ui/speech.ts` — Web Audio
+  stitch (buffers scheduled back-to-back; role-keyed `PRE_GAP`/`POST_GAP` add breathing room
+  around comma-set asides and the finisher), lazy per-clip fetch + session-cached decode, mute
+  toggle (`.voice-toggle` fixed top-right, localStorage `voiceMuted`, mutes mid-read via
+  `stopSpeaking`). `playResolutionFx` starts the voice as the chips pop, holds at the end on
+  `await voice.done`, and the same fast-forward click stops it — with the mute button EXEMPTED
+  from the capture-phase skip listener (clicking 🔇 must not skip the FX). `done` always resolves
+  (missing/failed clips skip their word; a safety timeout covers an interrupted AudioContext).
+  Tests: tests/speech.test.ts — agreement selection, full manifest coverage of every reachable
+  key (which also fails on a STALE manifest — genclips-after-cards.ts-edits is now test-enforced),
+  and spoken/displayed conjugation parity swept over every predicate × 3 agreement contexts.
+  Remaining follow-on: crowd SFX; possible juice: per-clip word-highlight sync (clip durations
+  are known at schedule time; the judged line renders one span per card). The prune-for-VA pass and the CURATE-the-upgrade-pool
   item above are **the same pass** — do them together (prune to the good lines without making
   the game repetitive).
 

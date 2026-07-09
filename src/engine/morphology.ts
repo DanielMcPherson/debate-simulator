@@ -59,15 +59,25 @@ export function cardLabel(card: Card): string {
   return card.text ?? '';
 }
 
-/**
- * Render the (possibly partial) statement to display strings: predicates agree
- * with their clause subject, the first word is capitalized, and mid-sentence
- * noun-phrase articles ("My"/"The") are lower-cased (but "I" is preserved).
- */
-export function displayWords(line: Card[]): string[] {
-  const { clauses, roleAt } = segmentDetailed(line);
-  const words = line.map((c) => c.text ?? '');
+interface SubjectAgreement {
+  person: Person;
+  number: GramNumber;
+  animate: boolean;
+}
 
+/**
+ * Per-index subject agreement for every conjugating card in the line — the single source of
+ * agreement truth shared by displayWords (rendering) and clipKeys (voice-clip playback), so the
+ * spoken conjugation can never drift from the displayed one.
+ */
+function lineAgreements(line: Card[]): {
+  preds: Map<number, SubjectAgreement>;
+  mods: Map<number, SubjectAgreement>;
+  roleAt: ReturnType<typeof segmentDetailed>['roleAt'];
+} {
+  const { clauses, roleAt } = segmentDetailed(line);
+  const preds = new Map<number, SubjectAgreement>();
+  const mods = new Map<number, SubjectAgreement>();
   for (const clause of clauses) {
     const subjIdxs = [
       ...(clause.subjectIdx !== undefined ? [clause.subjectIdx] : []),
@@ -85,13 +95,27 @@ export function displayWords(line: Card[]): string[] {
       const before = subjIdxs.filter((ix) => ix < m);
       const host = before.length ? line[before[before.length - 1]] : undefined;
       const mid = subjIdxs.some((ix) => ix > m); // more subjects follow this aside
-      const mp = mid ? host?.person ?? 3 : person;
-      const mn = mid ? host?.number ?? 'sing' : number;
-      const anim = (mid ? host?.animate : subjs[subjs.length - 1]?.animate) ?? true;
-      words[m] = `, ${modifierText(line[m], mp, mn, anim)},`;
+      mods.set(m, {
+        person: mid ? host?.person ?? 3 : person,
+        number: mid ? host?.number ?? 'sing' : number,
+        animate: (mid ? host?.animate : subjs[subjs.length - 1]?.animate) ?? true,
+      });
     }
-    for (const p of clause.preds) words[p.predIdx] = predicateText(line[p.predIdx], person, number);
+    for (const p of clause.preds) preds.set(p.predIdx, { person, number, animate: true });
   }
+  return { preds, mods, roleAt };
+}
+
+/**
+ * Render the (possibly partial) statement to display strings: predicates agree
+ * with their clause subject, the first word is capitalized, and mid-sentence
+ * noun-phrase articles ("My"/"The") are lower-cased (but "I" is preserved).
+ */
+export function displayWords(line: Card[]): string[] {
+  const { preds, mods, roleAt } = lineAgreements(line);
+  const words = line.map((c) => c.text ?? '');
+  for (const [m, a] of mods) words[m] = `, ${modifierText(line[m], a.person, a.number, a.animate)},`;
+  for (const [p, a] of preds) words[p] = predicateText(line[p], a.person, a.number);
 
   // A dual-role parenthetical used as a clause connector ("…, and I'm not making this up, …")
   // is set off by commas like an aside (it's not in any clause's `mods`).
@@ -123,6 +147,34 @@ export function displayWords(line: Card[]): string[] {
     words[i] = /^and\b/i.test(words[i]) ? `, ${words[i]}` : `. ${cap(words[i])}`;
   }
   return words;
+}
+
+/**
+ * The voice-clip key (voice-manifest.json `key`) each card in a judged line speaks, index-aligned
+ * with the line; `null` = nothing spoken (a card displayWords also omits, e.g. an unparsed stray
+ * predicate in word salad). Single-form cards (NPs, connectors, finishers, invariant
+ * predicates/modifiers) speak their base clip; conjugating cards pick `.3sg`/`.pl`/`.1sg` by the
+ * same clause agreement the display uses. `.1sg` exists only for copula cards ("I AM strong…") —
+ * every other first-person-singular text is identical to the plural form. Note the key does NOT
+ * encode a modifier's who/which (the clip bakes the card's own `rel` hint — a deliberate
+ * recording-time simplification; see gen-clips.ts).
+ */
+export function clipKeys(line: Card[]): (string | null)[] {
+  const { preds, mods } = lineAgreements(line);
+  return line.map((c, i) => {
+    const base = c.id.split('#')[0];
+    const twoForm = (c.role === 'predicate' || c.role === 'modifier') && !c.invariant;
+    if (!twoForm) return base;
+    const a = preds.get(i) ?? mods.get(i);
+    if (!a) return null;
+    const form =
+      a.person === 3 && a.number === 'sing'
+        ? '3sg'
+        : a.person === 1 && a.number === 'sing' && c.lead === 'be'
+        ? '1sg'
+        : 'pl';
+    return `${base}.${form}`;
+  });
 }
 
 /** Join a realized statement into a display sentence. */

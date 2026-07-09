@@ -2,7 +2,7 @@
   "generated": "run `npm run genclips` to regenerate — do not edit by hand",
   "voice": "single deadpan moderator/announcer (see gen-clips.ts header for the scoping decision)",
   "distinctCards": 416,
-  "surfaceForms": 542,
+  "surfaceForms": 575,
   "clips": [
     {
       "key": "s_i",
@@ -525,6 +525,14 @@
       "text": "are a true patriot"
     },
     {
+      "key": "p_patriot.1sg",
+      "file": "p_patriot.1sg.mp3",
+      "cardId": "p_patriot",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am a true patriot"
+    },
+    {
       "key": "p_strong.3sg",
       "file": "p_strong.3sg.mp3",
       "cardId": "p_strong",
@@ -539,6 +547,14 @@
       "role": "predicate",
       "conjugation": "pl",
       "text": "are strong and decisive"
+    },
+    {
+      "key": "p_strong.1sg",
+      "file": "p_strong.1sg.mp3",
+      "cardId": "p_strong",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am strong and decisive"
     },
     {
       "key": "p_standup.3sg",
@@ -693,6 +709,14 @@
       "text": "are a national disgrace"
     },
     {
+      "key": "p_disgrace.1sg",
+      "file": "p_disgrace.1sg.mp3",
+      "cardId": "p_disgrace",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am a national disgrace"
+    },
+    {
       "key": "p_weak.3sg",
       "file": "p_weak.3sg.mp3",
       "cardId": "p_weak",
@@ -709,6 +733,14 @@
       "text": "are weak and out of touch"
     },
     {
+      "key": "p_weak.1sg",
+      "file": "p_weak.1sg.mp3",
+      "cardId": "p_weak",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am weak and out of touch"
+    },
+    {
       "key": "p_jackass.3sg",
       "file": "p_jackass.3sg.mp3",
       "cardId": "p_jackass",
@@ -723,6 +755,14 @@
       "role": "predicate",
       "conjugation": "pl",
       "text": "are an unscrupulous jackass"
+    },
+    {
+      "key": "p_jackass.1sg",
+      "file": "p_jackass.1sg.mp3",
+      "cardId": "p_jackass",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am an unscrupulous jackass"
     },
     {
       "key": "p_raise_taxes.3sg",
@@ -917,6 +957,14 @@
       "text": "are never wrong about anything, ever"
     },
     {
+      "key": "p_neverwrong.1sg",
+      "file": "p_neverwrong.1sg.mp3",
+      "cardId": "p_neverwrong",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am never wrong about anything, ever"
+    },
+    {
       "key": "p_handshake_hair.3sg",
       "file": "p_handshake_hair.3sg.mp3",
       "cardId": "p_handshake_hair",
@@ -987,6 +1035,14 @@
       "role": "predicate",
       "conjugation": "pl",
       "text": "are a once-in-a-generation genius"
+    },
+    {
+      "key": "p_oncegen.1sg",
+      "file": "p_oncegen.1sg.mp3",
+      "cardId": "p_oncegen",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am a once-in-a-generation genius"
     },
     {
       "key": "p_zipcodes",
@@ -1397,6 +1453,14 @@
       "text": "are in bed with"
     },
     {
+      "key": "p_bed_with.1sg",
+      "file": "p_bed_with.1sg.mp3",
+      "cardId": "p_bed_with",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am in bed with"
+    },
+    {
       "key": "p_destroy.3sg",
       "file": "p_destroy.3sg.mp3",
       "cardId": "p_destroy",
@@ -1427,6 +1491,14 @@
       "role": "predicate",
       "conjugation": "pl",
       "text": "are bankrolled by"
+    },
+    {
+      "key": "p_funded.1sg",
+      "file": "p_funded.1sg.mp3",
+      "cardId": "p_funded",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am bankrolled by"
     },
     {
       "key": "p_blame.3sg",
@@ -1533,6 +1605,14 @@
       "text": "who are ugly, just very ugly"
     },
     {
+      "key": "m_ugly.1sg",
+      "file": "m_ugly.1sg.mp3",
+      "cardId": "m_ugly",
+      "role": "modifier",
+      "conjugation": "1sg",
+      "text": "who am ugly, just very ugly"
+    },
+    {
       "key": "m_crook.3sg",
       "file": "m_crook.3sg.mp3",
       "cardId": "m_crook",
@@ -1547,6 +1627,14 @@
       "role": "modifier",
       "conjugation": "pl",
       "text": "who are as crooked as the day is long"
+    },
+    {
+      "key": "m_crook.1sg",
+      "file": "m_crook.1sg.mp3",
+      "cardId": "m_crook",
+      "role": "modifier",
+      "conjugation": "1sg",
+      "text": "who am as crooked as the day is long"
     },
     {
       "key": "m_liar.3sg",
@@ -1581,6 +1669,14 @@
       "text": "which are a total disaster"
     },
     {
+      "key": "m_disaster.1sg",
+      "file": "m_disaster.1sg.mp3",
+      "cardId": "m_disaster",
+      "role": "modifier",
+      "conjugation": "1sg",
+      "text": "which am a total disaster"
+    },
+    {
       "key": "m_treasure.3sg",
       "file": "m_treasure.3sg.mp3",
       "cardId": "m_treasure",
@@ -1597,6 +1693,14 @@
       "text": "who are frankly a national treasure"
     },
     {
+      "key": "m_treasure.1sg",
+      "file": "m_treasure.1sg.mp3",
+      "cardId": "m_treasure",
+      "role": "modifier",
+      "conjugation": "1sg",
+      "text": "who am frankly a national treasure"
+    },
+    {
       "key": "m_genius.3sg",
       "file": "m_genius.3sg.mp3",
       "cardId": "m_genius",
@@ -1611,6 +1715,14 @@
       "role": "modifier",
       "conjugation": "pl",
       "text": "who are an absolute genius"
+    },
+    {
+      "key": "m_genius.1sg",
+      "file": "m_genius.1sg.mp3",
+      "cardId": "m_genius",
+      "role": "modifier",
+      "conjugation": "1sg",
+      "text": "who am an absolute genius"
     },
     {
       "key": "m_loves_country.3sg",
@@ -1645,6 +1757,14 @@
       "text": "which are a blessing to us all"
     },
     {
+      "key": "m_blessing.1sg",
+      "file": "m_blessing.1sg.mp3",
+      "cardId": "m_blessing",
+      "role": "modifier",
+      "conjugation": "1sg",
+      "text": "which am a blessing to us all"
+    },
+    {
       "key": "m_stupidest.3sg",
       "file": "m_stupidest.3sg.mp3",
       "cardId": "m_stupidest",
@@ -1659,6 +1779,14 @@
       "role": "modifier",
       "conjugation": "pl",
       "text": "who are among the stupidest humans to ever walk the Earth"
+    },
+    {
+      "key": "m_stupidest.1sg",
+      "file": "m_stupidest.1sg.mp3",
+      "cardId": "m_stupidest",
+      "role": "modifier",
+      "conjugation": "1sg",
+      "text": "who am among the stupidest humans to ever walk the Earth"
     },
     {
       "key": "m_smells.3sg",
@@ -1715,6 +1843,14 @@
       "role": "modifier",
       "conjugation": "pl",
       "text": "who are winning by every available metric"
+    },
+    {
+      "key": "m_winning.1sg",
+      "file": "m_winning.1sg.mp3",
+      "cardId": "m_winning",
+      "role": "modifier",
+      "conjugation": "1sg",
+      "text": "who am winning by every available metric"
     },
     {
       "key": "m_triumph",
@@ -1797,6 +1933,14 @@
       "text": "who are probably drunk right now"
     },
     {
+      "key": "m_drunk.1sg",
+      "file": "m_drunk.1sg.mp3",
+      "cardId": "m_drunk",
+      "role": "modifier",
+      "conjugation": "1sg",
+      "text": "who am probably drunk right now"
+    },
+    {
       "key": "m_tape",
       "file": "m_tape.mp3",
       "cardId": "m_tape",
@@ -1837,6 +1981,14 @@
       "text": "are secretly a lizard person"
     },
     {
+      "key": "r_lizard.1sg",
+      "file": "r_lizard.1sg.mp3",
+      "cardId": "r_lizard",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am secretly a lizard person"
+    },
+    {
       "key": "r_christmas",
       "file": "r_christmas.mp3",
       "cardId": "r_christmas",
@@ -1859,6 +2011,14 @@
       "role": "predicate",
       "conjugation": "pl",
       "text": "are the greatest leader in human history"
+    },
+    {
+      "key": "r_greatest.1sg",
+      "file": "r_greatest.1sg.mp3",
+      "cardId": "r_greatest",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am the greatest leader in human history"
     },
     {
       "key": "r_pony",
@@ -2323,6 +2483,14 @@
       "role": "predicate",
       "conjugation": "pl",
       "text": "are banned from three aquariums and will not say why"
+    },
+    {
+      "key": "r_aquariums.1sg",
+      "file": "r_aquariums.1sg.mp3",
+      "cardId": "r_aquariums",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am banned from three aquariums and will not say why"
     },
     {
       "key": "r_pigeon",
@@ -2829,6 +2997,14 @@
       "text": "are an unscrupulous jackass"
     },
     {
+      "key": "t_jackass.1sg",
+      "file": "t_jackass.1sg.mp3",
+      "cardId": "t_jackass",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am an unscrupulous jackass"
+    },
+    {
       "key": "p_microchip_t1.3sg",
       "file": "p_microchip_t1.3sg.mp3",
       "cardId": "p_microchip_t1",
@@ -2892,6 +3068,15 @@
       "tier": 2
     },
     {
+      "key": "p_llama_t2.1sg",
+      "file": "p_llama_t2.1sg.mp3",
+      "cardId": "p_llama_t2",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am the shadowy kingpin behind every rigged claw machine in America",
+      "tier": 2
+    },
+    {
       "key": "p_moon_t1.3sg",
       "file": "p_moon_t1.3sg.mp3",
       "cardId": "p_moon_t1",
@@ -2925,6 +3110,15 @@
       "role": "predicate",
       "conjugation": "pl",
       "text": "are convinced that the world is flat and the moon is a glow-in-the-dark beach ball",
+      "tier": 2
+    },
+    {
+      "key": "p_moon_t2.1sg",
+      "file": "p_moon_t2.1sg.mp3",
+      "cardId": "p_moon_t2",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am convinced that the world is flat and the moon is a glow-in-the-dark beach ball",
       "tier": 2
     },
     {
@@ -3054,6 +3248,15 @@
       "tier": 1
     },
     {
+      "key": "p_big_kale_t1.1sg",
+      "file": "p_big_kale_t1.1sg.mp3",
+      "cardId": "p_big_kale_t1",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am a wholly owned subsidiary of Big Everything",
+      "tier": 1
+    },
+    {
       "key": "p_big_kale_t2.3sg",
       "file": "p_big_kale_t2.3sg.mp3",
       "cardId": "p_big_kale_t2",
@@ -3069,6 +3272,15 @@
       "role": "predicate",
       "conjugation": "pl",
       "text": "are controlled by the fake auto warranty scam email industry",
+      "tier": 2
+    },
+    {
+      "key": "p_big_kale_t2.1sg",
+      "file": "p_big_kale_t2.1sg.mp3",
+      "cardId": "p_big_kale_t2",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am controlled by the fake auto warranty scam email industry",
       "tier": 2
     },
     {
@@ -3477,6 +3689,15 @@
       "tier": 1
     },
     {
+      "key": "p_oncegen_t1.1sg",
+      "file": "p_oncegen_t1.1sg.mp3",
+      "cardId": "p_oncegen_t1",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am the smartest human being currently permitted by law",
+      "tier": 1
+    },
+    {
       "key": "p_oncegen_t2",
       "file": "p_oncegen_t2.mp3",
       "cardId": "p_oncegen_t2",
@@ -3519,6 +3740,15 @@
       "role": "predicate",
       "conjugation": "pl",
       "text": "are on a first name basis with every bald eagle in the country",
+      "tier": 2
+    },
+    {
+      "key": "p_zipcodes_t2.1sg",
+      "file": "p_zipcodes_t2.1sg.mp3",
+      "cardId": "p_zipcodes_t2",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am on a first name basis with every bald eagle in the country",
       "tier": 2
     },
     {
@@ -4179,6 +4409,15 @@
       "tier": 1
     },
     {
+      "key": "r_lizard_t1.1sg",
+      "file": "r_lizard_t1.1sg.mp3",
+      "cardId": "r_lizard_t1",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am a space alien sent to destroy our nation from within",
+      "tier": 1
+    },
+    {
       "key": "r_lizard_t2.3sg",
       "file": "r_lizard_t2.3sg.mp3",
       "cardId": "r_lizard_t2",
@@ -4194,6 +4433,15 @@
       "role": "predicate",
       "conjugation": "pl",
       "text": "are a soulless lizard-centipede hybrid merely disguised as human to trick our fair nation into self-destruction",
+      "tier": 2
+    },
+    {
+      "key": "r_lizard_t2.1sg",
+      "file": "r_lizard_t2.1sg.mp3",
+      "cardId": "r_lizard_t2",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am a soulless lizard-centipede hybrid merely disguised as human to trick our fair nation into self-destruction",
       "tier": 2
     },
     {
@@ -4251,6 +4499,15 @@
       "tier": 1
     },
     {
+      "key": "r_greatest_t1.1sg",
+      "file": "r_greatest_t1.1sg.mp3",
+      "cardId": "r_greatest_t1",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am the greatest leader in human history, including several histories yet to be written",
+      "tier": 1
+    },
+    {
       "key": "r_greatest_t2.3sg",
       "file": "r_greatest_t2.3sg.mp3",
       "cardId": "r_greatest_t2",
@@ -4266,6 +4523,15 @@
       "role": "predicate",
       "conjugation": "pl",
       "text": "are a leader great enough to be added to Mount Rushmore, replacing all four existing faces",
+      "tier": 2
+    },
+    {
+      "key": "r_greatest_t2.1sg",
+      "file": "r_greatest_t2.1sg.mp3",
+      "cardId": "r_greatest_t2",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am a leader great enough to be added to Mount Rushmore, replacing all four existing faces",
       "tier": 2
     },
     {
@@ -4311,6 +4577,15 @@
       "role": "predicate",
       "conjugation": "pl",
       "text": "are deathly allergic to truth, courage, common decency, and returning shopping carts",
+      "tier": 2
+    },
+    {
+      "key": "r_never_truth_t2.1sg",
+      "file": "r_never_truth_t2.1sg.mp3",
+      "cardId": "r_never_truth_t2",
+      "role": "predicate",
+      "conjugation": "1sg",
+      "text": "am deathly allergic to truth, courage, common decency, and returning shopping carts",
       "tier": 2
     },
     {

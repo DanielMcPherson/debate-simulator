@@ -71,6 +71,16 @@ h1 .tstar { -webkit-text-fill-color:var(--gold); }
   text-align:center; color:var(--gold); opacity:.65; margin:0 0 6px;
 }
 
+/* narration mute toggle — fixed in the corner so it's reachable mid-FX without being a skip */
+.voice-toggle {
+  position:fixed; top:10px; right:12px; z-index:60;
+  width:38px; height:38px; padding:0; font-size:17px; line-height:1;
+  border-radius:50%; cursor:pointer;
+  color:var(--ink); background:rgba(16,24,42,.85); border:1px solid var(--line);
+  box-shadow:0 2px 8px rgba(0,0,0,.35);
+}
+.voice-toggle:hover { border-color:var(--gold-deep); background:var(--panel-2); }
+
 /* --- campaign run strip (mirrors the real run-pill) --- */
 .run-pill {
   font-family:var(--label); text-transform:uppercase; letter-spacing:1.2px; font-size:12px;

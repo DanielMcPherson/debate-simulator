@@ -4,6 +4,7 @@ import { createGame, applyMove, canEnd, nextQuestion } from '../engine/game';
 import { buildPrivateDeck } from '../engine/deck';
 import { aiTurn } from '../engine/ai';
 import { displayWords, cardLabel } from '../engine/morphology';
+import { speakStatement, stopSpeaking, voiceMuted, setVoiceMuted } from './speech';
 import { isComplete, canAppend } from '../engine/grammar';
 import { LADDER, REWARDS, RELICS, findRelic, OPPONENTS, PERIOD, PERIOD_ENABLED, UNDER_OATH, upgradeOf, resolveTier } from '../data/cards';
 
@@ -1338,6 +1339,7 @@ function render(): void {
   app.innerHTML = `
     <h1><span class="tstar">✦</span>🏛️ MY OPPONENT KICKS PUPPIES 🏛️<span class="tstar">✦</span></h1>
     <div class="title-sub">A Debate Simulator</div>
+    <button id="voicetoggle" class="voice-toggle" title="Statement narration ${voiceMuted() ? 'off' : 'on'}">${voiceMuted() ? '🔇' : '🔊'}</button>
     ${runScreen === 'result' || fxHoldSummary ? '' : bannerHtml()}
     <div class="scorebar-wrap">
       <div class="crowd" aria-hidden="true"></div>
@@ -1653,6 +1655,13 @@ function render(): void {
     pendingHotMic = null;
     playerMove({ kind: 'end' });
   });
+  app.querySelector<HTMLButtonElement>('#voicetoggle')?.addEventListener('click', (e) => {
+    setVoiceMuted(!voiceMuted());
+    if (voiceMuted()) stopSpeaking(); // silence the statement being read right now, too
+    const btn = e.currentTarget as HTMLButtonElement;
+    btn.textContent = voiceMuted() ? '🔇' : '🔊'; // in-place — no re-render mid-FX
+    btn.title = `Statement narration ${voiceMuted() ? 'off' : 'on'}`;
+  });
   app.querySelector<HTMLButtonElement>('#ackSabotage')?.addEventListener('click', () => {
     sabotageQueue.shift(); // dismiss this one; the next queued sabotage (if any) shows, banner stays
     render();
@@ -1819,13 +1828,22 @@ async function playResolutionFx(side: 'you' | 'them', r: Reaction): Promise<void
   if (!podium || !speech) return;
   resolving = true;
   fxSkip = false;
+  // The narrator reads the judged statement aloud while its chips pop; the FX holds at the end
+  // until the voice finishes, and the same fast-forward click cuts both off.
+  const voice = speakStatement((side === 'you' ? game.player : game.ai).line);
   // Click anywhere to fast-forward — but ARM it only after a grace period, so the click that
   // ended the turn (or a reflexive click toward the Next button when you finish second) doesn't
   // instantly skip the animation. (That was the "player FX sometimes doesn't play" bug.)
   let skipArmed = false;
   const armTimer = window.setTimeout(() => (skipArmed = true), 500);
-  const skip = () => {
-    if (skipArmed) fxSkip = true;
+  const skip = (e: Event) => {
+    // The mute button must not double as a fast-forward (this fires on document CAPTURE, so the
+    // button can't stopPropagation its way out — exempt it here).
+    if ((e.target as HTMLElement | null)?.closest?.('.voice-toggle')) return;
+    if (skipArmed) {
+      fxSkip = true;
+      voice.stop();
+    }
   };
   document.addEventListener('pointerdown', skip, true);
 
@@ -1864,6 +1882,7 @@ async function playResolutionFx(side: 'you' | 'them', r: Reaction): Promise<void
 
   flourish(side, r);
   await fxWait(fxSkip ? 0 : 240);
+  await voice.done; // let the narration land (skip already stopped it; resolves instantly if muted)
 
   window.clearTimeout(armTimer);
   document.removeEventListener('pointerdown', skip, true);
