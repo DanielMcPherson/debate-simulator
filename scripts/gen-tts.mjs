@@ -21,13 +21,18 @@
 // and preview harness are provider-agnostic. A bad first voice is a reason to change VOICE,
 // never a verdict on statement narration itself.
 //
-// Post-processing (ffmpeg): trim edge silence, EBU loudness-normalize (uniform level is what
-// makes per-chunk stitching viable), tiny tail pad for crossfade material, mono mp3.
+// Post-processing (ffmpeg): trim edge silence, RMS-normalize (NOT loudnorm — integrated-loudness
+// measurement is statistically unstable on sub-3s clips and produced audibly uneven levels, the
+// first playtest's main complaint; plain measured gain toward a target mean with a peak ceiling
+// is rock-stable for short speech), tempo-up (`--tempo`, default 1.1 — pitch-preserving; the
+// deadpan read tested slower than natural), tiny tail pad, mono mp3.
+// Raw synthesized wavs are kept in gitignored voice-raw/ so every post knob (trim, gain, tempo)
+// can be re-tuned WITHOUT re-calling the API — `npm run gentts` re-posts from the raw cache.
 
-import { writeFileSync, mkdirSync, readFileSync, existsSync, statSync, rmSync, mkdtempSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync, existsSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 
@@ -63,7 +68,12 @@ const FORCE = !!flag('force');
 const ONLY = flag('only');
 const SAMPLE = flag('sample') ? parseInt(flag('sample'), 10) : null;
 const PREVIEW = !!flag('preview');
+const TEMPO = parseFloat(flag('tempo') || process.env.GENTTS_TEMPO || '1.1'); // pitch-preserving speed-up
 const CONCURRENCY = 4;
+if (!Number.isFinite(TEMPO) || TEMPO < 0.5 || TEMPO > 2) {
+  console.error(`--tempo must be 0.5–2 (got ${flag('tempo')}).`);
+  process.exit(1);
+}
 
 // The single deadpan moderator/announcer voice (see the voice-scoping decision in gen-clips.ts).
 // Role-aware tail: most chunks sit MID-sentence when stitched, so fight the model's instinct to
@@ -71,9 +81,9 @@ const CONCURRENCY = 4;
 // end the sentence and may cadence naturally.
 const BASE_INSTRUCTIONS =
   'You are the deadpan moderator-announcer of a televised political debate, reading a statement ' +
-  'into the record. Flat, dry, perfectly measured public-broadcast delivery — neutral American ' +
-  'accent, even unhurried pacing, no excitement, no comedy, no emphasis swings, no whispering. ' +
-  'Volume steady and consistent.';
+  'into the record. Flat, dry, matter-of-fact public-broadcast delivery — neutral American ' +
+  'accent, a brisk businesslike pace (never sluggish, breathy, or drawn out), no excitement, ' +
+  'no comedy, no emphasis swings, no whispering. Volume steady and consistent.';
 const ROLE_INSTRUCTIONS = {
   intensifier:
     ' This fragment is the final flourish that ENDS the sentence; a natural closing cadence is appropriate.',
@@ -105,17 +115,29 @@ if (existsSync(cardsPath) && statSync(cardsPath).mtimeMs > statSync(manifestPath
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 
 const outDir = join(root, 'public/voice');
+const rawDir = join(root, 'voice-raw'); // gitignored raw synth cache — post knobs re-run for free
 mkdirSync(outDir, { recursive: true });
+mkdirSync(rawDir, { recursive: true });
 const cachePath = join(outDir, 'voice-cache.json');
 const cache = existsSync(cachePath) ? JSON.parse(readFileSync(cachePath, 'utf8')) : {};
 const saveCache = () => writeFileSync(cachePath, JSON.stringify(cache, null, 2) + '\n');
 
-// A clip is stale when anything that shaped its audio changed: the words, the voice, the model,
-// or the delivery instructions.
-const clipHash = (clip) =>
-  createHash('sha1')
-    .update([speakable(clip), VOICE, MODEL, instructionsFor(clip.role)].join(' '))
-    .digest('hex');
+// Two staleness axes, cached per clip as { s, p }: the SYNTH hash (what the API produced — text,
+// voice, model, instructions; a mismatch or missing raw wav costs an API call) and the POST hash
+// (the ffmpeg knobs — a mismatch just re-encodes from the cached raw). Old-format string entries
+// (pre raw-cache) count as fully stale.
+const sha1 = (s) => createHash('sha1').update(s).digest('hex');
+const synthHash = (clip) => sha1([speakable(clip), VOICE, MODEL, instructionsFor(clip.role)].join('|'));
+const rawPathOf = (clip) => join(rawDir, `${clip.key}.wav`);
+function isStale(clip) {
+  const e = cache[clip.key];
+  if (FORCE || !e || typeof e !== 'object') return true;
+  return e.s !== synthHash(clip) || e.p !== POST_HASH || !existsSync(join(outDir, clip.file));
+}
+function needsSynth(clip) {
+  const e = cache[clip.key];
+  return FORCE || !e || typeof e !== 'object' || e.s !== synthHash(clip) || !existsSync(rawPathOf(clip));
+}
 
 // --- selection ---
 let selected = manifest.clips;
@@ -170,34 +192,58 @@ async function synthesize(text, role) {
   return Buffer.from(await res.arrayBuffer());
 }
 
-// --- ffmpeg post: trim edge silence, loudness-normalize, pad tail, mono mp3 ---
-const FILTERS = [
-  'silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.05',
-  'areverse',
-  'silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.05',
-  'areverse',
-  'loudnorm=I=-16:TP=-1.5:LRA=11',
-  'apad=pad_dur=0.04',
-].join(',');
-function postProcess(wavPath, mp3Path) {
+// --- ffmpeg post: trim edges → RMS gain → tempo → pad → mono mp3 ---
+// Trim keeps 20ms at each edge with a gentle -50dB threshold (the old -45dB shaved soft onsets);
+// gain is measured per clip (volumedetect over the TRIMMED audio) toward a fixed mean, clamped so
+// peaks stay under the ceiling — uniform loudness is what makes per-chunk stitching viable.
+const TRIM = 'silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.02';
+const TRIM_CHAIN = `${TRIM},areverse,${TRIM},areverse`;
+const TARGET_MEAN_DB = -20;
+const PEAK_CEIL_DB = -1.5;
+const PAD = 'apad=pad_dur=0.02';
+const POST_HASH = sha1(['post-v2', TRIM_CHAIN, TARGET_MEAN_DB, PEAK_CEIL_DB, TEMPO, PAD, '24000/q7'].join('|'));
+
+function measureLevels(rawPath) {
+  const res = spawnSync(
+    'ffmpeg',
+    ['-hide_banner', '-i', rawPath, '-af', `${TRIM_CHAIN},volumedetect`, '-f', 'null', '-'],
+    { encoding: 'utf8' },
+  );
+  const err = res.stderr ?? '';
+  return {
+    mean: parseFloat(/mean_volume:\s*(-?[\d.]+) dB/.exec(err)?.[1] ?? 'NaN'),
+    max: parseFloat(/max_volume:\s*(-?[\d.]+) dB/.exec(err)?.[1] ?? 'NaN'),
+  };
+}
+
+function postProcess(rawPath, mp3Path) {
+  const { mean, max } = measureLevels(rawPath);
+  let gain = Number.isFinite(mean) ? TARGET_MEAN_DB - mean : 0;
+  if (Number.isFinite(max) && max + gain > PEAK_CEIL_DB) gain = PEAK_CEIL_DB - max;
+  const filters = [
+    TRIM_CHAIN,
+    `volume=${gain.toFixed(1)}dB`,
+    ...(TEMPO !== 1 ? [`atempo=${TEMPO}`] : []),
+    PAD,
+  ].join(',');
   execFileSync('ffmpeg', [
     '-y', '-hide_banner', '-loglevel', 'error',
-    '-i', wavPath,
-    '-af', FILTERS,
+    '-i', rawPath,
+    '-af', filters,
     // gpt-4o-mini-tts sources are 24 kHz — keep the native rate (upsampling only wastes bits).
     '-ar', '24000', '-ac', '1', '-codec:a', 'libmp3lame', '-q:a', '7',
     mp3Path,
   ]);
 }
 
-const tmp = mkdtempSync(join(tmpdir(), 'gentts-'));
 async function generate(clip) {
-  const wav = await synthesize(speakable(clip), clip.role);
-  const wavPath = join(tmp, `${clip.key}.wav`);
-  writeFileSync(wavPath, wav);
-  postProcess(wavPath, join(outDir, clip.file));
-  rmSync(wavPath);
-  cache[clip.key] = clipHash(clip);
+  const rawPath = rawPathOf(clip);
+  if (needsSynth(clip)) {
+    const wav = await synthesize(speakable(clip), clip.role);
+    writeFileSync(rawPath, wav);
+  }
+  postProcess(rawPath, join(outDir, clip.file));
+  cache[clip.key] = { s: synthHash(clip), p: POST_HASH };
 }
 
 // --- preview: stitch representative statements so the seams can be JUDGED BY EAR ---
@@ -224,13 +270,13 @@ async function runPreview() {
     }
     // Generate any clips the statement needs that don't exist yet.
     for (const clip of clips) {
-      if (!existsSync(join(outDir, clip.file)) || cache[clip.key] !== clipHash(clip)) {
-        console.log(`  … synthesizing missing/stale clip ${clip.key}`);
+      if (isStale(clip)) {
+        console.log(`  … regenerating missing/stale clip ${clip.key}`);
         await generate(clip);
       }
     }
     const list = clips.map((c) => `file '${join(outDir, c.file)}'`).join('\n');
-    const listPath = join(tmp, `${stmt.name}.txt`);
+    const listPath = join(tmpdir(), `gentts-${stmt.name}.txt`);
     writeFileSync(listPath, list + '\n');
     const out = join(previewDir, `${stmt.name}.mp3`);
     execFileSync('ffmpeg', [
@@ -252,17 +298,17 @@ async function main() {
     return;
   }
 
-  const stale = selected.filter(
-    (c) => FORCE || !existsSync(join(outDir, c.file)) || cache[c.key] !== clipHash(c),
-  );
+  const stale = selected.filter(isStale);
   const skipped = selected.length - stale.length;
   if (!stale.length) {
     console.log(`Nothing to do — all ${selected.length} selected clip(s) are current (use --force to regenerate).`);
     return;
   }
-  const chars = stale.reduce((n, c) => n + speakable(c).length, 0);
+  const apiClips = stale.filter(needsSynth);
+  const chars = apiClips.reduce((n, c) => n + speakable(c).length, 0);
   console.log(
-    `Synthesizing ${stale.length} clip(s) with ${MODEL} voice=${VOICE} (~${chars} chars)` +
+    `Processing ${stale.length} clip(s): ${apiClips.length} via ${MODEL} voice=${VOICE} (~${chars} chars), ` +
+      `${stale.length - apiClips.length} re-posted from voice-raw/ (free)` +
       `${skipped ? `; ${skipped} already current` : ''}…`,
   );
 
@@ -292,4 +338,3 @@ async function main() {
 }
 
 await main();
-rmSync(tmp, { recursive: true, force: true });

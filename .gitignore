@@ -26,3 +26,6 @@ RELEASE_ROADMAP.md
 
 # Stitched TTS preview statements (gen-tts.mjs --preview) — listen-and-delete, never shipped
 voice-preview/
+
+# Raw TTS wavs (gen-tts.mjs synth cache) — post-processing knobs re-run from these for free
+voice-raw/

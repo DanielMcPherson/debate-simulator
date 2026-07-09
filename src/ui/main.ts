@@ -1819,18 +1819,74 @@ function fxWait(ms: number): Promise<void> {
   return new Promise((res) => (fxSkip ? res() : window.setTimeout(res, ms)));
 }
 
-/** The resolution juice: light up each phrase (what landed + why), pop combo chips on
- * the connectors, count up the score, and flourish. Pure presentation — no engine state.
- * Click anywhere to fast-forward. */
+/** The resolution juice, driven by the narration when it's audible: the narrator reads the
+ * judged line, each spoken word-group brightens as it's read, and the grading chips pop ON the
+ * words as you hear them; whatever narration didn't anchor (flag chips, muted runs, failed
+ * clips) lands in sequence after. Then the count-up + flourish. Pure presentation — no engine
+ * state. Click anywhere to fast-forward (cuts the voice too). */
 async function playResolutionFx(side: 'you' | 'them', r: Reaction): Promise<void> {
   const podium = app.querySelector<HTMLElement>(`.podium.${side}`);
   const speech = podium?.querySelector<HTMLElement>('.speech');
   if (!podium || !speech) return;
   resolving = true;
   fxSkip = false;
-  // The narrator reads the judged statement aloud while its chips pop; the FX holds at the end
-  // until the voice finishes, and the same fast-forward click cuts both off.
-  const voice = speakStatement((side === 'you' ? game.player : game.ai).line);
+  const line = (side === 'you' ? game.player : game.ai).line;
+
+  // Word span per line index: judgedSpeechHtml emits one `.w` span per NON-EMPTY display word,
+  // in order — walk displayWords to map card positions onto those spans.
+  const spans = [...speech.querySelectorAll<HTMLElement>('.w')];
+  const spanFor: (HTMLElement | undefined)[] = [];
+  {
+    const words = displayWords(line);
+    let si = 0;
+    words.forEach((w, i) => (spanFor[i] = w ? spans[si++] : undefined));
+  }
+
+  // `fx-show` turns word markup ON only for the duration of the FX — removed at the end so the
+  // statement reverts to a single color + font (clean to screenshot/share).
+  const strip = podium.querySelector<HTMLElement>('.fx-strip');
+  strip?.classList.add('fx-running');
+  speech.classList.add('fx-show', 'fx-dim'); // words start dim, brighten as they're spoken/graded
+  const chips = strip ? [...strip.querySelectorAll<HTMLElement>('.fx-chip')] : [];
+
+  // Each chip's anchor = the line index whose narration should pop it (phrase chips on their
+  // phrase's first word, the combo on its junction, the finisher on the finisher). Flag chips
+  // (off-topic / rambling / WHAT??) have no anchor and land after the narration.
+  const chipAnchor = new Map<HTMLElement, number>();
+  for (const chip of chips) {
+    const hi = chip.getAttribute('data-hit');
+    if (hi !== null) {
+      const h = (r.breakdown ?? [])[Number(hi)];
+      if (h) chipAnchor.set(chip, h.span?.[0] ?? h.tokenIdx);
+    } else if (chip.classList.contains('combo')) {
+      const first = Math.min(...(r.comboChips ?? []).map((c) => c.tokenIdx));
+      if (Number.isFinite(first)) chipAnchor.set(chip, first);
+    } else if (chip.classList.contains('finisher')) {
+      const idx = line.findIndex((c) => c.role === 'intensifier');
+      if (idx >= 0) chipAnchor.set(chip, idx);
+    }
+  }
+  const fired = new Set<HTMLElement>();
+  const fireChip = (chip: HTMLElement) => {
+    if (fired.has(chip)) return;
+    fired.add(chip);
+    chip.classList.add('show');
+    const hi = chip.getAttribute('data-hit');
+    if (hi !== null) speech.querySelectorAll<HTMLElement>(`[data-hit="${hi}"]`).forEach((w) => w.classList.add('lit'));
+    else if (chip.classList.contains('confused')) {
+      speech.querySelectorAll<HTMLElement>('.w.confused').forEach((w) => w.classList.add('lit'));
+      speech.querySelector<HTMLElement>('.fx-stamp')?.classList.add('show'); // big "WHAT??" pops over the line
+    } else if (chip.classList.contains('combo')) speech.querySelectorAll<HTMLElement>('.w.wchip').forEach((w) => w.classList.add('lit'));
+    else if (chip.classList.contains('finisher')) speech.querySelectorAll<HTMLElement>('.w.finisher').forEach((w) => w.classList.add('lit'));
+  };
+
+  // The narration drives the show: as each card's clip starts, its words brighten and any chip
+  // anchored at (or before — clips can be skipped) that position pops.
+  const voice = speakStatement(line, (i) => {
+    if (fxSkip) return;
+    spanFor[i]?.classList.add('lit');
+    for (const [chip, anchor] of chipAnchor) if (anchor <= i) fireChip(chip);
+  });
   // Click anywhere to fast-forward — but ARM it only after a grace period, so the click that
   // ended the turn (or a reflexive click toward the Next button when you finish second) doesn't
   // instantly skip the animation. (That was the "player FX sometimes doesn't play" bug.)
@@ -1847,23 +1903,13 @@ async function playResolutionFx(side: 'you' | 'them', r: Reaction): Promise<void
   };
   document.addEventListener('pointerdown', skip, true);
 
-  // Reveal the readout strip chip-by-chip; each chip briefly highlights its word(s) in sync.
-  // `fx-show` turns word markup ON only for the duration of the FX — removed at the end so the
-  // statement reverts to a single color + font (clean to screenshot/share).
-  const strip = podium.querySelector<HTMLElement>('.fx-strip');
-  strip?.classList.add('fx-running');
-  speech.classList.add('fx-show', 'fx-dim'); // landed phrases start dim, brighten as their chip lands
-  const chips = strip ? [...strip.querySelectorAll<HTMLElement>('.fx-chip')] : [];
   await fxWait(160);
+  if (voice.live) await voice.done;
+  // Whatever the narration didn't pop — flag chips, everything on a muted/skipped run — lands
+  // in the classic chip-by-chip sequence.
   for (const chip of chips) {
-    chip.classList.add('show');
-    const hi = chip.getAttribute('data-hit');
-    if (hi !== null) speech.querySelectorAll<HTMLElement>(`[data-hit="${hi}"]`).forEach((w) => w.classList.add('lit'));
-    else if (chip.classList.contains('confused')) {
-      speech.querySelectorAll<HTMLElement>('.w.confused').forEach((w) => w.classList.add('lit'));
-      speech.querySelector<HTMLElement>('.fx-stamp')?.classList.add('show'); // big "WHAT??" pops over the line
-    } else if (chip.classList.contains('combo')) speech.querySelectorAll<HTMLElement>('.w.wchip').forEach((w) => w.classList.add('lit'));
-    else if (chip.classList.contains('finisher')) speech.querySelectorAll<HTMLElement>('.w.finisher').forEach((w) => w.classList.add('lit'));
+    if (fired.has(chip)) continue;
+    fireChip(chip);
     await fxWait(FX_STEP);
   }
 
@@ -1882,7 +1928,6 @@ async function playResolutionFx(side: 'you' | 'them', r: Reaction): Promise<void
 
   flourish(side, r);
   await fxWait(fxSkip ? 0 : 240);
-  await voice.done; // let the narration land (skip already stopped it; resolves instantly if muted)
 
   window.clearTimeout(armTimer);
   document.removeEventListener('pointerdown', skip, true);

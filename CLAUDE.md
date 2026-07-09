@@ -1063,15 +1063,21 @@ exactly. Two layers:
   **DONE (2026-07-09) — TTS clip generator:** `scripts/gen-tts.mjs` (`npm run gentts`) synthesizes
   every manifest surface form to committed mono mp3s under **`public/voice/`** (served verbatim,
   fetched by URL — deliberately NOT `import.meta.glob`, which emitted a JS chunk per clip and
-  base64-inlined the small ones, ~70KB bundle bloat; ffmpeg post: edge-silence
-  trim → `loudnorm` → 40ms tail pad — uniform level is what makes stitching viable). **PROVIDER
+  base64-inlined the small ones, ~70KB bundle bloat). **PROVIDER
   DECISION (Daniel): OpenAI-first (`gpt-4o-mini-tts`, reuses the genart `OPENAI_API_KEY`, ~$0.50/full
   pass), provider-agnostic** — all provider code lives in one `synthesize()` seam; if stitched seams
   disappoint, swap in ElevenLabs (whose `previous_text`/`next_text` prosody conditioning is the
   known upgrade path) and `--force`-regenerate. **A bad first voice means change the VOICE, never
-  "AI narration is no good."** Incremental by design (cards keep changing): `voice-cache.json` hashes
-  spoken-text|voice|model|instructions per clip, so `npm run gentts` after a cards.ts edit + `npm run
-  genclips` regenerates only what changed. Role-aware delivery instructions fight sentence-final
+  "AI narration is no good."** **ffmpeg post (reworked after the first LISTENING playtest,
+  2026-07-09): edge trim (-50dB, 20ms kept) → per-clip RMS gain to a fixed −20dB mean with a −1.5dB
+  peak ceiling → `atempo` (`--tempo`, default 1.1) → 20ms pad.** NOT `loudnorm`: integrated-loudness
+  measurement is statistically unstable on sub-3s clips — it produced the audibly uneven levels that
+  were the playtest's main complaint (uniform level is what makes stitching viable). The tempo knob +
+  a brisker instruction fix the too-slow cadence. **Raw synth wavs are cached in gitignored
+  `voice-raw/`** — the cache is split into synth-hash (API call) and post-hash (ffmpeg knobs), so
+  re-tuning ANY post knob re-encodes all clips with ZERO API calls. Incremental by design (cards keep
+  changing): `npm run gentts` after a cards.ts edit + `npm run genclips` regenerates only what
+  changed. Role-aware delivery instructions fight sentence-final
   cadence on mid-sentence chunks (finishers get a closing cadence); power-up labels are stripped to
   the card name (no emoji, no rules text). `--sample=N` = cheap role-diverse voice audition
   (`--voice=onyx` etc.), `--only=key`, `--preview` = stitches ~5 representative statements (additive
@@ -1090,15 +1096,23 @@ exactly. Two layers:
   stitch (buffers scheduled back-to-back; role-keyed `PRE_GAP`/`POST_GAP` add breathing room
   around comma-set asides and the finisher), lazy per-clip fetch + session-cached decode, mute
   toggle (`.voice-toggle` fixed top-right, localStorage `voiceMuted`, mutes mid-read via
-  `stopSpeaking`). `playResolutionFx` starts the voice as the chips pop, holds at the end on
-  `await voice.done`, and the same fast-forward click stops it — with the mute button EXEMPTED
+  `stopSpeaking`). **The narration DRIVES the resolution FX (synced 2026-07-09, playtest ask):**
+  `speakStatement(line, onClip)` fires a callback at each clip's scheduled start; playResolutionFx
+  maps line indices onto the judged line's `.w` spans (one span per non-empty displayWords entry)
+  and onto each grading chip's anchor (phrase chips → their span's first word, combo → its
+  junction, finisher → the finisher card), so words brighten AS they're spoken and chips pop ON
+  their words; unanchored chips (flags/WHAT??) + everything on a muted run land in the classic
+  post-narration chip sequence, then the count-up. **First-word-clipping fix (playtest):** the
+  module warms the AudioContext + plays a silent one-sample blip on the session's FIRST
+  pointerdown (output-device spin-up was swallowing the opening word), blips again when a
+  statement starts loading, and schedules with a 120ms lead-in.
+  The same fast-forward click stops voice+FX — with the mute button EXEMPTED
   from the capture-phase skip listener (clicking 🔇 must not skip the FX). `done` always resolves
   (missing/failed clips skip their word; a safety timeout covers an interrupted AudioContext).
   Tests: tests/speech.test.ts — agreement selection, full manifest coverage of every reachable
   key (which also fails on a STALE manifest — genclips-after-cards.ts-edits is now test-enforced),
   and spoken/displayed conjugation parity swept over every predicate × 3 agreement contexts.
-  Remaining follow-on: crowd SFX; possible juice: per-clip word-highlight sync (clip durations
-  are known at schedule time; the judged line renders one span per card). The prune-for-VA pass and the CURATE-the-upgrade-pool
+  Remaining follow-on: crowd SFX. The prune-for-VA pass and the CURATE-the-upgrade-pool
   item above are **the same pass** — do them together (prune to the good lines without making
   the game repetitive).
 
