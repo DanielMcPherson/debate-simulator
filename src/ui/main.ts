@@ -1339,7 +1339,8 @@ function render(): void {
   app.innerHTML = `
     <h1><span class="tstar">✦</span>🏛️ MY OPPONENT KICKS PUPPIES 🏛️<span class="tstar">✦</span></h1>
     <div class="title-sub">A Debate Simulator</div>
-    <button id="voicetoggle" class="voice-toggle" title="Statement narration ${voiceMuted() ? 'off' : 'on'}">${voiceMuted() ? '🔇' : '🔊'}</button>
+    <button id="voicetoggle" class="voice-toggle${voiceMuted() ? ' off' : ''}" aria-pressed="${!voiceMuted()}"
+      title="Toggle statement narration">${voiceMuted() ? '🔇 SOUND OFF' : '🔊 SOUND ON'}</button>
     ${runScreen === 'result' || fxHoldSummary ? '' : bannerHtml()}
     <div class="scorebar-wrap">
       <div class="crowd" aria-hidden="true"></div>
@@ -1658,9 +1659,12 @@ function render(): void {
   app.querySelector<HTMLButtonElement>('#voicetoggle')?.addEventListener('click', (e) => {
     setVoiceMuted(!voiceMuted());
     if (voiceMuted()) stopSpeaking(); // silence the statement being read right now, too
+    // Update in place — no re-render mid-FX. (Muted resolutions fall back to the classic
+    // chip-by-chip timing automatically: speakStatement returns a non-live handle.)
     const btn = e.currentTarget as HTMLButtonElement;
-    btn.textContent = voiceMuted() ? '🔇' : '🔊'; // in-place — no re-render mid-FX
-    btn.title = `Statement narration ${voiceMuted() ? 'off' : 'on'}`;
+    btn.textContent = voiceMuted() ? '🔇 SOUND OFF' : '🔊 SOUND ON';
+    btn.classList.toggle('off', voiceMuted());
+    btn.setAttribute('aria-pressed', String(!voiceMuted()));
   });
   app.querySelector<HTMLButtonElement>('#ackSabotage')?.addEventListener('click', () => {
     sabotageQueue.shift(); // dismiss this one; the next queued sabotage (if any) shows, banner stays
