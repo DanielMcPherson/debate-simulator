@@ -367,6 +367,22 @@ debates (after the reward pick). `startDebate` builds the next game eagerly, the
 overlays it; the Begin button clears the screen.
 Decision: path is a straight line (no branching) — too few opponents to make path choice meaningful.
 
+**Save / resume (2026-09).** The WHOLE run — including the debate in progress — auto-saves to
+`localStorage` (`mokp.run`) on every `render()` (`render` = `renderView` + `saveRun`), so an iPad
+Safari reload / app switch drops the player back exactly where they were. Saving mid-debate (not
+just between debates) is deliberate: a reload can't re-roll a losing debate or a reward draft.
+Engine side: `saveGame(state)` → `{state, rng}` / `loadGame(snap)` in game.ts (the RNG lives in a
+WeakMap, so its position is carried via `Rng.state()`; `loadGame` also calls
+`reserveInstanceIds` because the page-global card-instance counter restarts at 0 on reload and
+would otherwise re-issue ids the save already holds). Tests: tests/save.test.ts (a restored game
+plays out identically). UI side: `RunSave` in main.ts lists every persisted `let` (run, runScreen,
+consultant, rewardQueue, pendingMid, debateStats, …); pure FX state is NOT saved —
+`resumeAfterRestore()` redoes what an interrupted animation would have (end screen via
+`checkDebateEnd`, mid-award draft, or `driveAI`). **Bump `SAVE_VERSION` whenever the saved shape
+changes** (an old save is then discarded, not mis-loaded). **Any NEW run/debate-level `let` that
+must survive a reload has to be added to `RunSave`/`saveRun`/`restoreRun`.** "Abandon Run" now
+asks to confirm (it's the only way left to lose a run by accident).
+
 **Debate Consultant (2026-06; CLEAN SPLIT + escalating picks 2026-07) — between-debate deck
 refinement (the thinning + upgrading slice of the deferred shop).** At waypoints
 (`CONSULTANT_WAYPOINTS` = after debates 2, 4, and 5 — the last is boss prep) the player picks

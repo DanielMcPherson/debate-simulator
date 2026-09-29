@@ -10,6 +10,7 @@ import {
   instances,
   makeRng,
   refill,
+  reserveInstanceIds,
   shuffle,
   type Rng,
 } from './deck';
@@ -63,9 +64,31 @@ function buildTutorialPool(rng: () => number): Card[] {
   return shuffle(blocks, rng).flatMap((c) => instances(c, 1));
 }
 
-// The RNG lives alongside the state so a save/restore could persist it; for the
-// prototype we keep a module-side map keyed by the state object.
+// The RNG lives in a module-side map keyed by the state object (GameState stays plain,
+// JSON-safe data); saveGame/loadGame carry its position across a save.
 const rngFor = new WeakMap<GameState, Rng>();
+
+/** A JSON-serializable snapshot of a game in progress: the (plain-data) state plus the RNG
+ *  position, so a restored game deals and rolls exactly as the original would have. */
+export interface GameSnapshot {
+  state: GameState;
+  rng: number;
+}
+
+/** Snapshot a game for saving. Not a copy — stringify it right away. */
+export function saveGame(state: GameState): GameSnapshot {
+  return { state, rng: rngFor.get(state)!.state!() };
+}
+
+/** Rebuild a live game from a (JSON-parsed) snapshot. */
+export function loadGame(snap: GameSnapshot): GameState {
+  const state = snap.state;
+  rngFor.set(state, makeRng(snap.rng));
+  // Instance ids ("p_lie#42") come from a page-global counter that restarts at 0 on reload.
+  const maxId = Math.max(0, ...[...JSON.stringify(state).matchAll(/"id":"[^"#]*#(\d+)"/g)].map((m) => Number(m[1])));
+  reserveInstanceIds(maxId);
+  return state;
+}
 
 /** The game's seeded RNG (for ai.ts's gaffe rolls — keeps the AI deterministic). */
 export function gameRng(state: GameState): Rng {

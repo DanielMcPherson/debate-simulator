@@ -1,6 +1,6 @@
 import './style.css';
 import type { Card, Category, GameState, Move, Reaction, Relic } from '../engine/types';
-import { createGame, applyMove, canEnd, nextQuestion } from '../engine/game';
+import { createGame, applyMove, canEnd, nextQuestion, saveGame, loadGame, type GameSnapshot } from '../engine/game';
 import { buildPrivateDeck } from '../engine/deck';
 import { aiTurn } from '../engine/ai';
 import { displayWords, cardLabel } from '../engine/morphology';
@@ -56,7 +56,8 @@ let run = {
   upgrades: {} as Record<string, number>, // original base id → tier (Punch Up the Zingers)
   relics: [] as string[], // passive relic ids (RELICS in cards.ts) — win-gated like bonus
 }; // rung + earned cards + chosen candidate + cut card ids + upgraded card tiers + relics
-let runScreen: 'tutorial' | 'select' | 'map' | 'result' | 'reward' | 'awardhint' | 'consultant' | 'upgradereveal' | 'defeat' | 'victory' | null = null;
+type RunScreen = 'tutorial' | 'select' | 'map' | 'result' | 'reward' | 'awardhint' | 'consultant' | 'upgradereveal' | 'defeat' | 'victory';
+let runScreen: RunScreen | null = null;
 let awardHintSeen = false; // one-time-ever: after the FIRST card award, teach the player to hunt for more
 
 // Debate Consultant — a between-debate deck-refinement waypoint offering a MENU of services,
@@ -78,9 +79,8 @@ const CONSULTANT_WAYPOINTS: Record<number, { picks: number; cut: number; newCard
   4: { picks: 2, cut: 5, newCards: 3, upgrades: 2 }, // before debate 5
   5: { picks: 3, cut: 5, newCards: 3, upgrades: 2 }, // before debate 6 — boss prep
 };
-let consultant:
-  | { picks: number; cut: number; newCards: number; upgrades: number; service: ConsultantService; picksLeft: number; used: Set<ServiceKey> }
-  | null = null;
+type ConsultantVisit = { picks: number; cut: number; newCards: number; upgrades: number; service: ConsultantService; picksLeft: number; used: Set<ServiceKey> };
+let consultant: ConsultantVisit | null = null;
 let consultantSel = new Set<string>(); // ORIGINAL base ids selected to cut/upgrade this session
 
 // Winning THIS rung (0-indexed, checked pre-increment in checkDebateEnd — so 3 = debate 4)
@@ -111,7 +111,8 @@ type UpgradeOffer = { origId: string; from: Card; to: Card };
 // `relics` (a scripted endorsement offer): pick ONE passive relic instead of a card.
 type RewardOffer = AwardSpec & { choices: Card[]; upgrade?: UpgradeOffer; relics?: Relic[] };
 let rewardQueue: RewardOffer[] = [];
-let rewardMode: 'post' | 'mid' | 'consultant' = 'post';
+type RewardMode = 'post' | 'mid' | 'consultant';
+let rewardMode: RewardMode = 'post';
 let upgradeReveal: UpgradeOffer | null = null; // showing the before→after of a picked random upgrade
 const UPGRADE_OFFER_CHANCE = 0.3; // how often the win draft carries the mystery-upgrade tile
 // Mid-debate award headlines earned by the just-resolved statement, shown after its FX at the
@@ -178,6 +179,121 @@ function newRun(): void {
   game = startDebate();
   runScreen = 'tutorial'; // tutorial → choose candidate → campaign map → debate 1
   render();
+}
+
+// --- save / resume: the whole run (including the debate in progress) is written to
+// localStorage on every render, so an iPad Safari tab reload / app switch drops the player
+// back exactly where they were. Saving mid-debate (not just between debates) also means a
+// reload can't be used to re-roll a losing debate or a reward draft. Pure FX/animation state
+// is NOT saved; resumeAfterRestore() re-derives what the interrupted animation would have done.
+const SAVE_KEY = 'mokp.run';
+const SAVE_VERSION = 1; // bump when the saved shape changes — an old save is then discarded
+interface RunSave {
+  v: number;
+  run: typeof run;
+  runScreen: RunScreen | null;
+  awardHintSeen: boolean;
+  tutorialIntroSeen: boolean;
+  tutorialSkipped: boolean;
+  grabLessonShown: boolean;
+  grabLessonPending: boolean;
+  pendingQuestionCard: boolean;
+  consultant: (Omit<ConsultantVisit, 'used'> & { used: ServiceKey[] }) | null;
+  consultantSel: string[];
+  rewardQueue: RewardOffer[];
+  rewardMode: RewardMode;
+  upgradeReveal: UpgradeOffer | null;
+  pendingMid: AwardSpec[];
+  debateStats: typeof debateStats;
+  midAwardsFired: string[];
+  pendingFx: 'you' | 'them' | null;
+  sabotageQueue: Sabotage[];
+  game: GameSnapshot;
+}
+
+function saveRun(): void {
+  const save: RunSave = {
+    v: SAVE_VERSION,
+    run,
+    runScreen,
+    awardHintSeen,
+    tutorialIntroSeen,
+    tutorialSkipped,
+    grabLessonShown,
+    grabLessonPending,
+    pendingQuestionCard,
+    consultant: consultant && { ...consultant, used: [...consultant.used] },
+    consultantSel: [...consultantSel],
+    rewardQueue,
+    rewardMode,
+    upgradeReveal,
+    pendingMid,
+    debateStats,
+    midAwardsFired: [...midAwardsFired],
+    pendingFx,
+    sabotageQueue,
+    game: saveGame(game),
+  };
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+  } catch {
+    // Private browsing / storage full — the game still plays, it just won't survive a reload.
+  }
+}
+
+/** Load a saved run into the module state. False (and a fresh start) if there's none, it's from
+ *  an older save version, or it fails to parse. */
+function restoreRun(): boolean {
+  let save: RunSave;
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    save = JSON.parse(raw);
+    if (save.v !== SAVE_VERSION || !save.game?.state) return false;
+    game = loadGame(save.game);
+  } catch {
+    return false;
+  }
+  run = save.run;
+  runScreen = save.runScreen;
+  awardHintSeen = save.awardHintSeen;
+  tutorialIntroSeen = save.tutorialIntroSeen;
+  tutorialSkipped = save.tutorialSkipped;
+  grabLessonShown = save.grabLessonShown;
+  grabLessonPending = save.grabLessonPending;
+  pendingQuestionCard = save.pendingQuestionCard;
+  consultant = save.consultant && { ...save.consultant, used: new Set(save.consultant.used) };
+  consultantSel = new Set(save.consultantSel);
+  rewardQueue = save.rewardQueue;
+  rewardMode = save.rewardMode;
+  upgradeReveal = save.upgradeReveal;
+  pendingMid = save.pendingMid;
+  debateStats = save.debateStats;
+  midAwardsFired = new Set(save.midAwardsFired);
+  pendingFx = save.pendingFx;
+  sabotageQueue = save.sabotageQueue ?? [];
+  seenSabotage = game.lastSabotage; // already queued before the reload (or dismissed) — don't re-pop
+  aiMaxExtend = LADDER[run.rung]?.maxExtend ?? LADDER[0].maxExtend;
+  // Both statements are in (or the debate is over): the podium readouts were showing.
+  fxShownSides.clear();
+  if (game.awaitingNext || game.winner) {
+    fxShownSides.add('you');
+    fxShownSides.add('them');
+  }
+  return true;
+}
+
+/** After a restore, finish whatever the reload interrupted: the end screen (normally set after
+ *  the final FX), a mid-debate award draft (normally shown after the round FX), or the AI's turn. */
+function resumeAfterRestore(): void {
+  if (runScreen) return; // a modal/run screen was up — it carries on from its own buttons
+  if (game.winner) {
+    checkDebateEnd();
+    render();
+    return;
+  }
+  if (maybeShowMidAwards()) return;
+  if (!pendingQuestionCard) driveAI();
 }
 
 /** Download the current debate's structured event log as JSON (works on github.io —
@@ -1264,7 +1380,13 @@ function bannerHtml(): string {
   return `<div class="banner tie">The debate ends in a dead heat.</div>`;
 }
 
+/** Every state change funnels through render() — so it's also where the run is auto-saved. */
 function render(): void {
+  renderView();
+  saveRun();
+}
+
+function renderView(): void {
   currentHint = tutorialStep(); // first-question onboarding hints (glow + banner)
   // A one-time welcome modal kicks off the very first turn; the banner takes over after "Got it!".
   const showTutorialIntro = !!currentHint && !tutorialIntroSeen && !runScreen;
@@ -1740,7 +1862,10 @@ function render(): void {
     consultantSel = new Set();
     render();
   });
-  app.querySelector<HTMLButtonElement>('#restart')?.addEventListener('click', newRun);
+  app.querySelector<HTMLButtonElement>('#restart')?.addEventListener('click', () => {
+    // Runs now survive reloads, so a stray tap here is the only way to lose one — confirm it.
+    if (confirm('Abandon this run and start over from debate 1?')) newRun();
+  });
   app.querySelector<HTMLButtonElement>('#dumplog')?.addEventListener('click', downloadDebugLog);
   app.querySelector<HTMLButtonElement>('#dumplogEnd')?.addEventListener('click', downloadDebugLog);
   app.querySelector<HTMLButtonElement>('#newrun')?.addEventListener('click', newRun);
@@ -2097,5 +2222,8 @@ broadcastFrame.setAttribute('aria-hidden', 'true');
 broadcastFrame.innerHTML = ['tl', 'tr', 'bl', 'br'].map((c) => `<span class="corner ${c}">${CORNER_SVG}</span>`).join('');
 document.body.appendChild(broadcastFrame);
 
-runScreen = 'tutorial'; // open on the tutorial, then the campaign map, before the first debate
+// Resume a saved run if there is one; otherwise open on the tutorial, then the campaign map.
+const resumed = restoreRun();
+if (!resumed) runScreen = 'tutorial';
 render();
+if (resumed) resumeAfterRestore();

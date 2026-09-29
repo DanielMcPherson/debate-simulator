@@ -22,18 +22,22 @@ import {
 // Deck construction + shuffling. Decks are plain Card[] arrays of unique
 // instances; a seedable RNG keeps games reproducible (and tests deterministic).
 
-export type Rng = () => number;
+/** A seeded RNG. `state()` reads its internal position: `makeRng(r.state())` resumes the exact
+ *  sequence (how a saved game keeps its future deals/gaffe rolls identical after a reload). */
+export type Rng = (() => number) & { state?: () => number };
 
 /** mulberry32 — small, fast, seedable PRNG. */
 export function makeRng(seed: number): Rng {
   let a = seed >>> 0;
-  return () => {
+  const rng: Rng = () => {
     a |= 0;
     a = (a + 0x6d2b79f5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+  rng.state = () => a >>> 0;
+  return rng;
 }
 
 export function shuffle<T>(arr: T[], rng: Rng): T[] {
@@ -46,6 +50,12 @@ export function shuffle<T>(arr: T[], rng: Rng): T[] {
 }
 
 let instanceCounter = 0;
+
+/** Make every future instance id sort above `n` — a restored save already holds ids up to its
+ *  own counter, and a fresh page load starts this counter at 0, so new deals would collide. */
+export function reserveInstanceIds(n: number): void {
+  instanceCounter = Math.max(instanceCounter, n + 1);
+}
 
 /** Create `count` unique instances of a base card definition. */
 export function instances(base: Card, count: number): Card[] {
