@@ -495,17 +495,17 @@ the dark action-card background. **One-time award hint:** the first card ever dr
 (2026-06):** more headliner nouns/verbs, **private finishers** (premium — owned, can't be out-raced:
 `r_x_pipe`/`r_x_idiot`/`r_x_votemany` + `r_x_science`/`r_x_polls`), and a drafted **Typo** action.
 
-**DONE (2026-07) — "That's the Name of the Game!" easter-egg award.** A rare mid-debate award for a
-statement that is EXACTLY the game's namesake — "My opponent kicks puppies" and nothing else.
-UI-only (`evalMidAwards` in main.ts), reuses the whole mid-award path (fires `pendingMid` → normal
-`REWARDS` pick; the *achievement* is the payoff, not a bespoke card). Gate: `r.grammatical` AND
-`game.player.line` is exactly `[s_opp, p_kick_pup]` by base id (`id.split('#')[0]`) — a connector/
-finisher/extra card fails both the `length===2` and `grammatical` guards, so it won't false-fire.
-It's a **luck** award (needs both cards dealt to the shared pool AND grabbed before the AI — a
-feature, not a bug: a delightful rare, not a grind). **GAME-NAME COUPLING (caveat):** the trigger
-ids live in a single `NAME_OF_THE_GAME` const with a loud comment — if the game is ever renamed,
-delete that const + its `fire()`. Also a soft constraint on future card-economy work: `s_opp` and
-`p_kick_pup` must both stay in the SHARED (contested) pool (`buildSharedDeck`, deck.ts).
+**DONE (2026-07; widened 2026-09) — "That's the Name of the Game!" easter-egg award.** A rare
+mid-debate award for a statement that IS the game's namesake, "My opponent kicks puppies". UI-only,
+reuses the whole mid-award path (fires `pendingMid` → normal `REWARDS` pick; ≤1 per debate). The
+trigger is the pure `isNameOfTheGame(line, grammatical)` in **`src/ui/nameOfTheGame.ts`** (tested in
+tests/nameofthegame.test.ts): ONE clause = any singular opponent NP whose TEXT ends in "opponent"
+("My crooked, do-nothing opponent", "…cretin of an opponent", and upgraded `s_opp` tiers — keyed by
+text, not id, so new cards/tiers qualify automatically; "My opponent's wife" doesn't) + optional
+asides + `p_kick_pup` + an optional finisher. A second clause/connector/object fails it (dilutes the
+title). Originally exact-match `[s_opp, p_kick_pup]` only — which also meant upgrading `s_opp` locked
+the player out of it. **GAME-NAME COUPLING:** if the game is renamed, delete that module + its
+`fire()` in `evalMidAwards`. `p_kick_pup` must stay in the SHARED pool (`buildSharedDeck`).
 
 **DONE (2026-07) — Card upgrades ("Punch Up the Zingers").** The third deck-building axis (besides
 add + cut): upgrade a card into an authored, funnier, stronger version — build toward one or two
@@ -1280,14 +1280,14 @@ on *its* feel before layering meta-progression on top.
   <mcphersond@gmail.com>** (his personal identity). The repo already has a local override
   (`git config --local user.email mcphersond@gmail.com`); don't undo it. The machine's *global*
   git identity is his work email — never let a commit here use that.
-- **Pushing is the user's job, via GitHub Desktop — not the CLI.** Command-line `git`/`gh` on
-  this machine are signed into his **work** account (SSH token) and **cannot reach** his personal
-  repo `github.com/DanielMcPherson/debate-simulator`. So: do NOT run `git push` or `gh`; when a
-  push is needed, **prompt Daniel to commit & push it in the GitHub Desktop app** (signed into his
-  personal account). Local-only git (`status`, `log`, `add`, `commit`, `config`) is fine.
+- **Pushing from the CLI works (since 2026-09-29) via plain `git` over SSH.** The remote is
+  `git@github.com:DanielMcPherson/debate-simulator.git`, and the repo-local `core.sshCommand`
+  pins his PERSONAL key (`~/.ssh/id_ed25519_personal`, `IdentitiesOnly=yes`), so `git push`
+  authenticates as DanielMcPherson. **Never use `gh` here** — it's still signed into his WORK
+  account. Don't touch the remote URL or `core.sshCommand`. GitHub Desktop still works too.
 - **Deploy is automatic:** pushing to `master` triggers `.github/workflows/deploy.yml`
   (build + publish to GitHub Pages). Live at https://danielmcpherson.github.io/debate-simulator/.
-  Run `npm test` + `npm run build` locally before handing a change off to push. See SHARING.md §6.
+  Run `npm test` + `npm run build` before every push (a push to master deploys live). See SHARING.md §6.
 
 ## Conventions / decisions (don't violate without the user asking)
 - **Deterministic, no LLM at runtime.** Scoring + AI are pure search over card metadata. Don't
