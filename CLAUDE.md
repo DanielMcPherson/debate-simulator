@@ -1368,6 +1368,25 @@ carry the same `key` (`<run.startedAt>-<debate>-<question>-<you|them>`) so the t
 When analyzing a returned journal: starred lines that scored LOW (or negative) are the scoring/
 card-sentiment bugs to fix; high scorers nobody starred are candidates for being over-valued.
 
+**"Demand a recount" appeals (2026-09)** — the player disputes their just-judged statement from
+the round summary (`canAppeal`/`appealStatement` in game.ts; tests/appeal.test.ts). **Why:** it's a
+playtest SIGNAL (Daniel: when the player's sense of a good answer differs from the scorer) with a
+real in-game reason to press it. The game can't know if the player is right, so the recount
+re-examines only the scorer's DISCRETIONARY penalties — `ScoreOptions.recount` relaxes the
+off-topic multiplier, the rambling penalty, and the confused-path muffle/cap/bafflement (a run-on
+also skips the coherence scaling; genuine salad keeps it). Blunders, the audience-insult poison,
+combos and caps are never relaxed. `gain = recount − original`: ≥`APPEAL_MIN_GAIN` → 85%
+**overturned** for `APPEAL_SHARE` 0.75 of the gain (else upheld, 0); otherwise frivolous → 25%
+**sympathy** +3, else **backfire** −`APPEAL_FINE` 5. Seeded roll (game RNG). **One per debate**
+(`GameState.appealsLeft`, `GameOptions.appeals`) — scarcity is what makes WHICH statement gets
+disputed meaningful. Only on the between-questions pause (`awaitingNext`), so NOT on a debate's
+final question (the engine declares the winner with no pause — a final-question appeal that can
+flip a narrow loss is a deliberate follow-on). A recount can end the debate by landslide either
+way. Journaled as `appeal` (same `key` as the `stmt`, plus the opponent's delta for "should have
+beaten theirs"). **Analysis:** overturned appeals point at which penalty is too harsh; frivolous
+appeals of cleanly scored lines point at sentiment/scoring the player disagrees with (compare
+with `star`s).
+
 ## Gotchas
 - **Sabotage jams must stick:** a Teleprompter-Typo'd card is tagged `Card.jammed`; `endableLine`'s
   end-trim refuses to strip a jammed card (else the lenient trim silently UNDID the typo — the

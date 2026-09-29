@@ -1,6 +1,6 @@
 import './style.css';
 import type { Card, Category, GameState, Move, Reaction, Relic } from '../engine/types';
-import { createGame, applyMove, canEnd, nextQuestion, saveGame, loadGame, type GameSnapshot } from '../engine/game';
+import { createGame, applyMove, canEnd, nextQuestion, saveGame, loadGame, canAppeal, appealStatement, type GameSnapshot } from '../engine/game';
 import { buildPrivateDeck } from '../engine/deck';
 import { aiTurn } from '../engine/ai';
 import { displayWords, cardLabel, renderSentence } from '../engine/morphology';
@@ -303,6 +303,64 @@ function starRowHtml(): string {
   const row = btn('you', 'your') + btn('them', 'their');
   return row ? `<div class="star-row">${row}</div>` : '';
 }
+// --- "Demand a recount" (appealStatement in game.ts): one per debate, on the round summary.
+// The verdict copy is picked per round so a re-render doesn't reshuffle it.
+const APPEAL_VERDICTS: Record<NonNullable<GameState['lastAppeal']>['outcome'], string[]> = {
+  overturned: [
+    'Recount finds 3,000 of your ballots in the back of a Denny’s!',
+    'The judges review the tape. You were robbed!',
+    'A sharp-eyed clerk spots the error. The crowd was wrong!',
+  ],
+  upheld: [
+    'The judges squint, shrug, and let the result stand.',
+    'Recount complete. Same result. Nobody is happy.',
+    'The judges agree you had a point — then lose the paperwork.',
+  ],
+  sympathy: [
+    'The judges don’t buy it — but one of them just likes you.',
+    'Frivolous. Yet oddly charming. The judge gives you a pity point.',
+  ],
+  backfire: [
+    'The judges are not amused. Fined for a frivolous appeal!',
+    'The recount confirms it: it really was that bad. Now it’s worse.',
+    'The judges replay your statement for everyone. Again. Slowly.',
+  ],
+};
+function appealHtml(): string {
+  const a = game.lastAppeal;
+  if (a && a.round === game.round) {
+    const lines = APPEAL_VERDICTS[a.outcome];
+    const good = a.change > 0;
+    const num = a.change ? ` <b>${good ? '+' : ''}${a.change}</b>` : '';
+    return `<div class="appeal-verdict ${good ? 'good' : a.change < 0 ? 'bad' : ''}">⚖️ ${lines[game.round % lines.length]}${num}</div>`;
+  }
+  if (!canAppeal(game)) return '';
+  const left = game.appealsLeft ?? 0;
+  return `<div class="appeal-row"><button class="ghost appeal-btn" id="appeal">⚖️ Demand a recount</button>
+    <span class="appeal-sub">Robbed? ${left} per debate — the judges may disagree.</span></div>`;
+}
+function doAppeal(): void {
+  const r = appealStatement(game);
+  if (!r) return;
+  const rx = game.player.lastReaction;
+  jlog('appeal', {
+    key: starKey('you'), // joins with the statement's 'stmt' entry
+    ...r,
+    text: renderSentence(game.player.line),
+    cards: game.player.line.map((c) => c.id.split('#')[0]),
+    label: rx?.label,
+    grammatical: rx?.grammatical,
+    runOn: rx?.runOn,
+    offTopic: rx?.offTopic,
+    rambling: rx?.rambling,
+    theirDelta: game.ai.lastReaction?.delta, // "should have beaten theirs" — compare
+    bar: Math.round(game.bar),
+    debate: run.rung + 1,
+  });
+  if (game.winner) checkDebateEnd(); // a recount can clinch (or blow) a landslide
+  render();
+}
+
 function quoteHtml(st: Star, showMeta = false): string {
   const vs = st.by === 'you' ? ` vs ${esc(st.opponent)}` : ''; // an opponent's own line needn't name them twice
   const meta = showMeta ? ` · debate ${st.debate}${vs}${st.who ? ` · ${esc(st.who)}` : ''} · ${new Date(st.at).toLocaleDateString()}` : '';
@@ -1663,6 +1721,7 @@ function renderView(): void {
             }
             ${game.round >= game.maxRounds ? '<div class="rs-progress">Final question complete — tallying the debate…</div>' : ''}
             ${starRowHtml()}
+            ${appealHtml()}
             <button class="action" id="next">Next Question ▶</button>
           </div>`
         : `${carousel(
@@ -2036,6 +2095,7 @@ function renderView(): void {
     b.addEventListener('click', () => toggleStarFor(b.dataset.star as 'you' | 'them')),
   );
   app.querySelector<HTMLButtonElement>('#hallOpen')?.addEventListener('click', openHall);
+  app.querySelector<HTMLButtonElement>('#appeal')?.addEventListener('click', doAppeal);
   app.querySelector<HTMLButtonElement>('#beginDebate')?.addEventListener('click', () => {
     runScreen = null; // dismiss the map and step onto the debate stage
     jlog('debate', {
@@ -2425,6 +2485,7 @@ function openJournal(): void {
       <span>Confused <b>${pct(sm.confused)}</b></span><span>Run-ons <b>${pct(sm.runOns)}</b></span>
       <span>Off-topic <b>${pct(sm.offTopic)}</b></span><span>Avg score <b>${sm.avgDelta.toFixed(1)}</b></span>
       <span>Avg time/statement <b>${Math.round(sm.avgSecs)}s</b></span>
+      <span>Stars <b>${sm.stars}</b></span><span>Recounts won/asked <b>${sm.appealsWon}/${sm.appeals}</b></span>
     </div>
     <label class="j-row">Now playing: <input id="jTester" value="${esc(journal.tester())}" placeholder="tester's name (optional)" autocomplete="off"></label>
     <div class="j-row"><textarea id="jNote" rows="2" placeholder="Add a note — what did they laugh at, where did they get stuck?"></textarea>

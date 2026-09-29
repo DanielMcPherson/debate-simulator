@@ -401,6 +401,12 @@ export interface ScoreOptions {
    *  `incomingAttackMult` damps every attack_opp contribution (Teflon Don). Applied at
    *  the contribution level so the breakdown/FX stay consistent with the bar. */
   defenderMods?: RelicMods;
+  /** "Demand a recount" (see appealStatement in game.ts): rescore with the scorer's
+   *  DISCRETIONARY penalties relaxed — the known-crude judgement calls a human might dispute:
+   *  the off-topic multiplier, the rambling penalty, and (on a garbled/run-on line) the
+   *  confusion muffle, its ±CONFUSION_CAP, and the bafflement cost. Blunders, the audience-
+   *  insult poison, combos and caps are NOT relaxed — those are the scorer being confident. */
+  recount?: boolean;
 }
 
 /** Relic adjustments that act per-contribution — applied immediately after
@@ -439,20 +445,22 @@ export function scoreStatement(line: Card[], opts: ScoreOptions = {}): Reaction 
       c.subjectIdx !== undefined;
     const bad = firstInvalidIndex(line); // where parsing actually broke (−1 if just unfinished)
     const blunderTotal = contribs.filter(isBlunder).reduce((s, c) => s + c.delta, 0); // ≤ 0
-    let rest = aggregate(contribs.filter((c) => !isBlunder(c))).total * CONFUSION_DAMPEN;
-    rest = Math.max(-CONFUSION_CAP, Math.min(CONFUSION_CAP, rest));
+    let rest = aggregate(contribs.filter((c) => !isBlunder(c))).total;
+    if (!opts.recount) rest = Math.max(-CONFUSION_CAP, Math.min(CONFUSION_CAP, rest * CONFUSION_DAMPEN));
     // As in the full path: an audience insult anywhere poisons the (muffled) positives too.
     if (rest > 0 && contribs.some((c) => c.category === 'insult_aud')) rest = 0;
     // The more scrambled the line, the less positive "drift" the crowd actually catches: scale
     // the muffled UPSIDE by how much parsed before the break (a line that's salad from the start
     // keeps almost none of the intent the greedy parser scraped out of the jumble). Downside is
     // never softened this way — a blunder is a blunder.
-    if (rest > 0 && bad >= 0) rest *= bad / line.length;
+    // (A recount still applies this to genuine salad — only a run-on, two real thoughts missing a
+    // connector, gets full credit: that's the case a player most plausibly disputes.)
+    if (rest > 0 && bad >= 0 && !(opts.recount && looksRunOn(line))) rest *= bad / line.length;
     // Bafflement penalty: only when the line is genuinely ungrammatical (bad ≥ 0), scaled by how
     // many tokens are salad. An unfinished-but-valid line (bad < 0) is a mumble, not a baffler —
     // it pays nothing. So gibberish nets mildly NEGATIVE, while a near-miss costs almost nothing.
     const stray = bad >= 0 ? line.length - bad : 0; // tokens from the break onward
-    const baffle = bad >= 0 ? -Math.min(BAFFLE_CAP, BAFFLE_BASE + BAFFLE_STEP * (stray - 1)) : 0;
+    const baffle = bad >= 0 && !opts.recount ? -Math.min(BAFFLE_CAP, BAFFLE_BASE + BAFFLE_STEP * (stray - 1)) : 0;
     let total = Math.max(-STATEMENT_CAP, Math.min(STATEMENT_CAP, blunderTotal + rest + baffle));
     total = Math.round(total * 10) / 10;
     const confusedSpan: [number, number] | undefined = bad >= 0 ? [bad, line.length - 1] : undefined;
@@ -506,7 +514,7 @@ export function scoreStatement(line: Card[], opts: ScoreOptions = {}): Reaction 
   let total = agg.total + asideDelta;
   // Rambling: too many simple sentences with no combos — each extra one hurts.
   const rambling = agg.residualCount > RAMBLE_LIMIT;
-  if (rambling) total -= RAMBLE_STEP * (agg.residualCount - RAMBLE_LIMIT);
+  if (rambling && !opts.recount) total -= RAMBLE_STEP * (agg.residualCount - RAMBLE_LIMIT);
   // Headliners: powerful cards (`ceiling`) and combo-chaining (`agg.chips`, one per combo
   // junction — NOT raw card count, so piling earns nothing) raise both caps together.
   const cardCeil = line.reduce((s, c) => s + (c.ceiling ?? 0), 0);
@@ -523,7 +531,7 @@ export function scoreStatement(line: Card[], opts: ScoreOptions = {}): Reaction 
   // Media Darling: off-topic immunity — no penalty AND no OFF-TOPIC badge (nothing
   // penalized, nothing flagged; the press never runs the follow-up).
   const dodged = !opts.mods?.offTopicImmune && !!opts.topicId && !line.some((c) => c.topics?.includes(opts.topicId!));
-  if (dodged && total > 0) total *= OFF_TOPIC_MULT;
+  if (dodged && total > 0 && !opts.recount) total *= OFF_TOPIC_MULT;
 
   total = Math.max(-hardCap, Math.min(hardCap, total));
   total = Math.round(total * 10) / 10;

@@ -309,6 +309,16 @@ export interface Reaction {
   confusedSpan?: [number, number];
 }
 
+/** A "Demand a recount" verdict. `change` is what the bar moved, toward the player. */
+export interface AppealResult {
+  round: number;
+  outcome: 'overturned' | 'upheld' | 'sympathy' | 'backfire';
+  change: number;
+  /** The statement's original score and its recount (penalties relaxed), toward the player. */
+  original: number;
+  recount: number;
+}
+
 export type PlayerId = 'player' | 'ai';
 
 export interface PlayerState {
@@ -385,6 +395,10 @@ export interface GameState {
    * distinguishes a Teleprompter Typo (jammed a card on) from a Forgot My Line
    * (knocked their last card off). Defaults to 'typo' when absent. */
   lastSabotage?: { victim: PlayerId; by: PlayerId; text: string; kind?: 'typo' | 'forgot' | 'hotmic' };
+  /** "Demand a recount" uses left this debate (see appealStatement). */
+  appealsLeft?: number;
+  /** The most recent appeal's outcome (drives the UI's verdict banner). */
+  lastAppeal?: AppealResult;
   /** Both statements are in; paused on the result until the player continues. */
   awaitingNext?: boolean;
   winner?: PlayerId | 'tie';
@@ -397,7 +411,7 @@ export interface GameState {
 /** One structured event in the analytics trail. `t` is the type; the rest is
  * type-specific (card/source on a play, delta/combo/gaffe on a resolution, etc.). */
 export interface GameEvent {
-  t: 'deal' | 'take' | 'power' | 'sabotage' | 'resolve' | 'win';
+  t: 'deal' | 'take' | 'power' | 'sabotage' | 'resolve' | 'win' | 'appeal';
   round: number;
   by?: PlayerId;
   [k: string]: unknown;

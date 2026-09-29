@@ -1,6 +1,6 @@
-import type { Card, GameEvent, GameState, Move, PlayerId, PlayerState, RelicMods } from './types';
+import type { AppealResult, Card, GameEvent, GameState, Move, PlayerId, PlayerState, RelicMods } from './types';
 import { isComplete, canAppend } from './grammar';
-import { scoreStatement } from './scoring';
+import { scoreStatement, type ScoreOptions } from './scoring';
 import { mergeRelicMods } from './relics';
 import { renderSentence, cardLabel } from './morphology';
 import { TOPICS, OPPONENTS, CROWDS, ALL, findDef, findRelic, resolveTier, PERIOD, PERIOD_ENABLED } from '../data/cards';
@@ -33,6 +33,8 @@ export interface GameOptions {
   relics?: string[];
   /** First-debate onboarding (guaranteed first hand + simple opponent on Q1). */
   tutorial?: boolean;
+  /** "Demand a recount" uses per debate (default APPEALS_PER_DEBATE). */
+  appeals?: number;
 }
 
 /** Pick `n` distinct random items from `arr` using the seeded rng. */
@@ -84,6 +86,7 @@ export function saveGame(state: GameState): GameSnapshot {
 export function loadGame(snap: GameSnapshot): GameState {
   const state = snap.state;
   rngFor.set(state, makeRng(snap.rng));
+  state.appealsLeft ??= APPEALS_PER_DEBATE; // saves from before appeals existed
   // Instance ids ("p_lie#42") come from a page-global counter that restarts at 0 on reload.
   const maxId = Math.max(0, ...[...JSON.stringify(state).matchAll(/"id":"[^"#]*#(\d+)"/g)].map((m) => Number(m[1])));
   reserveInstanceIds(maxId);
@@ -354,6 +357,7 @@ export function createGame(opts: GameOptions = {}): GameState {
   state.removedCards = opts.removedCards ?? [];
   state.upgrades = opts.upgrades ?? {};
   state.relics = (opts.relics ?? []).map(findRelic).filter((r): r is NonNullable<typeof r> => !!r);
+  state.appealsLeft = opts.appeals ?? APPEALS_PER_DEBATE;
   // The Incumbent: the bar starts tilted toward the holder. Once per DEBATE, not per
   // question — the bar persists across questions and is never reset by dealRound.
   state.bar = mergeRelicMods(state.relics).barStart ?? 0;
@@ -455,14 +459,7 @@ function resolveStatement(state: GameState, p: PlayerState): void {
   // speaking scores against the player's defenderMods (Teflon damping). All relic
   // effects act INSIDE scoreStatement (contribution level) so the breakdown/FX always
   // match the bar — never adjust the signed bar delta below.
-  const pm = playerRelicMods(state);
-  const reaction = scoreStatement(p.line, {
-    topicId: state.topic?.id,
-    crowd: state.crowd,
-    multiplier: mult,
-    mods: p.id === 'player' ? pm : undefined,
-    defenderMods: p.id === 'ai' ? pm : undefined,
-  });
+  const reaction = scoreStatement(p.line, { ...resolveOpts(state, p), multiplier: mult });
   p.nextMultiplier = undefined;
   p.lastReaction = reaction;
   p.done = true;
@@ -512,6 +509,77 @@ const OATH_TELLS = [
   '%n mouths "I cannot lie" and visibly dies inside.',
   '%n tries to stop mid-sentence, but the truth keeps coming.',
 ];
+
+/** The ScoreOptions a statement is judged under at resolution (shared with the recount, so an
+ *  appeal rescores under exactly the same topic, crowd and relics). */
+function resolveOpts(state: GameState, p: PlayerState): ScoreOptions {
+  const pm = playerRelicMods(state);
+  return {
+    topicId: state.topic?.id,
+    crowd: state.crowd,
+    mods: p.id === 'player' ? pm : undefined,
+    defenderMods: p.id === 'ai' ? pm : undefined,
+  };
+}
+
+// --- "Demand a recount": the player disputes their just-judged statement. The game can't know
+// whether they're right (if it could, the scoring would be right), so the recount re-examines
+// only the scorer's DISCRETIONARY penalties (ScoreOptions.recount). If relaxing them lifts the
+// score, the player plausibly got docked on a technicality → usually overturned in their favor.
+// If the line was scored cleanly, the appeal is frivolous → usually fined. A seeded roll keeps
+// either outcome from being a sure thing. Scarce (per debate) so WHICH statement a player
+// disputes is a meaningful signal — the whole point, alongside the fun (journaled in the UI).
+export const APPEALS_PER_DEBATE = 1;
+export const APPEAL_MIN_GAIN = 1; // a recount must find at least this much to count as a point
+export const APPEAL_SHARE = 0.75; // an overturned appeal recovers this share of the difference
+export const APPEAL_WIN_CHANCE = 0.85; // …with this probability (else upheld, no change)
+export const APPEAL_SYMPATHY_CHANCE = 0.25; // a frivolous appeal still gets lucky this often
+export const APPEAL_SYMPATHY = 3;
+export const APPEAL_FINE = 5; // …and is otherwise fined this much
+
+/** Can the player demand a recount right now? Only on the between-questions pause, once per
+ *  question, while uses remain. */
+export function canAppeal(state: GameState): boolean {
+  return (
+    !!state.awaitingNext &&
+    !state.winner &&
+    (state.appealsLeft ?? 0) > 0 &&
+    !!state.player.lastReaction &&
+    state.lastAppeal?.round !== state.round
+  );
+}
+
+/** Rule on the player's appeal of their last statement: moves the bar and spends a use. */
+export function appealStatement(state: GameState): AppealResult | undefined {
+  if (!canAppeal(state)) return undefined;
+  const p = state.player;
+  const original = p.lastReaction!.delta;
+  const recount = scoreStatement(p.line, { ...resolveOpts(state, p), recount: true }).delta;
+  const gain = recount - original;
+  const roll = rngFor.get(state)!();
+  let outcome: AppealResult['outcome'];
+  let change: number;
+  if (gain >= APPEAL_MIN_GAIN) {
+    outcome = roll < APPEAL_WIN_CHANCE ? 'overturned' : 'upheld';
+    change = outcome === 'overturned' ? Math.round(gain * APPEAL_SHARE * 10) / 10 : 0;
+  } else {
+    outcome = roll < APPEAL_SYMPATHY_CHANCE ? 'sympathy' : 'backfire';
+    change = outcome === 'sympathy' ? APPEAL_SYMPATHY : -APPEAL_FINE;
+  }
+  state.bar = Math.max(-100, Math.min(100, state.bar + change));
+  state.appealsLeft = (state.appealsLeft ?? 0) - 1;
+  const result: AppealResult = { round: state.round, outcome, change, original, recount };
+  state.lastAppeal = result;
+  state.log.push(`You demanded a recount → ${outcome} (${change >= 0 ? '+' : ''}${change})`);
+  logEvent(state, 'appeal', { by: 'player', ...result, text: renderSentence(p.line), bar: Math.round(state.bar) });
+  // A recount can clinch (or blow) a landslide — the debate ends right here.
+  if (state.bar >= 100 || state.bar <= -100) {
+    state.winner = state.bar >= 100 ? 'player' : 'ai';
+    state.awaitingNext = false;
+    logEvent(state, 'win', { winner: state.winner, bar: Math.round(state.bar) });
+  }
+  return result;
+}
 
 function endRoundIfDone(state: GameState): void {
   if (!state.player.done || !state.ai.done) return;

@@ -811,3 +811,11 @@ h1 { touch-action: manipulation; cursor: default; -webkit-user-select: none; use
 .hof-quote.them { border-left-color:var(--them); }
 .hof-quote blockquote { margin:0; font-size:16px; line-height:1.45; color:var(--ink); }
 .hof-quote figcaption { margin-top:4px; font-size:13px; opacity:.75; }
+
+/* ---- Demand a recount (round summary) ---- */
+.appeal-row { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:4px 10px; margin:8px 0 4px; }
+.appeal-btn { touch-action:manipulation; }
+.appeal-sub { font-size:13px; opacity:.7; }
+.appeal-verdict { margin:10px auto 4px; max-width:560px; font-size:16px; color:var(--gold); animation:fadein .3s ease; }
+.appeal-verdict.good { color:#6fcf97; }
+.appeal-verdict.bad { color:#ff8a8a; }

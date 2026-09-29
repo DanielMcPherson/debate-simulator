@@ -96,6 +96,9 @@ export interface JournalSummary {
   offTopic: number;
   avgDelta: number;
   avgSecs: number;
+  stars: number;
+  appeals: number;
+  appealsWon: number;
   best: { text: string; delta: number; who?: string }[];
   worst: { text: string; delta: number; who?: string }[];
   testers: string[];
@@ -125,6 +128,9 @@ export function summarize(entries: JournalEntry[]): JournalSummary {
     offTopic: mine.filter((e) => e.offTopic).length,
     avgDelta: mine.length ? mine.reduce((s, e) => s + num(e.delta), 0) / mine.length : 0,
     avgSecs: timed.length ? timed.reduce((s, e) => s + num(e.secs), 0) / timed.length : 0,
+    stars: entries.filter((e) => e.t === 'star' && e.on).length,
+    appeals: entries.filter((e) => e.t === 'appeal').length,
+    appealsWon: entries.filter((e) => e.t === 'appeal' && num(e.change) > 0).length,
     best: byDelta.filter((e) => num(e.delta) > 0).slice(0, 5).map(line),
     worst: byDelta.filter((e) => num(e.delta) < 0).slice(-3).reverse().map(line),
     testers: [...new Set(entries.map((e) => e.who).filter((w): w is string => !!w))],
@@ -156,6 +162,10 @@ export function describeEntry(e: JournalEntry): string {
       return `${who}${e.by === 'you' ? 'You' : 'They'} played ${e.effect}`;
     case 'abandon':
       return `${who}Abandoned the run (debate ${e.debate}, question ${e.q})`;
+    case 'appeal':
+      return `${who}⚖️ Recount (${e.outcome}, ${sign(e.change)}; scored ${sign(e.original)}, recount ${sign(e.recount)}): “${e.text}”`;
+    case 'star':
+      return `${who}${e.on ? '⭐ Starred' : '☆ Unstarred'} ${e.by === 'you' ? 'your' : 'their'} line (${sign(e.delta)}): “${e.text}”`;
     case 'note':
       return `📝 ${who}${e.text}`;
     default:
