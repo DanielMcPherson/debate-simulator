@@ -5,6 +5,7 @@ import { buildPrivateDeck } from '../engine/deck';
 import { aiTurn } from '../engine/ai';
 import { displayWords, cardLabel, renderSentence } from '../engine/morphology';
 import { createJournal, summarize, describeEntry, type JournalSummary } from './journal';
+import { toggleStar, keepTopLines, HALL_KEY, HALL_MAX, type Star } from './hall';
 import { isNameOfTheGame } from './nameOfTheGame';
 import { speakStatement, stopSpeaking, voiceMuted, setVoiceMuted } from './speech';
 import { isComplete, canAppend } from '../engine/grammar';
@@ -49,14 +50,20 @@ let sabotageQueue: Sabotage[] = [];
 let seenSabotage: Sabotage | undefined; // the last game.lastSabotage already enqueued (dedup)
 
 // --- campaign run (Slay-the-Spire-style ladder) ---
-let run = {
-  rung: 0,
-  bonus: [] as Card[],
-  character: null as string | null,
-  removed: [] as string[],
-  upgrades: {} as Record<string, number>, // original base id → tier (Punch Up the Zingers)
-  relics: [] as string[], // passive relic ids (RELICS in cards.ts) — win-gated like bonus
-}; // rung + earned cards + chosen candidate + cut card ids + upgraded card tiers + relics
+function freshRun() {
+  return {
+    rung: 0,
+    bonus: [] as Card[],
+    character: null as string | null,
+    removed: [] as string[],
+    upgrades: {} as Record<string, number>, // original base id → tier (Punch Up the Zingers)
+    relics: [] as string[], // passive relic ids (RELICS in cards.ts) — win-gated like bonus
+    startedAt: Date.now(), // identifies the run (Hall of Fame star keys)
+    starred: [] as Star[], // lines starred THIS run — the end-of-run greatest hits
+    topLines: [] as Star[], // the run's best-scoring player lines (greatest-hits fallback)
+  };
+}
+let run = freshRun(); // rung + earned cards + candidate + cuts + upgrades + relics + this run's lines
 type RunScreen = 'tutorial' | 'select' | 'map' | 'result' | 'reward' | 'awardhint' | 'consultant' | 'upgradereveal' | 'defeat' | 'victory';
 let runScreen: RunScreen | null = null;
 let awardHintSeen = false; // one-time-ever: after the FIRST card award, teach the player to hunt for more
@@ -168,7 +175,7 @@ function startDebate(): GameState {
 let game = startDebate();
 
 function newRun(): void {
-  run = { rung: 0, bonus: [], character: null, removed: [], upgrades: {}, relics: [] };
+  run = freshRun();
   consultant = null;
   consultantSel = new Set();
   tutorialIntroSeen = false; // show the welcome modal again on a fresh run
@@ -213,6 +220,7 @@ function jlogStatement(side: 'you' | 'them'): void {
   const r = p.lastReaction;
   if (!r) return;
   jlog('stmt', {
+    key: starKey(side), // joins with 'star' entries
     by: side,
     debate: run.rung + 1,
     q: game.round,
@@ -232,6 +240,78 @@ function jlogStatement(side: 'you' | 'them'): void {
     bar: Math.round(game.bar),
     ...(side === 'you' ? { secs: Math.round((Date.now() - questionStartAt) / 1000), maxPauseSecs: Math.round(maxPauseMs / 1000) } : {}),
   });
+}
+
+// --- Hall of Fame (see hall.ts): ☆ on the round summary saves a line to this run's greatest
+// hits AND the device's all-time wall; every star is journaled for scoring analysis.
+function starKey(side: 'you' | 'them'): string {
+  return `${run.startedAt}-${run.rung + 1}-${game.round}-${side}`;
+}
+function playerName(): string {
+  return PLAYER_CHARACTERS.find((c) => c.id === run.character)?.name ?? 'You';
+}
+/** The just-resolved statement of `side` as a Star (undefined if they haven't spoken). */
+function makeStar(side: 'you' | 'them'): Star | undefined {
+  const p = side === 'you' ? game.player : game.ai;
+  if (!p.lastReaction || !p.line.length) return undefined;
+  const who = journal.tester();
+  return {
+    key: starKey(side),
+    text: renderSentence(p.line),
+    by: side,
+    speaker: side === 'you' ? playerName() : game.opponent?.name ?? 'Your opponent',
+    opponent: game.opponent?.name ?? '',
+    delta: Math.round(p.lastReaction.delta * 10) / 10,
+    label: p.lastReaction.label,
+    debate: run.rung + 1,
+    q: game.round,
+    at: Date.now(),
+    ...(who ? { who } : {}),
+  };
+}
+function loadHall(): Star[] {
+  try {
+    return JSON.parse(localStorage.getItem(HALL_KEY) ?? '[]');
+  } catch {
+    return [];
+  }
+}
+function saveHall(list: Star[]): void {
+  try {
+    localStorage.setItem(HALL_KEY, JSON.stringify(list.slice(-HALL_MAX)));
+  } catch {
+    /* storage full / private browsing — the star still counts for this run */
+  }
+}
+function toggleStarFor(side: 'you' | 'them'): void {
+  const st = makeStar(side);
+  if (!st) return;
+  const [starred, on] = toggleStar(run.starred, st);
+  run.starred = starred;
+  saveHall(toggleStar(loadHall(), st)[0]);
+  const p = side === 'you' ? game.player : game.ai;
+  jlog('star', { on, ...st, cards: p.line.map((c) => c.id.split('#')[0]), phrases: p.lastReaction?.breakdown?.map((h) => h.category), combos: p.lastReaction?.comboChips?.map((c) => c.kind) });
+  render();
+}
+/** The ☆ buttons for the statements just judged (round summary + the debate-winning panel). */
+function starRowHtml(): string {
+  const btn = (side: 'you' | 'them', whose: string) => {
+    if (!makeStar(side)) return '';
+    const on = run.starred.some((s) => s.key === starKey(side));
+    return `<button class="star-btn${on ? ' on' : ''}" data-star="${side}">${on ? `★ Saved ${whose} line` : `☆ Save ${whose} line`}</button>`;
+  };
+  const row = btn('you', 'your') + btn('them', 'their');
+  return row ? `<div class="star-row">${row}</div>` : '';
+}
+function quoteHtml(st: Star, showMeta = false): string {
+  const vs = st.by === 'you' ? ` vs ${esc(st.opponent)}` : ''; // an opponent's own line needn't name them twice
+  const meta = showMeta ? ` · debate ${st.debate}${vs}${st.who ? ` · ${esc(st.who)}` : ''} · ${new Date(st.at).toLocaleDateString()}` : '';
+  return `<figure class="hof-quote ${st.by}"><blockquote>“${esc(st.text)}”</blockquote><figcaption>— ${esc(st.speaker)}${meta}</figcaption></figure>`;
+}
+/** End-of-run greatest hits: the lines starred this run, else its top-scoring ones. */
+function greatestHitsHtml(): string {
+  const [title, lines] = run.starred.length ? ['⭐ Your greatest hits', run.starred] : ['Your top-scoring lines', run.topLines];
+  return lines.length ? `<div class="hof-hits"><h4>${title}</h4>${lines.map((st) => quoteHtml(st)).join('')}</div>` : '';
 }
 
 // --- save / resume: the whole run (including the debate in progress) is written to
@@ -307,7 +387,7 @@ function restoreRun(): boolean {
   } catch {
     return false;
   }
-  run = save.run;
+  run = { ...freshRun(), ...save.run }; // older saves predate the Hall of Fame fields
   runScreen = save.runScreen;
   awardHintSeen = save.awardHintSeen;
   tutorialIntroSeen = save.tutorialIntroSeen;
@@ -1252,6 +1332,7 @@ function runModalHtml(): string {
       ${lead}
       <div class="ladder">${ladderHtml()}</div>
       <button class="action" id="beginDebate">Begin Debate ${run.rung + 1}: ${opponentName(LADDER[run.rung].opponentId)} ▶</button>
+      ${loadHall().length ? '<button class="ghost" id="hallOpen">🏆 Hall of Fame</button>' : ''}
     </div></div>`;
   }
   if (runScreen === 'reward') {
@@ -1415,6 +1496,7 @@ function runModalHtml(): string {
     return `<div class="modal-backdrop"><div class="modal">
       <div class="modal-title" style="color:var(--gold)">🎉 You won the whole campaign!</div>
       <p>You bested all ${LADDER.length} opponents — the nomination is yours.</p>
+      ${greatestHitsHtml()}
       <button class="action" id="newrun">Start a new run</button>
       <button class="ghost" id="dumplogEnd"><span class="btn-ico">🐞</span>Download this debate's log</button>
     </div></div>`;
@@ -1424,6 +1506,7 @@ function runModalHtml(): string {
       <div class="modal-title">${game.opponent?.name ?? 'Your opponent'} beat you.</div>
       <p>Your run ends at debate ${run.rung + 1} of ${LADDER.length}. Your earned cards are lost —
       start a fresh run with the default deck.</p>
+      ${greatestHitsHtml()}
       <button class="action" id="newrun">Start a new run</button>
       <button class="ghost" id="dumplogEnd"><span class="btn-ico">🐞</span>Download this debate's log</button>
     </div></div>`;
@@ -1558,6 +1641,7 @@ function renderView(): void {
             <div class="rs-title">🏆 You beat ${game.opponent?.name ?? 'your opponent'}!</div>
             <div class="rs-standing"><span class="you">You ${youSupport}%</span> &nbsp;·&nbsp; <span class="them">${100 - youSupport}% ${game.opponent?.name ?? 'Opponent'}</span></div>
             <div class="rs-progress">Debate ${run.rung + 1} of ${LADDER.length} won</div>
+            ${starRowHtml()}
             <button class="action" id="toReward">Choose your reward ▶</button>
           </div>`
         : fxHoldSummary
@@ -1578,6 +1662,7 @@ function renderView(): void {
                 : ''
             }
             ${game.round >= game.maxRounds ? '<div class="rs-progress">Final question complete — tallying the debate…</div>' : ''}
+            ${starRowHtml()}
             <button class="action" id="next">Next Question ▶</button>
           </div>`
         : `${carousel(
@@ -1947,6 +2032,10 @@ function renderView(): void {
       render();
     });
   });
+  app.querySelectorAll<HTMLButtonElement>('[data-star]').forEach((b) =>
+    b.addEventListener('click', () => toggleStarFor(b.dataset.star as 'you' | 'them')),
+  );
+  app.querySelector<HTMLButtonElement>('#hallOpen')?.addEventListener('click', openHall);
   app.querySelector<HTMLButtonElement>('#beginDebate')?.addEventListener('click', () => {
     runScreen = null; // dismiss the map and step onto the debate stage
     jlog('debate', {
@@ -2224,6 +2313,8 @@ async function playerMove(move: Move): Promise<void> {
   if (justResolved) {
     recordPlayerStatement(game.player.lastReaction!); // tally for post-debate achievements
     jlogStatement('you');
+    const st = makeStar('you');
+    if (st) run.topLines = keepTopLines(run.topLines, st);
     evalMidAwards(game.player.lastReaction!); // queue any mid-debate awards (shown after the FX)
     trackBar();
   }
@@ -2400,6 +2491,18 @@ function openJournal(): void {
     journalEl.innerHTML = '';
     if (location.hash === '#journal') history.replaceState(null, '', location.pathname + location.search);
   });
+}
+
+/** The all-time wall: every line starred on this device, newest first. */
+function openHall(): void {
+  const all = loadHall().slice().reverse();
+  journalEl.innerHTML = `<div class="modal-backdrop journal-screen hall-screen"><div class="modal">
+    <div class="modal-title" style="color:var(--gold)">🏆 Hall of Fame</div>
+    <p class="j-meta">${all.length} line${all.length === 1 ? '' : 's'} starred on this device</p>
+    <div class="j-scroll">${all.map((st) => quoteHtml(st, true)).join('') || '<p>Nothing starred yet.</p>'}</div>
+    <div class="j-actions"><button class="action" id="hallClose">Close</button></div>
+  </div></div>`;
+  journalEl.querySelector('#hallClose')!.addEventListener('click', () => (journalEl.innerHTML = ''));
 }
 
 // Hidden entrance: tap the game title 5 times within 3 seconds (on any screen that shows it).

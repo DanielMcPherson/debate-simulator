@@ -1354,6 +1354,20 @@ outside `#app` so render churn can't wipe a half-typed note. Share uses the iOS 
 back for analysis, the `entries` array is the raw data; `summary` is the same headline numbers
 the screen shows.
 
+**Hall of Fame (2026-09)** — `src/ui/hall.ts` (`Star`, `toggleStar`, `keepTopLines`; tests/hall.test.ts)
++ main.ts. A **☆ Save your/their line** row on the round summary (and the debate-winning result
+panel) stars either speaker's just-judged statement. Stars go to `run.starred` (this run — shown as
+"⭐ Your greatest hits" on the victory/defeat screens; falls back to `run.topLines`, the run's 3 best
+positive player lines) AND the device-wide wall (`localStorage` `mokp.hall`, newest `HALL_MAX`),
+opened from the campaign map's **🏆 Hall of Fame** button (hidden until something is starred).
+`run` is now built by `freshRun()` (adds `startedAt`/`starred`/`topLines`; restore merges an older
+save over `freshRun()`). **Why it exists (Daniel, 2026-09): starred lines are the ground truth for
+"what's funny", so they should be what scores best** — every toggle is journaled as a `star`
+entry (on/off, text, delta, label, base card ids, phrase categories, combos), and `stmt` entries
+carry the same `key` (`<run.startedAt>-<debate>-<question>-<you|them>`) so the two join exactly.
+When analyzing a returned journal: starred lines that scored LOW (or negative) are the scoring/
+card-sentiment bugs to fix; high scorers nobody starred are candidates for being over-valued.
+
 ## Gotchas
 - **Sabotage jams must stick:** a Teleprompter-Typo'd card is tagged `Card.jammed`; `endableLine`'s
   end-trim refuses to strip a jammed card (else the lenient trim silently UNDID the typo — the
