@@ -1337,6 +1337,23 @@ downloads it as JSON. **A browser app can't auto-write files** — not on github
 user-clicked download, `console.log`, and `localStorage`. Use the log to repro bugs and to analyze
 difficulty/skill.
 
+**Playtest journal (2026-09)** — the week-long, cross-run, on-device companion to the per-debate
+events log: `src/ui/journal.ts` (storage + `summarize` + `describeEntry`; tests/journal.test.ts) +
+`jlog(...)` calls in main.ts. Stored in `localStorage` key `mokp.journal` (tester name in
+`mokp.tester`), **never cleared by new runs/abandon** — only the screen's "Clear journal" button.
+Logs: `open` (page load, with `resumed`), `hide` (visibilitychange → where people stop), `run`,
+`debate` (incl. hidden `crowdLoves`), `stmt` for BOTH speakers (rendered text, base card ids,
+delta, label, grammatical/runOn/offTopic/rambling flags, phrase categories, combos, finisher, bar,
+and for the player `secs` since the question began + `maxPauseSecs` longest single decision),
+`power`, `award`, `pick` (with the offered choices), `consultant`, `end`, `abandon`,
+`tutorialSkip`, and free-text `note`s. Capped at `JOURNAL_MAX_CHARS` by dropping the OLDEST 10% —
+never blocks the game. **Hidden screen:** tap the h1 title 5× within 3s (reachable on the debate
+stage; run-screen modals cover the title) or load the page with `#journal`. It's its own element
+outside `#app` so render churn can't wipe a half-typed note. Share uses the iOS share sheet with a
+`.json` file (AirDrop/email), Copy puts the JSON on the clipboard. When Daniel hands a journal file
+back for analysis, the `entries` array is the raw data; `summary` is the same headline numbers
+the screen shows.
+
 ## Gotchas
 - **Sabotage jams must stick:** a Teleprompter-Typo'd card is tagged `Card.jammed`; `endableLine`'s
   end-trim refuses to strip a jammed card (else the lenient trim silently UNDID the typo — the

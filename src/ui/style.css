@@ -781,3 +781,19 @@ button.ghost.danger:hover:not(:disabled) { color:#ffb3b3; border-color:var(--the
 .howto-examples { margin:10px 0; padding-left:6px; }
 .howto-examples p { font-family:var(--card); font-size:17px; line-height:1.5; color:var(--gold); margin:7px 0; }
 .howto-foot { margin-top:14px; font-size:20px; line-height:1.5; font-weight:600; color:var(--ink); }
+
+/* ---- hidden playtest journal (tap the title 5×) ---- */
+h1 { touch-action: manipulation; cursor: default; -webkit-user-select: none; user-select: none; }
+.journal-screen { z-index: 1000; }
+.journal-screen .modal { max-width: 640px; width: calc(100% - 32px); max-height: calc(100vh - 32px); display: flex; flex-direction: column; box-sizing: border-box; }
+.journal-screen .j-meta { font-size: 13px; opacity: .75; margin: 0 0 8px; }
+.journal-screen .j-stats { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; margin-bottom: 10px; }
+.journal-screen .j-row { display: flex; gap: 8px; align-items: center; margin: 6px 0; font-size: 14px; }
+.journal-screen input, .journal-screen textarea { flex: 1; font: inherit; font-size: 16px; padding: 6px 8px; border-radius: 6px; border: 1px solid #556; background: #0c1322; color: var(--ink); }
+.journal-screen .j-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.journal-screen .j-msg { color: var(--gold); font-size: 14px; }
+.journal-screen .j-scroll { overflow-y: auto; min-height: 0; flex: 1; font-size: 14px; line-height: 1.45; border-top: 1px solid #334; padding-top: 6px; }
+.journal-screen h4 { margin: 10px 0 4px; font-family: var(--display); color: var(--gold); }
+.journal-screen ol, .journal-screen ul { margin: 0; padding-left: 20px; }
+.journal-screen .j-recent { list-style: none; padding-left: 0; }
+.journal-screen .j-recent li span { opacity: .6; font-size: 12px; margin-right: 4px; }

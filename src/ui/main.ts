@@ -3,7 +3,8 @@ import type { Card, Category, GameState, Move, Reaction, Relic } from '../engine
 import { createGame, applyMove, canEnd, nextQuestion, saveGame, loadGame, type GameSnapshot } from '../engine/game';
 import { buildPrivateDeck } from '../engine/deck';
 import { aiTurn } from '../engine/ai';
-import { displayWords, cardLabel } from '../engine/morphology';
+import { displayWords, cardLabel, renderSentence } from '../engine/morphology';
+import { createJournal, summarize, describeEntry, type JournalSummary } from './journal';
 import { isNameOfTheGame } from './nameOfTheGame';
 import { speakStatement, stopSpeaking, voiceMuted, setVoiceMuted } from './speech';
 import { isComplete, canAppend } from '../engine/grammar';
@@ -179,6 +180,58 @@ function newRun(): void {
   game = startDebate();
   runScreen = 'tutorial'; // tutorial → choose candidate → campaign map → debate 1
   render();
+}
+
+// --- playtest journal (see journal.ts): a week-long on-device record, read + exported from a
+// hidden screen (tap the title 5×, or open the page with #journal). Never cleared by new runs.
+const journal = createJournal((() => {
+  try {
+    return localStorage;
+  } catch {
+    return null;
+  }
+})());
+function jlog(t: string, data: Record<string, unknown> = {}): void {
+  journal.log(t, data);
+}
+/** Where-are-we fields for journal entries. */
+function jwhere(): Record<string, unknown> {
+  return { debate: run.rung + 1, q: game.round, screen: runScreen ?? (game.awaitingNext ? 'summary' : 'playing') };
+}
+// Statement pacing: when the current question began, when the player last got the turn, and
+// the longest they sat on a single decision this statement (a confusion signal).
+let questionStartAt = Date.now();
+let turnGivenAt = Date.now();
+let maxPauseMs = 0;
+function markQuestionStart(): void {
+  questionStartAt = turnGivenAt = Date.now();
+  maxPauseMs = 0;
+}
+/** Journal a just-resolved statement (either speaker). */
+function jlogStatement(side: 'you' | 'them'): void {
+  const p = side === 'you' ? game.player : game.ai;
+  const r = p.lastReaction;
+  if (!r) return;
+  jlog('stmt', {
+    by: side,
+    debate: run.rung + 1,
+    q: game.round,
+    topic: game.topic?.id,
+    text: renderSentence(p.line),
+    cards: p.line.map((c) => c.id.split('#')[0]),
+    delta: Math.round(r.delta * 10) / 10,
+    label: r.label,
+    grammatical: r.grammatical,
+    ...(r.runOn ? { runOn: true } : {}),
+    ...(r.offTopic ? { offTopic: true } : {}),
+    ...(r.rambling ? { rambling: true } : {}),
+    ...(r.audienceInsulted ? { audienceInsulted: true } : {}),
+    phrases: r.breakdown?.map((h) => h.category),
+    combos: r.comboChips?.map((c) => c.kind),
+    finisher: p.line.some((c) => c.role === 'intensifier'),
+    bar: Math.round(game.bar),
+    ...(side === 'you' ? { secs: Math.round((Date.now() - questionStartAt) / 1000), maxPauseSecs: Math.round(maxPauseMs / 1000) } : {}),
+  });
 }
 
 // --- save / resume: the whole run (including the debate in progress) is written to
@@ -391,6 +444,7 @@ function postAwardSpecs(): AwardSpec[] {
 /** When a debate ends, set up the reward / victory / defeat screen (once). */
 function checkDebateEnd(): void {
   if (!game.winner || runScreen) return;
+  jlog('end', { debate: run.rung + 1, opponent: game.opponent?.id, result: game.winner, bar: Math.round(game.bar), q: game.round });
   if (game.winner === 'player') {
     if (run.rung >= LADDER.length - 1) {
       runScreen = 'victory'; // winning the final rung ends the run — no draft
@@ -472,6 +526,7 @@ function evalMidAwards(r: Reaction): void {
     if (midAwardsFired.has(id)) return;
     midAwardsFired.add(id);
     pendingMid.push({ title, body });
+    jlog('award', { title, ...jwhere() });
   };
   const has = (cat: Category) => !!r.breakdown?.some((h) => h.category === cat);
   if (game.player.hand.filter((c) => c.role !== 'powerup').length === 0)
@@ -552,6 +607,7 @@ function consultantServiceDone(key: ServiceKey): void {
 /** Commit the selected cuts ("Trim the Stump Speech") — a pure thinning, nothing back. */
 function consultantConfirmCuts(): void {
   if (!consultant || consultantSel.size !== consultant.cut) return;
+  jlog('consultant', { service: 'trim', cards: [...consultantSel], ...jwhere() });
   run.removed.push(...consultantSel);
   consultantServiceDone('trim');
 }
@@ -584,6 +640,7 @@ function consultantNewTalkingPoints(): void {
 /** Commit the selected upgrades ("Punch Up the Zingers"). */
 function consultantConfirmUpgrades(): void {
   if (!consultant || consultantSel.size !== consultant.upgrades) return;
+  jlog('consultant', { service: 'upgrade', cards: [...consultantSel], ...jwhere() });
   for (const id of consultantSel) run.upgrades[id] = (run.upgrades[id] ?? 0) + 1;
   consultantServiceDone('upgrade');
 }
@@ -591,6 +648,7 @@ function consultantConfirmUpgrades(): void {
 /** Leave the Consultant — forfeit any remaining picks, on to the next debate. (Changes from
  *  already-completed services this visit are kept; startDebate rebuilds from run.*.) */
 function consultantSkip(): void {
+  jlog('consultant', { service: 'skip', ...jwhere() });
   consultant = null;
   consultantSel = new Set();
   game = startDebate();
@@ -1663,6 +1721,7 @@ function renderView(): void {
       if (btn.dataset.upgradepick) {
         const up = rewardQueue[0]?.upgrade;
         if (up) {
+          jlog('pick', { offer: rewardQueue[0].title, pick: `mystery upgrade → ${cardLabel(up.to)}`, ...jwhere() });
           run.upgrades[up.origId] = (run.upgrades[up.origId] ?? 0) + 1;
           upgradeReveal = up;
           rewardQueue.shift();
@@ -1676,6 +1735,7 @@ function renderView(): void {
       if (btn.dataset.relicpick) {
         const relic = rewardQueue[0]?.relics?.find((r) => r.id === btn.dataset.relicpick);
         if (relic) {
+          jlog('pick', { offer: rewardQueue[0].title, pick: `endorsement ${relic.name}`, choices: rewardQueue[0].relics?.map((r) => r.name), ...jwhere() });
           run.relics.push(relic.id); // takes effect next createGame (wiped on a loss — the win-gate)
           rewardQueue.shift();
           if (rewardQueue.length) render();
@@ -1689,6 +1749,7 @@ function renderView(): void {
         // grant cards that deliberately live outside REWARDS.
         const card = rewardQueue[0]?.choices.find((c) => c.id === btn.dataset.reward);
         if (card) {
+          jlog('pick', { offer: rewardQueue[0].title, pick: cardLabel(card), choices: rewardQueue[0].choices.map(cardLabel), ...jwhere() });
           run.bonus.push(card); // carried into future debates (wiped on a loss — the win-gate)
           if (rewardMode === 'mid') {
             // Also drop a live copy into the current deck so it's drawable the rest of this debate.
@@ -1801,6 +1862,7 @@ function renderView(): void {
   });
   app.querySelector<HTMLButtonElement>('#questionGo')?.addEventListener('click', () => {
     pendingQuestionCard = false; // dismiss the question card and start the round
+    markQuestionStart();
     render();
     driveAI();
   });
@@ -1809,11 +1871,13 @@ function renderView(): void {
     render();
   });
   app.querySelector<HTMLButtonElement>('#tutorialSkip')?.addEventListener('click', () => {
+    jlog('tutorialSkip', jwhere());
     tutorialSkipped = true; // opt out from the welcome modal — freeform Q1, no hints/gating
     tutorialIntroSeen = true;
     render();
   });
   app.querySelector<HTMLButtonElement>('#tutSkip')?.addEventListener('click', () => {
+    jlog('tutorialSkip', jwhere());
     tutorialSkipped = true; // opt out mid-walkthrough — hints and gating vanish
     render();
   });
@@ -1864,7 +1928,9 @@ function renderView(): void {
   });
   app.querySelector<HTMLButtonElement>('#restart')?.addEventListener('click', () => {
     // Runs now survive reloads, so a stray tap here is the only way to lose one — confirm it.
-    if (confirm('Abandon this run and start over from debate 1?')) newRun();
+    if (!confirm('Abandon this run and start over from debate 1?')) return;
+    jlog('abandon', { ...jwhere(), bar: Math.round(game.bar) });
+    newRun();
   });
   app.querySelector<HTMLButtonElement>('#dumplog')?.addEventListener('click', downloadDebugLog);
   app.querySelector<HTMLButtonElement>('#dumplogEnd')?.addEventListener('click', downloadDebugLog);
@@ -1876,12 +1942,21 @@ function renderView(): void {
   app.querySelectorAll<HTMLButtonElement>('.char-card').forEach((btn) => {
     btn.addEventListener('click', () => {
       run.character = btn.dataset.char ?? null;
+      jlog('run', { character: run.character });
       runScreen = 'map'; // candidate chosen — on to the campaign ladder
       render();
     });
   });
   app.querySelector<HTMLButtonElement>('#beginDebate')?.addEventListener('click', () => {
     runScreen = null; // dismiss the map and step onto the debate stage
+    jlog('debate', {
+      debate: run.rung + 1,
+      opponent: game.opponent?.id,
+      crowdLoves: game.crowd?.loves, // hidden from the player — here for analysis
+      earnedCards: run.bonus.length,
+      relics: run.relics,
+    });
+    markQuestionStart();
     // Open with the question card — except the tutorial's Q1, which has its own welcome modal.
     pendingQuestionCard = !(run.rung === 0 && game.round === 1);
     render();
@@ -2140,12 +2215,15 @@ async function playCardFx(side: 'you' | 'them', cardId: string, cardIdx: number)
 async function playerMove(move: Move): Promise<void> {
   if (game.winner || game.awaitingNext || game.turn !== 'player' || aiThinking || resolving || playFxBusy) return;
   const wasSpeaking = !game.player.done;
+  maxPauseMs = Math.max(maxPauseMs, Date.now() - turnGivenAt);
+  if (move.kind === 'power') jlog('power', { by: 'you', effect: game.player.hand.find((c) => c.id === move.cardId)?.effect, ...jwhere() });
   applyMove(game, move);
   if (move.kind === 'take') grabLessonPending = false; // played on — the pool lesson has been read
   // Resolved (done flipped true) covers ending the turn AND playing a finisher (a `take`, not `end`).
   const justResolved = wasSpeaking && game.player.done && !!game.player.lastReaction;
   if (justResolved) {
     recordPlayerStatement(game.player.lastReaction!); // tally for post-debate achievements
+    jlogStatement('you');
     evalMidAwards(game.player.lastReaction!); // queue any mid-debate awards (shown after the FX)
     trackBar();
   }
@@ -2179,9 +2257,12 @@ function driveAI(): void {
   window.setTimeout(async () => {
     const wasAiSpeaking = !game.ai.done;
     const move = aiTurn(game, { maxExtend: aiMaxExtend }); // difficulty rises up the ladder
+    if (move.kind === 'power') jlog('power', { by: 'them', effect: game.ai.hand.find((c) => c.id === move.cardId)?.effect, ...jwhere() });
     applyMove(game, move);
     aiThinking = false;
+    turnGivenAt = Date.now();
     const justResolved = wasAiSpeaking && game.ai.done && !!game.ai.lastReaction;
+    if (justResolved) jlogStatement('them');
     if (justResolved) trackBar(); // the bar may bottom out right after the AI speaks (Comeback Kid)
     // (end screen deferred to playRoundFx so it doesn't flicker behind the resolution animation)
     if (justResolved && (game.player.done || game.awaitingNext || game.winner)) {
@@ -2222,8 +2303,127 @@ broadcastFrame.setAttribute('aria-hidden', 'true');
 broadcastFrame.innerHTML = ['tl', 'tr', 'bl', 'br'].map((c) => `<span class="corner ${c}">${CORNER_SVG}</span>`).join('');
 document.body.appendChild(broadcastFrame);
 
+// --- the hidden playtest-journal screen. Its own element OUTSIDE #app, so the game's render()
+// churn (AI turns keep playing behind it) never wipes a half-typed note.
+const esc = (t: string) => t.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
+const journalEl = document.createElement('div');
+document.body.appendChild(journalEl);
+let journalMsg = '';
+
+function journalFileName(): string {
+  return `puppies-playtest-${new Date().toISOString().slice(0, 10)}.json`;
+}
+function journalJson(): string {
+  return JSON.stringify({ exported: new Date().toISOString(), summary: summarize(journal.entries()), entries: journal.entries() }, null, 1);
+}
+
+function openJournal(): void {
+  const entries = journal.entries();
+  const sm = summarize(entries);
+  const pct = (n: number) => (sm.statements ? `${Math.round((100 * n) / sm.statements)}%` : '—');
+  const day = (t?: number) => (t ? new Date(t).toLocaleString() : '—');
+  const lines = (xs: JournalSummary['best']) =>
+    xs.length ? xs.map((b) => `<li><b>${b.delta > 0 ? '+' : ''}${b.delta}</b> ${b.who ? `<i>${esc(b.who)}</i> ` : ''}“${esc(b.text)}”</li>`).join('') : '<li>—</li>';
+  journalEl.innerHTML = `<div class="modal-backdrop journal-screen"><div class="modal">
+    <div class="modal-title">📓 Playtest journal</div>
+    <p class="j-meta">${sm.entries} entries · ${day(sm.from)} → ${day(sm.to)} · ${Math.round(journal.sizeChars() / 1024)} KB</p>
+    <div class="j-stats">
+      <span>Sessions <b>${sm.sessions}</b></span><span>Runs <b>${sm.runs}</b></span>
+      <span>Debates <b>${sm.debates}</b></span><span>Won/lost <b>${sm.won}/${sm.lost}</b></span>
+      <span>Furthest <b>debate ${sm.furthestDebate || '—'}</b></span><span>Statements <b>${sm.statements}</b></span>
+      <span>Confused <b>${pct(sm.confused)}</b></span><span>Run-ons <b>${pct(sm.runOns)}</b></span>
+      <span>Off-topic <b>${pct(sm.offTopic)}</b></span><span>Avg score <b>${sm.avgDelta.toFixed(1)}</b></span>
+      <span>Avg time/statement <b>${Math.round(sm.avgSecs)}s</b></span>
+    </div>
+    <label class="j-row">Now playing: <input id="jTester" value="${esc(journal.tester())}" placeholder="tester's name (optional)" autocomplete="off"></label>
+    <div class="j-row"><textarea id="jNote" rows="2" placeholder="Add a note — what did they laugh at, where did they get stuck?"></textarea>
+      <button class="ghost" id="jAddNote">Add note</button></div>
+    <div class="j-actions">
+      <button class="action" id="jShare">Share…</button>
+      <button class="ghost" id="jCopy">Copy</button>
+      <button class="ghost danger" id="jClear">Clear journal</button>
+      <button class="ghost" id="jClose">Close</button>
+    </div>
+    ${journalMsg ? `<p class="j-msg">${esc(journalMsg)}</p>` : ''}
+    <div class="j-scroll">
+      <h4>Best lines</h4><ol>${lines(sm.best)}</ol>
+      ${sm.worst.length ? `<h4>Worst lines</h4><ol>${lines(sm.worst)}</ol>` : ''}
+      <h4>Recent activity</h4>
+      <ul class="j-recent">${entries.slice(-60).reverse().map((e) => `<li><span>${new Date(e.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span> ${esc(describeEntry(e))}</li>`).join('') || '<li>Nothing yet.</li>'}</ul>
+    </div>
+  </div></div>`;
+  const $ = <T extends HTMLElement>(id: string) => journalEl.querySelector<T>(`#${id}`)!;
+  const refresh = (msg = '') => {
+    journalMsg = msg;
+    openJournal();
+  };
+  $('jTester').addEventListener('change', (e) => journal.setTester((e.target as HTMLInputElement).value.trim()));
+  $('jAddNote').addEventListener('click', () => {
+    const text = $<HTMLTextAreaElement>('jNote').value.trim();
+    if (!text) return;
+    jlog('note', { text, ...jwhere() });
+    refresh('Note added.');
+  });
+  $('jShare').addEventListener('click', async () => {
+    const json = journalJson();
+    const file = new File([json], journalFileName(), { type: 'application/json' });
+    try {
+      if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: 'Playtest journal' });
+      else if (navigator.share) await navigator.share({ title: 'Playtest journal', text: json });
+      else {
+        const a = document.createElement('a'); // desktop fallback: a plain download
+        a.href = URL.createObjectURL(file);
+        a.download = file.name;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+      refresh('Shared.');
+    } catch (err) {
+      if ((err as Error)?.name !== 'AbortError') refresh('Share failed — try Copy instead.');
+    }
+  });
+  $('jCopy').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(journalJson());
+      refresh('Copied the whole journal — paste it into a note, email or message.');
+    } catch {
+      refresh('Copy failed — try Share instead.');
+    }
+  });
+  $('jClear').addEventListener('click', () => {
+    if (!confirm(`Permanently erase all ${entries.length} journal entries? Share a copy first if you want to keep them.`)) return;
+    journal.clear();
+    refresh('Journal cleared.');
+  });
+  $('jClose').addEventListener('click', () => {
+    journalMsg = '';
+    journalEl.innerHTML = '';
+    if (location.hash === '#journal') history.replaceState(null, '', location.pathname + location.search);
+  });
+}
+
+// Hidden entrance: tap the game title 5 times within 3 seconds (on any screen that shows it).
+let titleTaps: number[] = [];
+app.addEventListener('click', (e) => {
+  if (!(e.target as HTMLElement).closest('h1')) return;
+  const now = Date.now();
+  titleTaps = [...titleTaps.filter((t) => now - t < 3000), now];
+  if (titleTaps.length >= 5) {
+    titleTaps = [];
+    openJournal();
+  }
+});
+
+// Where people stop: note every time the page is hidden (app switch, lock, tab close).
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') jlog('hide', jwhere());
+});
+
 // Resume a saved run if there is one; otherwise open on the tutorial, then the campaign map.
 const resumed = restoreRun();
 if (!resumed) runScreen = 'tutorial';
+jlog('open', { resumed, ...jwhere(), ua: navigator.userAgent });
+markQuestionStart();
 render();
 if (resumed) resumeAfterRestore();
+if (location.hash === '#journal') openJournal();
